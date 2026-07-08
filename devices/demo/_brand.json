@@ -1,0 +1,7 @@
+{
+  "brand": "uniPEQ",
+  "defaults": {
+    "handlerId": "demo",
+    "transports": ["demo"]
+  }
+}

@@ -1,6 +1,8 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router';
+import { useSettingsStore } from './stores/settingsStore';
 
 import { IonicVue } from '@ionic/vue';
 
@@ -27,17 +29,18 @@ import '@ionic/vue/css/display.css';
  * https://ionicframework.com/docs/theming/dark-mode
  */
 
-/* @import '@ionic/vue/css/palettes/dark.always.css'; */
-/* @import '@ionic/vue/css/palettes/dark.class.css'; */
-import '@ionic/vue/css/palettes/dark.system.css';
+/* Class-based so the Settings theme selector controls it (see settingsStore.applyTheme) */
+import '@ionic/vue/css/palettes/dark.class.css';
 
 /* Theme variables */
 import './theme/variables.css';
 
 const app = createApp(App)
   .use(IonicVue)
+  .use(createPinia())
   .use(router);
 
 router.isReady().then(() => {
   app.mount('#app');
+  useSettingsStore().persist(); // applies theme + verbose-logging flag on boot
 });

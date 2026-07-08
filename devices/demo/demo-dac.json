@@ -1,0 +1,19 @@
+{
+  "id": "demo/demo-dac",
+  "name": "Demo DAC (virtual)",
+  "match": { "demo": true },
+  "constraintsRef": "demoPeq10Band12dB",
+  "modelConfig": {
+    "firstWritableEQSlot": 1,
+    "maxWritableEQSlots": 3,
+    "disconnectOnSave": false,
+    "disabledPresetId": 0,
+    "availableSlots": [
+      { "id": 0, "name": "Bypass" },
+      { "id": 1, "name": "USER1" },
+      { "id": 2, "name": "USER2" },
+      { "id": 3, "name": "USER3" }
+    ]
+  },
+  "status": "verified"
+}

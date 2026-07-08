@@ -1,0 +1,22 @@
+{
+  "id": "peq5Band12dBAllFilters7",
+  "description": "5-band PEQ, ±12 dB, all 7 FiiO filter types (PK/LS/HS/LP/HP/BP/AP), pregain",
+  "peqConstraints": {
+    "minGain": -12,
+    "maxGain": 12,
+    "maxFilters": 5,
+    "supportsLSFilter": true,
+    "supportsHSFilter": true,
+    "deviceHandlesPregain": false,
+    "supportsManualGlobalGain": true,
+    "supportsLPFilter": true,
+    "supportsHPFilter": true,
+    "supportsBPFilter": true,
+    "supportsNotchFilter": false,
+    "supportsAllPassFilter": true,
+    "supportsBandStopFilter": false,
+    "supportsConstantQFilter": false,
+    "minQ": 0.1,
+    "maxQ": 10.0
+  }
+}

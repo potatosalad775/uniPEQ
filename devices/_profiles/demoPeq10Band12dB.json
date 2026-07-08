@@ -1,0 +1,22 @@
+{
+  "id": "demoPeq10Band12dB",
+  "description": "Demo virtual device — 10-band PEQ, ±12 dB, all filter types, pregain",
+  "peqConstraints": {
+    "minGain": -12,
+    "maxGain": 12,
+    "maxFilters": 10,
+    "supportsLSFilter": true,
+    "supportsHSFilter": true,
+    "deviceHandlesPregain": false,
+    "supportsManualGlobalGain": true,
+    "supportsLPFilter": true,
+    "supportsHPFilter": true,
+    "supportsBPFilter": true,
+    "supportsNotchFilter": true,
+    "supportsAllPassFilter": true,
+    "supportsBandStopFilter": false,
+    "supportsConstantQFilter": false,
+    "minQ": 0.1,
+    "maxQ": 10.0
+  }
+}

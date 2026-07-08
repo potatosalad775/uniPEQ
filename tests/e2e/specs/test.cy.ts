@@ -1,6 +1,7 @@
-describe('My First Test', () => {
-  it('Visits the app root url', () => {
+describe('uniPEQ smoke test', () => {
+  it('shows the Main tab with the demo device', () => {
     cy.visit('/')
-    cy.contains('ion-content', 'Tab 1 page')
+    cy.contains('ion-title', 'uniPEQ')
+    cy.contains('ion-item', 'Demo DAC')
   })
 })

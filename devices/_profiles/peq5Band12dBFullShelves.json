@@ -1,0 +1,22 @@
+{
+  "id": "peq5Band12dBFullShelves",
+  "description": "5-band PEQ, ±12 dB, low-shelf + high-shelf, pregain",
+  "peqConstraints": {
+    "minGain": -12,
+    "maxGain": 12,
+    "maxFilters": 5,
+    "supportsLSFilter": true,
+    "supportsHSFilter": true,
+    "deviceHandlesPregain": false,
+    "supportsManualGlobalGain": true,
+    "supportsLPFilter": false,
+    "supportsHPFilter": false,
+    "supportsBPFilter": false,
+    "supportsNotchFilter": false,
+    "supportsAllPassFilter": false,
+    "supportsBandStopFilter": false,
+    "supportsConstantQFilter": false,
+    "minQ": 0.1,
+    "maxQ": 10.0
+  }
+}

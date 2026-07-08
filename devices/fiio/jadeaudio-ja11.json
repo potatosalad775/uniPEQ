@@ -1,0 +1,22 @@
+{
+  "id": "fiio/jadeaudio-ja11",
+  "name": "JadeAudio JA11",
+  "match": {
+    "usb": { "productNames": ["JadeAudio JA11"] }
+  },
+  "constraintsRef": "peq5Band12dBFullShelves",
+  "modelConfig": {
+    "reportId": 2,
+    "firstWritableEQSlot": 3,
+    "maxWritableEQSlots": 1,
+    "disconnectOnSave": true,
+    "disabledPresetId": 4,
+    "availableSlots": [
+      { "id": 0, "name": "Vocal" },
+      { "id": 1, "name": "Classic" },
+      { "id": 2, "name": "Bass" },
+      { "id": 3, "name": "USER1" }
+    ]
+  },
+  "status": "verified"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "peq10Band12dBWideShelves",
+  "description": "10-band PEQ, -24/+12 dB asymmetric, shelf filters only (PK/LS/HS), pregain",
+  "peqConstraints": {
+    "minGain": -24,
+    "maxGain": 12,
+    "maxFilters": 10,
+    "supportsLSFilter": true,
+    "supportsHSFilter": true,
+    "deviceHandlesPregain": false,
+    "supportsManualGlobalGain": true,
+    "supportsLPFilter": false,
+    "supportsHPFilter": false,
+    "supportsBPFilter": false,
+    "supportsNotchFilter": false,
+    "supportsAllPassFilter": false,
+    "supportsBandStopFilter": false,
+    "supportsConstantQFilter": false,
+    "minQ": 0.1,
+    "maxQ": 10.0
+  }
+}
