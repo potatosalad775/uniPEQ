@@ -1,0 +1,19 @@
+# Package managers
+package-lock.json
+
+# Build output and generated code. Prettier does not read .gitignore.
+/dist/
+/.svelte-kit/
+/src/lib/paraglide/
+/project.inlang/*
+!/project.inlang/settings.json
+
+# Native projects: Gradle, Kotlin and XML, formatted by Android Studio.
+/android/
+/native/
+
+# The Vue/Ionic prototype, kept unbuilt until the Phase 7 cutover (docs/rebuild-plan.md).
+/legacy/
+
+# Prose. Prettier would realign every table; the docs are hand-formatted.
+*.md

@@ -6,7 +6,8 @@ adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype 
 Its decisions 1–7 carry over unchanged.
 
 Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
-Phase 0). Phase 1 is next. Tick tasks as they land; record deviations in the Decisions section.
+Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. Phase 2 is next. Tick tasks as
+they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -107,6 +108,37 @@ New:
     dependency so `cap sync` registers it). Android code only; its TS typings and wrapper are in
     the app. Decision 7's no-`file:` rule is about eqcaps, not this.
 
+15. **The prototype moves to `legacy/` on the branch.** `src/`, `devices/` and `tests/` of the
+    Vue/Ionic tree sit under `legacy/` as a porting reference: nothing builds, lints, checks or
+    tests it (one ignore entry each in `tsconfig.json`, `eslint.config.js`, `.prettierignore`).
+    Its toolchain and dependencies (vite 5, plugin-vue, vue-tsc, vitest 0.34, eslint 8, Cypress,
+    Ionic, Vue, Pinia) left in Phase 1, since vite 8 / vitest 5 / eslint 10 can't install beside
+    them, and its tool configs were deleted. Phase 7 is then `rm -r legacy`. Files carried over
+    (`biquad.ts`, the four services, the Phase 0 native transport and their specs) were `git mv`'d
+    into `src/lib/` with kebab-case names, so `git log --follow` keeps their history.
+16. **Capacitor 8.4.1 → 8.5.2** (core, android, cli) for GHSA-rvm3-566m-v7fv (critical: remote
+    content at the app origin). `overrides` pin `uuid` and `cookie` as modernGraphTool does;
+    `npm audit` is clean.
+17. **Shell behaviour.**
+    - Tabs are routes (`/`, `/presets`, `/settings`) and switch with `replaceState`, so there is
+      no tab history.
+    - Android back is a handler stack (`$lib/platform/back-button.ts`): overlays register on top;
+      the shell's handler sends other tabs home. On home, the app goes to the background
+      (`App.minimizeApp`), not `exitApp`, so an open device connection survives.
+    - System bars use core `SystemBars`, not `@capacitor/status-bar` (still installed, unused;
+      drop it in Phase 7). Capacitor draws the WebView under the bars only on WebView ≥ 140;
+      below that the bars show the system-themed window background, so the icon style follows
+      the system there. Verified on an API 35 emulator with WebView 124; the ≥ 140 edge-to-edge
+      path still needs a look on a real phone.
+    - One breakpoint, `wide:` = 900 px (`--breakpoint-wide` in `layout.css`): side rail at and
+      above it, bottom tab bar below.
+    - Settings keep the prototype's `unipeq.settings` key and fields; language is Paraglide's own
+      `PARAGLIDE_LOCALE`.
+18. **Preset validation waits for Phase 3.** The ported `preset-storage.ts` stores and lists only;
+    `validatePreset` and `parseAutoEqText` were left behind in `legacy/` because Phase 3 replaces
+    them (schemaVersion 2 + v1 migration, `eq-apo.ts`). `load()` returns `unknown` until then.
+    `PeqPreset` is already the v2 type (`src/lib/eq/model.ts`).
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -141,15 +173,25 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 
 ### Phase 1: Scaffold · 1 day
 
-- [ ] SvelteKit + Svelte 5 + Tailwind 4 + bits-ui + Paraglide, configured as in decision 8.
+- [x] SvelteKit + Svelte 5 + Tailwind 4 + bits-ui + Paraglide, configured as in decision 8.
       Capacitor 8 pointing at the static build. Android build runs the empty shell.
-- [ ] Tokens and atoms from modernGraphTool (`theme.css` / `layout.css` structure, `atoms/`).
-      Light/dark via `.dark` on `<html>`.
-- [ ] App shell: bottom tab bar under ~900 px, side rail above it. Safe-area insets. Android back
-      button via `@capacitor/app`.
-- [ ] Port framework-free code into `src/lib/`: `biquad.ts`, `undoRedoStack`, `autoPushScheduler`,
-      `presetStorage`, `logger`, plus their specs.
+      *adapter-static writes `dist/` (Capacitor's existing `webDir`), SPA fallback, `ssr = false`.
+      Paraglide en + ko, `localStorage` → `preferredLanguage` → `baseLocale`.*
+- [x] Tokens and atoms from modernGraphTool (`theme.css` / `layout.css` structure, `atoms/`).
+      Light/dark via `.dark` on `<html>`. *Tokens in `src/lib/styles/theme.css` (primary is blue);
+      all nine atoms copied @ `23ddc4dd` with header comments. A pre-paint script in `app.html`
+      applies the saved theme, so a dark launch doesn't flash.*
+- [x] App shell: bottom tab bar under ~900 px, side rail above it. Safe-area insets. Android back
+      button via `@capacitor/app`. *Decision 17.*
+- [x] Port framework-free code into `src/lib/`: `biquad.ts`, `undoRedoStack`, `autoPushScheduler`,
+      `presetStorage`, `logger`, plus their specs. *`biquad.ts` speaks the eqcaps type codes
+      (`src/lib/eq/model.ts`, decision 5); the services got specs (they had none). Preset
+      validation moved to Phase 3 (decision 18).*
 - **Exit:** `build`, `check`, `lint` and `test` green; the shell runs on web and Android.
+  *Passed 2026-10-06:* 48 tests (node + Chromium browser mode). Web checked at desktop and phone
+  widths, light/dark, en/ko. Android: debug APK on the Pixel_9_Pro_Fold emulator (API 35): tabs,
+  back button, theme persistence, bar icon contrast. `window.uniPeqHidSpike` is still installed
+  on native builds, so `npm run android:hid-spike` keeps working.
 
 ### Phase 2: eqcaps data and connection · 1 day
 
@@ -210,9 +252,8 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 
 ### Phase 7: Cutover · ½ day
 
-- [ ] Delete the Vue/Ionic tree: `src/{views,components,stores}`, `devices/`,
-      `src/core/{registry,handlers,codec,transport,adaptation}`, `src/transports/`, Ionic/Vue/Pinia
-      dependencies, and their specs and `mockHidTransport.ts`.
+- [ ] Delete the Vue/Ionic tree: `rm -r legacy` (decision 15; its dependencies already left in
+      Phase 1), then drop the `legacy` ignore entries and the unused `@capacitor/status-bar`.
 - [ ] ARCHITECTURE.md: rewrite §3–§7, §9–§11 for the new tree; drop risk #7. CLAUDE.md: replace
       the Ionic/Vue sections with the new conventions.
 - [ ] eqcaps DECISIONS D27: "Ionic + Capacitor prototype" → "SvelteKit + Capacitor".

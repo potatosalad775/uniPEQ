@@ -1,33 +1,58 @@
 # uniPEQ — agent notes
 
-Parametric-EQ control app for USB/BT/network audio devices. Ionic Vue 3 + Capacitor.
-**Read [ARCHITECTURE.md](ARCHITECTURE.md) first** — it is the authoritative design doc; this file only records
-what the prototype actually implements and the decisions/deviations not obvious from the code.
+Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being rebuilt from
+Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
+`devices/`, the registry, handlers, web transports and the adaptation engine).
+**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phase 0 and 1
+done, Phase 2 next); what to copy from `../modernGraphTool`:
+[docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
+[ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.
 
-**Planned rebuild (decided 2026-10-06, not started):** SvelteKit + Svelte 5 + Tailwind 4 + bits-ui
-in Capacitor (Ionic and Vue are dropped), on the eqcaps packages, which replace `devices/`, the
-registry, handlers, web transports and the adaptation engine. Phase 0 (Android on real hardware)
-passed 2026-10-06; Phase 1 is next. Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md); what to
-copy from `../modernGraphTool`: [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
-Sections below describe the current Ionic Vue prototype — don't extend its UI; fixes only.
+**Branches.** `main` holds the runnable Ionic Vue prototype (fixes only, don't extend its UI).
+`rebuild` holds the new app in `src/`; the prototype sits unbuilt in `legacy/` there as a porting
+reference (rebuild decision 15). The prototype sections further down describe `legacy/`.
 
-## Commands
+## Commands (rebuild branch)
 
 - `npm run dev` — vite dev server (http://localhost:5173)
-- `npm run test:unit` / `npx vitest run` — unit tests (37+, all must pass)
-- `npm run build` — `vue-tsc` typecheck + vite build (both must be green)
-- `npm run lint` — eslint (underscore-prefixed unused args are allowed)
-- Cypress is configured but its binary is NOT installed (`npx cypress install` first if needed)
-- Android: `npm run build && npx cap sync android`, then `android/gradlew assembleDebug`
+- `npm test` — vitest once: `*.spec.ts` in node, `*.svelte.spec.ts` in Chromium browser mode
+  (`npm run test:unit` to watch)
+- `npm run check` — Paraglide compile + `svelte-kit sync` + `svelte-check`
+- `npm run lint` — Prettier check + ESLint; `npm run format` fixes formatting
+- `npm run build` — static SPA into `dist/` (Capacitor's `webDir`)
+- Android: `npm run android:sync` (build + `cap sync android`), then `android/gradlew assembleDebug`
   (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to 21 by
   `android/gradle/gradle-daemon-jvm.properties` (+ foojay resolver in `settings.gradle`), so
   `JAVA_HOME` doesn't matter: Gradle uses an installed JDK 21 or downloads one to `~/.gradle/jdks`.
   Capacitor 8 needs 21; Gradle 8.14 can't run on 25. Regenerate with
-  `./gradlew updateDaemonJvm --jvm-version=21`. `android/local.properties` (gitignored) holds `sdk.dir`.
+  `./gradlew updateDaemonJvm --jvm-version=21`. The SDK comes from `ANDROID_HOME` or
+  `android/local.properties` (gitignored, `sdk.dir`).
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull)
 
-## Prototype status (what exists vs ARCHITECTURE.md)
+## Rebuild conventions (src/)
+
+- Style, runes, tokens and atoms follow modernGraphTool (its root and `src/lib/components`
+  `AGENTS.md`): tabs, single quotes, no trailing commas, 100 columns; Svelte 5 runes only, module
+  state in `.svelte.ts` classes; colours only through the semantic tokens in
+  `src/lib/styles/theme.css` (`bg-base-100`, `text-base-content/60`, …); reach for
+  `src/lib/components/atoms/` before raw elements. Files are kebab-case.
+- Files copied from modernGraphTool start with a comment naming the source path and commit.
+- Layout: `src/routes/` (one route per tab, `ssr = false`), `src/lib/components/{atoms,layout}`,
+  `src/lib/eq/` (app filter model with eqcaps type codes, `biquad.ts`), `src/lib/services/`
+  (framework-free), `src/lib/stores/`, `src/lib/platform/` (Capacitor glue: back button, system
+  bars), `src/lib/transports/native/` (USB HID plugin wrapper → eqcaps `HidTransport`).
+- UI strings: Paraglide, `messages/{en,ko}.json`, `import * as m from '$lib/paraglide/messages'`.
+  `src/lib/paraglide/` is generated and gitignored.
+- One layout breakpoint, `wide:` (900 px): side rail above, bottom tab bar below. Pad for system
+  bars with `pt-(--inset-top)` etc. (from `layout.css`), never raw `env()`.
+- Overlays that should close on Android back register with `onBack()` from
+  `$lib/platform/back-button` and remove the handler when they close.
+- Component specs load no Tailwind: don't assert layout or computed utility styles there.
+- `$app/paths` `resolve()` needs an empty params arg (`resolve('/presets', {})`) while no route
+  has params — a SvelteKit typing quirk (see `components/layout/tabs.ts`).
+
+## Prototype status (`legacy/` on the rebuild branch; what exists vs ARCHITECTURE.md)
 
 Implemented: core types/math/codec, registry + merge/resolution, adaptation engine,
 `fiioUsbHid` handler (ported byte-exact), demo handler + virtual DemoTransport,

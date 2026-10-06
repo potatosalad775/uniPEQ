@@ -1,0 +1,19 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"app_name": "uniPEQ",
+	"nav_main": "EQ",
+	"nav_presets": "Presets",
+	"nav_settings": "Settings",
+	"nav_label": "Sections",
+	"main_placeholder": "The EQ graph and band editor arrive in Phase 4.",
+	"presets_placeholder": "Saved presets arrive in Phase 4.",
+	"settings_appearance": "Appearance",
+	"settings_theme": "Theme",
+	"settings_theme_system": "System",
+	"settings_theme_light": "Light",
+	"settings_theme_dark": "Dark",
+	"settings_language": "Language",
+	"settings_about": "About",
+	"settings_version": "Version {version}",
+	"info_popover_about": "About {topic}"
+}

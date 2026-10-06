@@ -1,7 +1,0 @@
-{
-  "name": "uniPEQ",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "vue-vite"
-}
