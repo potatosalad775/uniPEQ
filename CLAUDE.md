@@ -18,9 +18,12 @@ Sections below describe the current Ionic Vue prototype — don't extend its UI;
 - `npm run build` — `vue-tsc` typecheck + vite build (both must be green)
 - `npm run lint` — eslint (underscore-prefixed unused args are allowed)
 - Cypress is configured but its binary is NOT installed (`npx cypress install` first if needed)
-- Android: `npm run build && npx cap sync android`, then `android/gradlew.bat assembleDebug` with
-  `JAVA_HOME` = JDK 21 (`C:/Program Files/Java/jdk-21.0.11`; Android Studio's JBR is JDK 25 and
-  breaks this Gradle). `android/local.properties` (gitignored) holds `sdk.dir`.
+- Android: `npm run build && npx cap sync android`, then `android/gradlew assembleDebug`
+  (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to 21 by
+  `android/gradle/gradle-daemon-jvm.properties` (+ foojay resolver in `settings.gradle`), so
+  `JAVA_HOME` doesn't matter: Gradle uses an installed JDK 21 or downloads one to `~/.gradle/jdks`.
+  Capacitor 8 needs 21; Gradle 8.14 can't run on 25. Regenerate with
+  `./gradlew updateDaemonJvm --jvm-version=21`. `android/local.properties` (gitignored) holds `sdk.dir`.
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull)
 
