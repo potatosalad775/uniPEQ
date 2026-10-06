@@ -6,8 +6,9 @@ adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype 
 Its decisions 1–7 carry over unchanged.
 
 Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
-Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. Phase 2 is next. Tick tasks as
-they land; record deviations in the Decisions section.
+Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 code done 2026-10-06**;
+its exit still needs a run on real hardware. Tick tasks as they land; record deviations in the
+Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -139,6 +140,31 @@ New:
     them (schemaVersion 2 + v1 migration, `eq-apo.ts`). `load()` returns `unknown` until then.
     `PeqPreset` is already the v2 type (`src/lib/eq/model.ts`).
 
+19. **Phase 2 notes.**
+    - The eqcaps snapshot is imported `?raw` and parsed on first use, inside the dynamically
+      imported client chunk: neither it nor the bridge is in the boot bundle. The root layout
+      starts `loadIndex()` after mount without awaiting it.
+    - GitHub Pages doesn't expose `ETag` to cross-origin reads and answers a preflight with 405,
+      so the client never stores an ETag and `ttl: 0` refetches `index.json` on each launch. The
+      WebView's own HTTP cache (`max-age=600` + ETag) revalidates it, so the cost is still near
+      zero. An eqcaps follow-up: if a mirror ever exposes `ETag`, the client's `If-None-Match`
+      would trigger a preflight GitHub Pages refuses.
+    - Writable presets (decision 1) live in `src/lib/device-peq/writable.ts`: the user memories of
+      the 30 profiles that mix them with built-ins; every other profile is unrestricted.
+      `writable.spec.ts` checks the table against the snapshot. `writeTarget` is null on a
+      built-in preset, never retargeted (decision 10).
+    - Android connects without a chooser: `connectNativeHid` lists attached HID devices, keeps
+      those the database matches or the bridge can guess, opens a single one after the system's
+      USB permission prompt (a refusal reads as a cancelled chooser) and asks when there are
+      several (`kind: 'choose'` with devices as candidates). Nothing drivable is `kind: 'no-device'`.
+    - The connect flow moved from modernGraphTool's panel into `device-peq-service.svelte.ts`,
+      so it outlives the screens. Device EQ switching (`switchTo` → `setEnabled`) came along with
+      it, ahead of Phase 3.
+    - A minimal `eq-store` (filters, preamp, undo on replace) receives reads; `EqState` uses
+      `preamp`, as eqcaps does (a preset file keeps `pregain`).
+    - UI is a stand-in: `DevicePanel` (connect, device row, Device EQ, Read, status line) and a
+      read-only `BandTable` on the EQ tab, until Phase 4.
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -195,16 +221,23 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 
 ### Phase 2: eqcaps data and connection · 1 day
 
-- [ ] Install the three eqcaps packages. `scripts/data-snapshot.ts` + `npm run data:snapshot`
+- [x] Install the three eqcaps packages. `scripts/data-snapshot.ts` + `npm run data:snapshot`
       downloads `https://potatosalad775.github.io/eqcaps/v1/bundle.json` into
-      `src/lib/data/eqcaps-bundle.json`.
-- [ ] `eqcaps-client.ts` (decision 3); `loadIndex()` at startup, not awaited in the UI path.
-- [ ] Copy `device-peq/{connect,types,preset,errors,panel-status}.ts` and adapt them. Add the
-      native-transport path from Phase 0 next to the browser chooser.
-- [ ] Device store (from `device-peq-store`): `profile`, `capabilities`, `experimental`, the preset
+      `src/lib/data/eqcaps-bundle.json`. *Validates every profile with `validateProfile` before
+      writing; 102 profiles, data `2026.10.05-e1b07cf`.*
+- [x] `eqcaps-client.ts` (decision 3); `loadIndex()` at startup, not awaited in the UI path.
+      *Decision 19 on ETags.*
+- [x] Copy `device-peq/{connect,types,preset,errors,panel-status}.ts` and adapt them. Add the
+      native-transport path from Phase 0 next to the browser chooser. *Plus their specs;
+      `connectNativeHid` (decision 19).*
+- [x] Device store (from `device-peq-store`): `profile`, `capabilities`, `experimental`, the preset
       list, writable presets (decision 1), the bypass preset.
 - **Exit:** connect, read and current slot work for a real FiiO device (web and Android) and for
-  the demo.
+  the demo. *Code verified 2026-10-06 without hardware: 89 tests (connect flows against the real
+  bridge with mocked choosers and plugin; the panel against a fake device), web boot caches the
+  index, and on the emulator Connect runs the plugin's `list()` and reports no device. Still to
+  do: the real-device run on web and Android. The demo half moves to Phase 3 with the demo
+  device itself.*
 
 ### Phase 3: Push path, presets, demo · 1–2 days
 

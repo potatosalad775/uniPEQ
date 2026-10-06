@@ -17,3 +17,6 @@ package-lock.json
 
 # Prose. Prettier would realign every table; the docs are hand-formatted.
 *.md
+
+# Downloaded verbatim by `npm run data:snapshot`.
+/src/lib/data/eqcaps-bundle.json

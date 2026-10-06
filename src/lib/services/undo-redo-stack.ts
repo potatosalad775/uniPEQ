@@ -7,7 +7,7 @@ import type { EqState } from '$lib/eq/model';
 const MAX_ENTRIES = 100;
 
 function clone(state: EqState): EqState {
-	return { pregain: state.pregain, filters: state.filters.map((f) => ({ ...f })) };
+	return { preamp: state.preamp, filters: state.filters.map((f) => ({ ...f })) };
 }
 
 export class UndoRedoStack {

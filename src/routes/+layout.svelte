@@ -13,6 +13,8 @@
 	onMount(() => {
 		document.documentElement.lang = getLocale();
 		installNative();
+		// Revalidate the eqcaps index in the background (decision 3), so a connect finds it ready.
+		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());
 	});
 
 	let firstTheme = true;

@@ -3,7 +3,7 @@ import type { EqState } from '$lib/eq/model';
 import { UndoRedoStack } from './undo-redo-stack';
 
 const state = (gain: number): EqState => ({
-	pregain: -gain,
+	preamp: -gain,
 	filters: [{ type: 'PK', freq: 1000, q: 1, gain, enabled: true }]
 });
 
