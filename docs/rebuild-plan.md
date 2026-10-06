@@ -5,8 +5,8 @@ the eqcaps packages replacing uniPEQ's own device database, protocol handlers, w
 adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype to eqcaps" plan.
 Its decisions 1–7 carry over unchanged.
 
-Status: **decided 2026-10-06, not started.** Phase 0 (Android on real hardware) comes first,
-before any rebuild work. Tick tasks as they land; record deviations in the Decisions section.
+Status: **decided 2026-10-06. Phase 0 in progress:** smoke test and plugin code done;
+waiting on a hardware run (see Phase 0). Phase 0 comes first, before any rebuild work. Tick tasks as they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -87,6 +87,24 @@ New:
     `eqStore.pushToDevice` silent retarget to the first writable slot is **not** carried over.
 11. **Rebuild in place, on a branch.** The Vue/Ionic tree stays runnable on `main` until the
     cutover (Phase 7). The rebuild doesn't keep both UIs alive at once.
+12. **Phase 0 hardware (2026-10-06).** No Android phone and no FiiO device are on hand.
+    - Phase 0 runs on the Android emulator, with the host device passed through
+      (`emulator -avd Medium_Phone -usb-passthrough vendorid=0x3302,productid=0xc20f`). On
+      Windows this needs the emulator's `UsbAssist` kernel driver
+      (`<sdk>/emulator/drivers/UsbAssist_Install.bat`, admin).
+    - Exit device: a walkplay dongle (CrinEar Protocol Micro, `walkplay-hid`) instead of FiiO.
+      Same risk, a force-claimed HID interface on a USB audio device. Walkplay uses only
+      output and input reports, so feature reports stay unexercised until a FiiO or other
+      feature-report device is tried.
+    - The emulator's kernel is not a phone vendor's kernel. A pass is a go for the rebuild; it
+      still needs one real phone before Phase 6.
+13. **eqcaps installed in Phase 0.** `@potatosalad775/eqcaps-device-bridge` + `-core` are npm
+    dependencies now (Phase 2 planned that), so the spike runs the real handler, not
+    hand-written bytes. `tsconfig.json` moved to `moduleResolution: "Bundler"`: the packages
+    expose only `exports`.
+14. **The plugin is a local package**, `native/device-io` (`uni-peq-device-io`, a `file:`
+    dependency so `cap sync` registers it). Android code only; its TS typings and wrapper are in
+    the app. Decision 7's no-`file:` rule is about eqcaps, not this.
 
 ## Phases
 
@@ -96,16 +114,25 @@ The current prototype has **no native plugin** (`native/` doesn't exist), so on 
 only the demo device and the WebView UI can be checked. Real hardware needs the USB HID spike.
 That spike doesn't depend on the UI, so everything it produces carries over to the rebuild.
 
-- [ ] `npx cap sync android`, run on a phone: demo device works and the UI is usable in the
-      WebView. This is a smoke test only; the UI is being replaced.
+- [x] `npx cap sync android`, run on a phone: demo device works and the UI is usable in the
+      WebView. This is a smoke test only; the UI is being replaced. *(2026-10-06, on the
+      Medium_Phone emulator, API 37: demo connects, reads 10 bands, UI usable. Decision 12.)*
 - [ ] Kotlin spike: enumerate (VID, PID, product string), request USB permission, claim the FiiO
       HID interface (`force = true`), and exchange one report on a real device. This is eqcaps D27's
       "Watch" item and ARCHITECTURE risk #1.
-- [ ] Shape the plugin's TS wrapper after the bridge's `HidTransport` interface (`sendReport`,
+      *Code done:* `native/device-io` (`DeviceIoPlugin.kt`, `UsbHidConnection.kt`): list, permission,
+      `describe` (force-claims each HID interface and reads its report descriptor), `open`,
+      interrupt IN loop, output via interrupt OUT or SET_REPORT, feature reports, detach events.
+      Builds and answers `list()` from the WebView. *Not yet run against hardware.*
+- [x] Shape the plugin's TS wrapper after the bridge's `HidTransport` interface (`sendReport`,
       `sendFeatureReport`, `receiveFeatureReport`, `onInputReport`, `collections`), not after
-      uniPEQ's `src/core/transport`, which eqcaps replaces.
+      uniPEQ's `src/core/transport`, which eqcaps replaces. *`src/transports/native/`:
+      `nativeHidTransport.ts` implements the bridge's `HidTransport` directly, `collections`
+      come from `hidReportDescriptor.ts`. `tests/unit/nativeHidTransport.spec.ts` runs the real
+      `walkplay-hid` pull through it against a fake plugin.*
 - **Exit:** a FiiO device answers a pull over the native transport. If the HID claim fails, stop
-  and rethink the Android story before any rebuild.
+  and rethink the Android story before any rebuild. *(Decision 12: a walkplay device counts.)*
+  Run: plug the device in, start the debug app, `npm run android:hid-spike -- --bands 8`.
 
 ### Phase 1: Scaffold · 1 day
 

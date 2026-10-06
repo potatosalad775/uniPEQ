@@ -30,3 +30,7 @@ npm-debug.log*
 /platforms
 /plugins
 /www
+
+# Gradle output of local Capacitor plugins
+/native/*/android/build
+/native/*/android/.gradle

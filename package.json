@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:e2e": "cypress run",
     "test:unit": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "android:hid-spike": "node scripts/android-hid-spike.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.4.1",
@@ -20,8 +21,11 @@
     "@capacitor/status-bar": "8.0.2",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
+    "@potatosalad775/eqcaps-core": "^0.2.3",
+    "@potatosalad775/eqcaps-device-bridge": "^0.2.3",
     "ionicons": "^7.0.0",
     "pinia": "^3.0.4",
+    "uni-peq-device-io": "file:native/device-io",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"
   },

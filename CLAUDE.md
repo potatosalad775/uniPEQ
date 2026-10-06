@@ -18,6 +18,11 @@ Sections below describe the current Ionic Vue prototype — don't extend its UI;
 - `npm run build` — `vue-tsc` typecheck + vite build (both must be green)
 - `npm run lint` — eslint (underscore-prefixed unused args are allowed)
 - Cypress is configured but its binary is NOT installed (`npx cypress install` first if needed)
+- Android: `npm run build && npx cap sync android`, then `android/gradlew.bat assembleDebug` with
+  `JAVA_HOME` = JDK 21 (`C:/Program Files/Java/jdk-21.0.11`; Android Studio's JBR is JDK 25 and
+  breaks this Gradle). `android/local.properties` (gitignored) holds `sdk.dir`.
+- `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
+  (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull)
 
 ## Prototype status (what exists vs ARCHITECTURE.md)
 
@@ -28,7 +33,8 @@ DeviceManager / AutoPushScheduler / UndoRedoStack / LocalPresetStorage services,
 4 Pinia stores, 3-tab UI (Main/Presets/Settings), preset import (JSON + AutoEq txt) / export.
 
 Not yet: all other handlers (walkplay/ktmicro/moondrop/serial/BLE/SPP/network), WebSerial/WebBLE
-transports, Android native plugin (`native/` dir doesn't exist yet), i18n (`vue-i18n` not installed;
+transports, the full Android plugin (`native/device-io` is the Phase 0 USB HID spike only,
+wrapped by `src/transports/native/` as an eqcaps `HidTransport`), i18n (`vue-i18n` not installed;
 strings hardcoded en), JSON Schema files in `devices/_schema/`, zod (validation is hand-rolled in
 `src/core/registry/validate.ts`), migration script (`scripts/migrate-device-db.ts`).
 

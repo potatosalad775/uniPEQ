@@ -1,8 +1,10 @@
+import { Capacitor } from '@capacitor/core';
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router';
 import { useSettingsStore } from './stores/settingsStore';
+import type { HidSpikeOptions } from './transports/native/hidSpike';
 
 import { IonicVue } from '@ionic/vue';
 
@@ -44,3 +46,11 @@ router.isReady().then(() => {
   app.mount('#app');
   useSettingsStore().persist(); // applies theme + verbose-logging flag on boot
 });
+
+// Phase 0 USB HID spike (docs/rebuild-plan.md), driven by scripts/android-hid-spike.mjs. Not UI.
+if (Capacitor.isNativePlatform()) {
+  Object.assign(window, {
+    uniPeqHidSpike: (options?: HidSpikeOptions) =>
+      import('./transports/native/hidSpike').then((m) => m.runHidSpike(options)),
+  });
+}
