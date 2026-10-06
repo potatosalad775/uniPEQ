@@ -5,8 +5,8 @@ the eqcaps packages replacing uniPEQ's own device database, protocol handlers, w
 adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype to eqcaps" plan.
 Its decisions 1–7 carry over unchanged.
 
-Status: **decided 2026-10-06. Phase 0 in progress:** smoke test and plugin code done;
-waiting on a hardware run (see Phase 0). Phase 0 comes first, before any rebuild work. Tick tasks as they land; record deviations in the Decisions section.
+Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
+Phase 0). Phase 1 is next. Tick tasks as they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -97,7 +97,8 @@ New:
       output and input reports, so feature reports stay unexercised until a FiiO or other
       feature-report device is tried.
     - The emulator's kernel is not a phone vendor's kernel. A pass is a go for the rebuild; it
-      still needs one real phone before Phase 6.
+      still needs one real phone before Phase 6. *Done: the exit ran on a real phone (Samsung
+      SM-S936N), not the emulator.*
 13. **eqcaps installed in Phase 0.** `@potatosalad775/eqcaps-device-bridge` + `-core` are npm
     dependencies now (Phase 2 planned that), so the spike runs the real handler, not
     hand-written bytes. `tsconfig.json` moved to `moduleResolution: "Bundler"`: the packages
@@ -117,13 +118,13 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 - [x] `npx cap sync android`, run on a phone: demo device works and the UI is usable in the
       WebView. This is a smoke test only; the UI is being replaced. *(2026-10-06, on the
       Medium_Phone emulator, API 37: demo connects, reads 10 bands, UI usable. Decision 12.)*
-- [ ] Kotlin spike: enumerate (VID, PID, product string), request USB permission, claim the FiiO
+- [x] Kotlin spike: enumerate (VID, PID, product string), request USB permission, claim the FiiO
       HID interface (`force = true`), and exchange one report on a real device. This is eqcaps D27's
       "Watch" item and ARCHITECTURE risk #1.
       *Code done:* `native/device-io` (`DeviceIoPlugin.kt`, `UsbHidConnection.kt`): list, permission,
       `describe` (force-claims each HID interface and reads its report descriptor), `open`,
       interrupt IN loop, output via interrupt OUT or SET_REPORT, feature reports, detach events.
-      Builds and answers `list()` from the WebView. *Not yet run against hardware.*
+      Builds and answers `list()` from the WebView. *Ran on hardware 2026-10-06 (see Exit).*
 - [x] Shape the plugin's TS wrapper after the bridge's `HidTransport` interface (`sendReport`,
       `sendFeatureReport`, `receiveFeatureReport`, `onInputReport`, `collections`), not after
       uniPEQ's `src/core/transport`, which eqcaps replaces. *`src/transports/native/`:
@@ -133,6 +134,10 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 - **Exit:** a FiiO device answers a pull over the native transport. If the HID claim fails, stop
   and rethink the Android story before any rebuild. *(Decision 12: a walkplay device counts.)*
   Run: plug the device in, start the debug app, `npm run android:hid-spike -- --bands 8`.
+  *Passed 2026-10-06:* Samsung SM-S936N over wireless adb, CrinEar Protocol Micro
+  (`0x3302:0xc20f`). Permission granted, HID interface 3 force-claimed, descriptor parsed
+  (usage page 0x0C, input/output reports 0x4B and 0x54), `walkplay-hid` pull returned 8 PK bands,
+  preamp −1 dB, slot 1. Feature reports are still unexercised (this device has none).
 
 ### Phase 1: Scaffold · 1 day
 
