@@ -6,8 +6,8 @@ adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype 
 Its decisions 1–7 carry over unchanged.
 
 Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
-Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 code done 2026-10-06**;
-its exit still needs a run on real hardware. Tick tasks as they land; record deviations in the
+Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 2026-10-06** (web and
+Android on real hardware). Phase 3 is next. Tick tasks as they land; record deviations in the
 Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
@@ -235,9 +235,9 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 - **Exit:** connect, read and current slot work for a real FiiO device (web and Android) and for
   the demo. *Code verified 2026-10-06 without hardware: 89 tests (connect flows against the real
   bridge with mocked choosers and plugin; the panel against a fake device), web boot caches the
-  index, and on the emulator Connect runs the plugin's `list()` and reports no device. Still to
-  do: the real-device run on web and Android. The demo half moves to Phase 3 with the demo
-  device itself.*
+  index, and on the emulator Connect runs the plugin's `list()` and reports no device.
+  Passed 2026-10-06 on real hardware, in Chrome and in the Android app (checked by the user).
+  The demo half moves to Phase 3 with the demo device itself.*
 
 ### Phase 3: Push path, presets, demo · 1–2 days
 

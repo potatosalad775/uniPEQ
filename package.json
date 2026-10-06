@@ -17,6 +17,7 @@
 		"data:snapshot": "node scripts/data-snapshot.ts",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
+		"android": "node scripts/android-install.mjs",
 		"android:sync": "vite build && cap sync android",
 		"android:hid-spike": "node scripts/android-hid-spike.mjs"
 	},

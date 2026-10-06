@@ -3,8 +3,8 @@
 Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being rebuilt from
 Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
 `devices/`, the registry, handlers, web transports and the adaptation engine).
-**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–1
-done; Phase 2 code done, its hardware exit pending); what to copy from `../modernGraphTool`:
+**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–2
+done, Phase 3 next); what to copy from `../modernGraphTool`:
 [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
 [ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.
 
@@ -21,7 +21,9 @@ reference (rebuild decision 15). The prototype sections further down describe `l
 - `npm run lint` — Prettier check + ESLint; `npm run format` fixes formatting
 - `npm run build` — static SPA into `dist/` (Capacitor's `webDir`)
 - `npm run data:snapshot` — refresh the embedded eqcaps bundle (before a release, not per build)
-- Android: `npm run android:sync` (build + `cap sync android`), then `android/gradlew assembleDebug`
+- Android: `npm run android [-- --serial <id> --skip-web --no-launch]` builds, installs and starts
+  the debug app on the one connected adb device (`scripts/android-install.mjs`). By hand:
+  `npm run android:sync` (build + `cap sync android`), then `android/gradlew assembleDebug`
   (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to 21 by
   `android/gradle/gradle-daemon-jvm.properties` (+ foojay resolver in `settings.gradle`), so
   `JAVA_HOME` doesn't matter: Gradle uses an installed JDK 21 or downloads one to `~/.gradle/jdks`.
