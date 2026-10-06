@@ -4,6 +4,13 @@ Parametric-EQ control app for USB/BT/network audio devices. Ionic Vue 3 + Capaci
 **Read [ARCHITECTURE.md](ARCHITECTURE.md) first** — it is the authoritative design doc; this file only records
 what the prototype actually implements and the decisions/deviations not obvious from the code.
 
+**Planned rebuild (decided 2026-10-06, not started):** SvelteKit + Svelte 5 + Tailwind 4 + bits-ui
+in Capacitor (Ionic and Vue are dropped), on the eqcaps packages, which replace `devices/`, the
+registry, handlers, web transports and the adaptation engine. Phase 0 (Android on real hardware)
+comes first. Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md); what to
+copy from `../modernGraphTool`: [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
+Sections below describe the current Ionic Vue prototype — don't extend its UI; fixes only.
+
 ## Commands
 
 - `npm run dev` — vite dev server (http://localhost:5173)

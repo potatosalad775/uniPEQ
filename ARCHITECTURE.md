@@ -5,6 +5,12 @@
 > Origin: ports the protocol handlers and reverse-engineered device knowledge from the
 > `devicePEQ` CrinGraph plugin, but is otherwise an **independent project** with no
 > runtime or repo dependency on `devicePEQ`.
+>
+> **Stack change (2026-10-06):** the app is being rebuilt on **SvelteKit + Svelte 5 + Tailwind 4 +
+> bits-ui inside Capacitor**, on the eqcaps packages. Ionic and Vue are dropped. Rationale, decisions
+> and phases: [docs/rebuild-plan.md](docs/rebuild-plan.md). §3 and §8 already describe the target
+> UI stack. §4–§7 and §9–§11 still describe the Ionic Vue prototype's own core (registry,
+> handlers, adaptation), which eqcaps replaces; they get rewritten at the rebuild's cutover.
 
 ---
 
@@ -25,7 +31,9 @@
 - Cloud sync / user accounts (presets are local + JSON file import/export).
 - iOS (Capacitor makes it possible later, but iOS WebView has no USB/BT APIs and native
   USB access is heavily restricted — out of scope).
-- Frequency-response visualization / graph overlay (CrinGraph's job; can come later).
+- Headphone frequency-response *measurement* overlays (CrinGraph / modernGraphTool's job). The
+  app's own EQ response graph with draggable band nodes **is** in scope; it's the Main screen's
+  centrepiece.
 - The `chatWithPEQ`, `sharePEQ`, `subjectizePEQ` extras from devicePEQ.
 - Firmware update, ANC control, or non-EQ device features beyond the existing "extras"
   (battery, DAC filter, etc.) already modeled in constraint profiles.
@@ -58,9 +66,10 @@ Conclusions:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  UI (Ionic Vue 3, Composition API)                         │
-│  Tabs: Main / Presets / Settings                           │
-│  Pinia stores: device, eq(+history), presets, settings     │
+│  UI (SvelteKit SPA, Svelte 5 runes, Tailwind 4, bits-ui)   │
+│  Screens: Main / Presets / Settings (tabs ↔ side rail)     │
+│  Rune stores (.svelte.ts): device, eq(+history), presets,  │
+│  settings                                                  │
 ├────────────────────────────────────────────────────────────┤
 │  Application services                                      │
 │  DeviceManager · AutoPushScheduler · PresetAdapter         │
@@ -85,6 +94,11 @@ Handlers receive a `Transport` instance; they neither open nor discover devices.
 All discovery/permission UX lives in the platform layer + UI.
 
 ### Source layout
+
+Prototype layout (Ionic Vue). In the rebuild everything moves under `src/lib/` (SvelteKit
+convention), `src/views/` becomes `src/routes/`, and `devices/`, `core/{registry,handlers,codec,
+transport,adaptation}` and `transports/web` disappear into eqcaps. See
+[docs/rebuild-plan.md](docs/rebuild-plan.md).
 
 ```
 uniPEQ/
@@ -408,6 +422,12 @@ device B" needs no extra code path.
 
 ## 8. UI / Application Behavior
 
+Layout principles (rebuild): **the EQ graph is the main element**, and desktop and phone both get an
+intentional layout. Below ~900 px: bottom tab bar, graph above the band list, band editor in a
+bottom sheet. Above it: side rail, with graph and band editor side by side. Colors come only from
+semantic tokens (OKLCH, DaisyUI naming, light + dark), the same structure as modernGraphTool's
+`theme.css`. Component and push-path sources: [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
+
 ### 8.1 Main tab
 
 Flow: *connect → detect/select → EQ control → auto-push*.
@@ -421,8 +441,8 @@ Flow: *connect → detect/select → EQ control → auto-push*.
 2. **EQ control panel** (shown when connected):
    - Slot selector (from profile `availableSlots`, writable slots highlighted).
    - Per-band controls: type / freq / gain / Q — rendered from `PeqConstraints`
-     (band count, allowed types, ranges, steps). Mini response-curve preview
-     (pure canvas, `core/math` biquad response — no charting lib needed).
+     (band count, allowed types, ranges, steps). Interactive response graph
+     (SVG, `biquad.ts` response, draggable band nodes; replaces the prototype's mini canvas preview).
    - Pregain control (hidden when `deviceHandlesPregain`).
    - EQ on/off toggle (`enablePEQ`), extras (battery, DAC filter…) when profile says so.
    - **Undo/redo buttons**, **Load preset** button (opens preset picker + diff modal),
@@ -447,14 +467,14 @@ Flow: *connect → detect/select → EQ control → auto-push*.
 - "Apply to connected device" → same diff modal as Main tab.
 
 ### 8.3 Settings tab
-- Theme: system / light / dark (Ionic CSS variables).
-- Language: en / ko initially (`vue-i18n`, JSON message files).
+- Theme: system / light / dark (`.dark` on `<html>`, semantic CSS tokens).
+- Language: en / ko initially (Paraglide JS, compile-time messages, as in modernGraphTool).
 - Auto-push delay slider + disable toggle (manual mode).
 - Diagnostics: verbose byte-level logging toggle, in-app log viewer, export log —
   replaces devicePEQ's feedback-form log collection; essential for community protocol debugging.
 - About / device DB version / licenses.
 
-### 8.4 Stores (Pinia)
+### 8.4 Stores (rune classes in `.svelte.ts`; Pinia in the prototype)
 - `deviceStore` — discovery list, connection state, resolved profile, extras state.
 - `eqStore` — current `EqState`, dirty flag, history (undo/redo), sync status.
 - `presetStore` — index + lazy-loaded bodies.
@@ -534,7 +554,7 @@ debug build on tags.
 - [ ] Cypress flows for the above.
 
 ### M3 — Android native
-- [ ] **Spike first:** Kotlin proof-of-concept — claim FiiO HID interface, exchange one report on a real device (de-risks the biggest unknown, §9 UsbHid caveat).
+- [ ] **Spike first:** Kotlin proof-of-concept — claim FiiO HID interface, exchange one report on a real device (de-risks the biggest unknown, §9 UsbHid caveat). *Moved ahead of everything else as rebuild Phase 0; its TS wrapper targets the eqcaps bridge's `HidTransport`.*
 - [ ] Scaffold `uni-peq-device-io` plugin; event bridge; permission flows.
 - [ ] UsbHid module + native `HidTransport` wrapper → verify FiiO/Walkplay on Android.
 - [ ] UsbCdcSerial module → verify one serial device.
