@@ -9,7 +9,7 @@
 //   --no-launch    install without starting the app
 //
 // Needs the Android SDK (ANDROID_HOME, ANDROID_SDK_ROOT or android/local.properties) and adb.
-// Gradle picks its own JDK 21 (see CLAUDE.md), so JAVA_HOME doesn't matter.
+// Gradle picks its own JDK (Zulu 21, see CLAUDE.md), so JAVA_HOME doesn't matter.
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

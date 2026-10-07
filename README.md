@@ -53,8 +53,8 @@ npm run android -- --no-launch     # install without starting
 ```
 
 The SDK is found through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `android/local.properties` or the
-default install location. Gradle downloads its own JDK 21 if none is installed, so `JAVA_HOME`
-doesn't matter.
+default install location. Gradle downloads its own JDK (Azul Zulu 21) if it isn't installed, so
+`JAVA_HOME` doesn't matter.
 
 Plug the audio device into the phone (a USB-C dongle, or through an OTG adapter), open the app and
 press **Connect USB device**; Android asks for permission the first time.

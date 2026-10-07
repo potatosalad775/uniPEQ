@@ -25,11 +25,14 @@ reference (rebuild decision 15). The prototype sections further down describe `l
 - Android: `npm run android [-- --serial <id> --skip-web --no-launch]` builds, installs and starts
   the debug app on the one connected adb device (`scripts/android-install.mjs`). By hand:
   `npm run android:sync` (build + `cap sync android`), then `android/gradlew assembleDebug`
-  (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to 21 by
+  (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to Azul Zulu 21 by
   `android/gradle/gradle-daemon-jvm.properties` (+ foojay resolver in `settings.gradle`), so
-  `JAVA_HOME` doesn't matter: Gradle uses an installed JDK 21 or downloads one to `~/.gradle/jdks`.
-  Capacitor 8 needs 21; Gradle 8.14 can't run on 25. Regenerate with
-  `./gradlew updateDaemonJvm --jvm-version=21`. The SDK comes from `ANDROID_HOME` or
+  `JAVA_HOME` doesn't matter: Gradle uses an installed Zulu 21 or downloads one to `~/.gradle/jdks`.
+  Capacitor 8 needs 21; Gradle 8.14 can't run on 25. The vendor pin keeps Gradle from reusing
+  daemons that VS Code's Java extension starts on its bundled Temurin JRE, which has no `jlink`
+  (AGP fails with "jlink executable … does not exist"). Keep the vendor anything but Adoptium;
+  foojay has no JetBrains 21. Regenerate with
+  `./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=azul`. The SDK comes from `ANDROID_HOME` or
   `android/local.properties` (gitignored, `sdk.dir`).
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull)
