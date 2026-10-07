@@ -1,22 +1,33 @@
 // Adapted from modernGraphTool src/lib/services/device-peq-service.svelte.ts and the connect flow
-// of components/features/DevicePeq.svelte @ 23ddc4dd. Write and auto-write arrive in Phase 3.
+// of components/features/DevicePeq.svelte @ 23ddc4dd: our settings (`autoPushEnabled`, its delay),
+// the status line instead of toasts, and the demo device. It replaces the prototype's
+// AutoPushScheduler (rebuild decision 20).
 /**
- * Connects, reads and switches the device, independent of any screen: screens unmount on every
- * tab switch, and a connection has to outlive them.
+ * Connects, reads, writes and switches the device, and auto-writes, independent of any screen:
+ * screens unmount on every tab switch, and a connection (and auto-write) has to outlive them.
+ * The screens keep only what needs them: the review dialog and the controls.
  */
+import { untrack } from 'svelte';
 import type { ConnectResult } from '$lib/device-peq/connect';
 import { describeDeviceError, isConnectionLost } from '$lib/device-peq/errors';
+import { readRequest } from '$lib/device-peq/preset';
+import { needsReview, planPush, readLayout, type PushPlan } from '$lib/device-peq/push-plan';
 import type { DeviceCandidate, DeviceConnection } from '$lib/device-peq/types';
-import { fromCapsFilter } from '$lib/eq/model';
+import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
 import * as m from '$lib/paraglide/messages';
 import { isNative } from '$lib/platform/native';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
+import { settingsStore } from '$lib/stores/settings-store.svelte';
+import type { Filter } from '@potatosalad775/eqcaps-core';
 import { logger } from './logger';
 
-export type ConnectKind = 'hid' | 'serial' | 'ble';
+export type ConnectKind = 'hid' | 'serial' | 'ble' | 'demo';
 
 type Choice = Extract<ConnectResult, { kind: 'choose' }>;
+
+/** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */
+type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null };
 
 const loadConnect = () => import('$lib/device-peq/connect');
 
@@ -27,23 +38,49 @@ class DevicePeqService {
 	notFound = $state<'unsupported' | 'no-device' | null>(null);
 
 	#choice: Choice | null = null;
+	#installed = false;
+	#timer: ReturnType<typeof setTimeout> | undefined;
+	#running = false;
+	#again = false;
+	#seen: Seen | null = null;
+
+	/** The auto-write switch: the saved setting, unless a failed write stopped it on this connection. */
+	get autoWriteOn(): boolean {
+		return settingsStore.autoPushEnabled && !devicePeqStore.autoStopped;
+	}
+
+	/**
+	 * Auto-write is on, and this device can take it. A device that drops the connection to save
+	 * is written only with the Write button (manual-save mode): one reconnect per edit is no use.
+	 */
+	get autoWriting(): boolean {
+		const caps = devicePeqStore.connection?.device.capabilities;
+		return this.autoWriteOn && !!caps?.canWrite && !caps.disconnectOnSave;
+	}
 
 	/** Load the connect module and the device database before a click needs them. */
 	warmUp(): void {
 		void loadConnect().then((mod) => mod.warmUp());
 	}
 
-	/** Report a failed operation in the status line. */
-	fail(error: unknown, op: string): void {
+	/** Report a failed operation in the status line. `note` says what else it caused. */
+	fail(error: unknown, op: string, note?: string): void {
 		logger.error(`device ${op} failed:`, error instanceof Error ? error.message : String(error));
-		devicePeqStore.setStatus(describeDeviceError(error), true);
+		const message = describeDeviceError(error);
+		devicePeqStore.setStatus(note ? `${message} ${note}` : message, true);
 		if (isConnectionLost(error) && devicePeqStore.connection) devicePeqStore.needsReconnect = true;
 	}
 
-	/** USB HID goes through the DeviceIo plugin on Android, the browser's chooser elsewhere. */
+	// ── Connecting ────────────────────────────────────────────────────────────
+
+	/**
+	 * USB HID goes through the DeviceIo plugin on Android, the browser's chooser elsewhere. The
+	 * demo device is simulated, on every platform.
+	 */
 	async connect(kind: ConnectKind): Promise<void> {
 		await this.#run(async () => {
 			const mod = await loadConnect();
+			if (kind === 'demo') return mod.connectDemo();
 			if (kind === 'hid') return isNative ? mod.connectNativeHid() : mod.connectHid();
 			return kind === 'serial' ? mod.connectSerial() : mod.connectBle();
 		});
@@ -88,6 +125,7 @@ class DevicePeqService {
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const slot = await conn.device.currentSlot().catch(() => null);
 		devicePeqStore.setConnected(conn, slot);
+		this.install();
 		logger.info(`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}`);
 	}
 
@@ -113,9 +151,12 @@ class DevicePeqService {
 	async disconnect(): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn) return;
+		this.#cancelPending();
 		await conn.device.close().catch(() => {});
 		devicePeqStore.setDisconnected();
 	}
+
+	// ── Reading and writing ───────────────────────────────────────────────────
 
 	/** Replace the band list with what Device EQ shows. */
 	async read(): Promise<void> {
@@ -142,10 +183,91 @@ class DevicePeqService {
 		}
 	}
 
+	/**
+	 * The plan for writing the list as it is now. When it leaves device bands empty, the target
+	 * preset is read once first (and kept in `devicePeqStore.layout` until the preset changes), so
+	 * those bands keep the device's own layout. Null when the device went away meanwhile.
+	 */
+	async prepare(): Promise<PushPlan | null> {
+		const conn = devicePeqStore.connection;
+		if (!conn || !devicePeqStore.writeTarget) return null;
+		const caps = conn.device.capabilities;
+		const plan = (hints?: (Filter | null)[] | null) =>
+			planPush(eqStore.filters, eqStore.preamp, conn.profile, caps, hints ?? undefined);
+		const first = plan(devicePeqStore.layout?.hints);
+		if (first.emptySlots === 0 || devicePeqStore.layout) return first;
+		const slot = devicePeqStore.activeSlot;
+		devicePeqStore.isWriting = true;
+		let hints: (Filter | null)[] | null;
+		try {
+			hints = await readLayout(conn.device, readRequest(caps, slot, devicePeqStore.deviceSlot));
+		} finally {
+			devicePeqStore.isWriting = false;
+		}
+		if (devicePeqStore.connection !== conn) return null;
+		if (devicePeqStore.activeSlot === slot) devicePeqStore.layout = { slot, hints };
+		return plan(hints);
+	}
+
+	/**
+	 * Send `plan` to the preset Device EQ shows. Whether it was written. An automatic write that
+	 * fails stops auto-write on this connection.
+	 */
+	async write(plan: PushPlan, auto = false): Promise<boolean> {
+		const conn = devicePeqStore.connection;
+		const request = devicePeqStore.writeTarget;
+		if (!conn || !request) return false;
+		const snapshot = { filters: eqStore.filters, preamp: eqStore.preamp };
+		devicePeqStore.isWriting = true;
+		try {
+			const result = await conn.device.push({
+				filters: plan.filters,
+				...(plan.preamp !== undefined ? { preamp: plan.preamp } : {}),
+				...request
+			});
+			devicePeqStore.synced = snapshot;
+			devicePeqStore.autoPaused = false;
+			const count = plan.filters.length - plan.emptySlots;
+			if (result.reconnect) {
+				// The device restarts to save. Its transport is gone; `reopen` finds it again.
+				await conn.device.close().catch(() => {});
+				devicePeqStore.needsReconnect = true;
+				devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+			} else {
+				// Written to a listed preset while the device sits on a built-in one: switch to it,
+				// so what was written is what plays.
+				const slot = devicePeqStore.activeSlot;
+				if (
+					devicePeqStore.selection === 'other' &&
+					conn.device.capabilities.canEnable &&
+					slot !== null
+				) {
+					await conn.device.setEnabled(true, slot);
+					devicePeqStore.played(slot);
+				}
+				devicePeqStore.setStatus(
+					devicePeqStore.eqEnabled === false
+						? m.device_peq_status_written_off({ count })
+						: m.device_peq_status_written({ count })
+				);
+			}
+			logger.info(`wrote ${count} band(s) to ${conn.name}${auto ? ' (auto)' : ''}`);
+			return true;
+		} catch (e) {
+			if (auto) devicePeqStore.autoStopped = true;
+			this.fail(e, 'write', auto ? m.device_peq_auto_stopped() : undefined);
+			return false;
+		} finally {
+			devicePeqStore.isWriting = false;
+		}
+	}
+
 	/** Switch the device to what Device EQ picked: `p<id>` for a preset, `on`, or `off`. */
 	async switchTo(value: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn) return;
+		// An edit waiting to be auto-written belongs to the preset it was made on.
+		this.#cancelPending();
 		const slot = value.startsWith('p')
 			? Number(value.slice(1))
 			: value === 'on'
@@ -169,6 +291,95 @@ class DevicePeqService {
 			this.fail(e, 'switch');
 		} finally {
 			devicePeqStore.isSwitching = false;
+		}
+	}
+
+	// ── Auto-write ────────────────────────────────────────────────────────────
+
+	/**
+	 * Turn auto-write on or off. On writes the list once, now: from then on the device follows
+	 * every change. Off drops an edit still waiting.
+	 */
+	setAutoWrite(on: boolean): void {
+		devicePeqStore.autoStopped = false;
+		settingsStore.autoPushEnabled = on;
+		if (!on) {
+			this.#cancelPending();
+			devicePeqStore.autoPaused = false;
+			devicePeqStore.autoClipRisk = false;
+			return;
+		}
+		this.install();
+		void this.#flush();
+	}
+
+	/**
+	 * Start following the band list. Idempotent; called on connect. The root is never disposed:
+	 * it lives as long as the page.
+	 */
+	install(): void {
+		if (this.#installed) return;
+		this.#installed = true;
+		$effect.root(() => {
+			$effect(() => {
+				const seen: Seen = {
+					filters: eqStore.filters,
+					preamp: eqStore.preamp,
+					conn: devicePeqStore.connection
+				};
+				untrack(() => this.#changed(seen));
+			});
+		});
+	}
+
+	#changed(now: Seen): void {
+		const before = this.#seen;
+		this.#seen = now;
+		// A new connection is a new baseline, never an edit: connecting must not write.
+		if (!before || before.conn !== now.conn || !now.conn) return this.#cancelPending();
+		if (before.filters === now.filters && before.preamp === now.preamp) return;
+		if (!this.autoWriting) return;
+		this.#cancelPending();
+		this.#timer = setTimeout(() => void this.#flush(), settingsStore.autoPushDelayMs);
+	}
+
+	#cancelPending(): void {
+		clearTimeout(this.#timer);
+		this.#timer = undefined;
+	}
+
+	/** One write at a time; edits made during one are written next, as the list is by then. */
+	async #flush(): Promise<void> {
+		this.#timer = undefined;
+		if (this.#running) {
+			this.#again = true;
+			return;
+		}
+		this.#running = true;
+		try {
+			do {
+				this.#again = false;
+				if (!this.autoWriting || devicePeqStore.needsReconnect) return;
+				if (devicePeqStore.isBusy) {
+					// A read, a switch or a button write is under way: try again after it.
+					this.#timer = setTimeout(() => void this.#flush(), settingsStore.autoPushDelayMs);
+					return;
+				}
+				if (devicePeqStore.inSync === true) {
+					devicePeqStore.autoPaused = false;
+					continue;
+				}
+				const plan = await this.prepare();
+				if (!plan) return;
+				devicePeqStore.autoClipRisk = plan.clipRisk;
+				if (needsReview(plan)) {
+					devicePeqStore.autoPaused = true;
+					continue;
+				}
+				if (!(await this.write(plan, true))) return;
+			} while (this.#again);
+		} finally {
+			this.#running = false;
 		}
 	}
 }

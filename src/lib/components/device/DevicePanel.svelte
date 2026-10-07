@@ -1,19 +1,21 @@
 <!--
-	Adapted from modernGraphTool src/lib/components/features/DevicePeq.svelte @ 23ddc4dd: connect,
-	device row, Device EQ and Read. Write, auto-write and the push dialog arrive in Phase 3; the
-	Phase 4 Main screen re-lays this out around the graph.
+	Adapted from modernGraphTool src/lib/components/features/DevicePeq.svelte @ 23ddc4dd: connect
+	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
+	The Phase 4 Main screen re-lays this out around the graph.
 -->
 <script lang="ts">
-	import { Info, TriangleAlert, Usb } from '@lucide/svelte';
+	import { FlaskConical, Info, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import InfoPopover from '$lib/components/atoms/InfoPopover.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import { panelStatus } from '$lib/device-peq/panel-status';
+	import { needsConfirmation, type PushPlan } from '$lib/device-peq/push-plan';
 	import * as m from '$lib/paraglide/messages';
 	import { isNative } from '$lib/platform/native';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import PushDialog from './PushDialog.svelte';
 
 	const INSPECTOR_URL = 'https://potatosalad775.github.io/eqcaps/connect';
 	const ISSUES_URL = 'https://github.com/potatosalad775/eqcaps/issues/new';
@@ -87,17 +89,42 @@
 	});
 
 	const readTarget = $derived(devicePeqStore.readTarget);
+	const writeTarget = $derived(devicePeqStore.writeTarget);
+	/** Device EQ shows a built-in preset: Write is off by design, not because of where it is. */
+	const builtIn = $derived(!!caps?.canWrite && !devicePeqStore.targetWritable);
+	/** Auto-write needs a device that can be written without restarting after each save. */
+	const canAutoWrite = $derived(!!caps?.canWrite && !caps.disconnectOnSave);
+
+	/** The one line under Read and Write. */
 	const status = $derived(
 		panelStatus({
 			message: devicePeqStore.statusMessage,
 			messageIsError: devicePeqStore.statusIsError,
-			autoWriting: false,
-			autoPaused: false,
-			autoClipRisk: false,
-			unreachable: !!caps?.canRead && !readTarget,
+			autoWriting: devicePeqService.autoWriting,
+			autoPaused: devicePeqStore.autoPaused,
+			autoClipRisk: devicePeqStore.autoClipRisk,
+			builtIn,
+			unreachable:
+				(!!caps?.canWrite && !builtIn && !writeTarget) || (!!caps?.canRead && !readTarget),
 			inSync: devicePeqStore.inSync
 		})
 	);
+
+	// ── Writing: straight away when the device holds the list exactly, else after a review ──
+
+	let showPushDialog = $state(false);
+	let pendingPlan = $state.raw<PushPlan | null>(null);
+
+	async function write() {
+		const plan = await devicePeqService.prepare();
+		if (!plan) return;
+		if (needsConfirmation(plan)) {
+			pendingPlan = plan;
+			showPushDialog = true;
+		} else {
+			void devicePeqService.write(plan);
+		}
+	}
 	const toneClass = {
 		muted: 'text-base-content/70',
 		success: 'text-success',
@@ -110,9 +137,7 @@
 	<h2 id="device-heading" class="text-sm font-semibold">{m.device_peq_label()}</h2>
 
 	{#if !connection}
-		{#if !canConnect}
-			<p class="text-sm text-base-content/70">{m.device_peq_no_webhid()}</p>
-		{:else if devicePeqService.choice}
+		{#if devicePeqService.choice}
 			<fieldset class="flex flex-col gap-2">
 				<legend class="mb-1 text-sm text-base-content/70">
 					{isNative ? m.device_peq_choose_device_prompt() : m.device_peq_choose_prompt()}
@@ -143,17 +168,34 @@
 				</div>
 			</fieldset>
 		{:else}
-			<Button
-				title={m.device_peq_connect_usb()}
-				class="gap-2 self-start"
-				disabled={devicePeqStore.isConnecting}
-				onpointerenter={() => devicePeqService.warmUp()}
-				onfocus={() => devicePeqService.warmUp()}
-				onclick={() => devicePeqService.connect('hid')}
-			>
-				<Usb class="size-4" aria-hidden="true" />
-				{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_peq_connect_usb()}
-			</Button>
+			{#if !canConnect}
+				<p class="text-sm text-base-content/70">{m.device_peq_no_webhid()}</p>
+			{/if}
+			<div class="flex flex-wrap gap-2">
+				{#if canConnect}
+					<Button
+						title={m.device_peq_connect_usb()}
+						class="gap-2"
+						disabled={devicePeqStore.isConnecting}
+						onpointerenter={() => devicePeqService.warmUp()}
+						onfocus={() => devicePeqService.warmUp()}
+						onclick={() => devicePeqService.connect('hid')}
+					>
+						<Usb class="size-4" aria-hidden="true" />
+						{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_peq_connect_usb()}
+					</Button>
+				{/if}
+				<Button
+					title={m.device_peq_connect_demo_title()}
+					variant="outline"
+					class="gap-2"
+					disabled={devicePeqStore.isConnecting}
+					onclick={() => devicePeqService.connect('demo')}
+				>
+					<FlaskConical class="size-4" aria-hidden="true" />
+					{m.device_peq_connect_demo()}
+				</Button>
+			</div>
 		{/if}
 
 		{#if devicePeqService.notFound === 'unsupported'}
@@ -295,20 +337,74 @@
 			{/if}
 
 			<div class="flex flex-wrap items-center gap-2">
-				<Button
-					title={m.device_peq_read_title()}
-					size="sm"
-					variant="outline"
-					disabled={!readTarget || devicePeqStore.isBusy}
-					onclick={() => devicePeqService.read()}
-				>
-					{devicePeqStore.isReading ? m.device_peq_reading() : m.device_peq_read()}
-				</Button>
+				{#if caps?.canRead}
+					<Button
+						title={readTarget ? m.device_peq_read_title() : m.device_peq_unreachable()}
+						size="sm"
+						variant="outline"
+						disabled={!readTarget || devicePeqStore.isBusy}
+						onclick={() => devicePeqService.read()}
+					>
+						{devicePeqStore.isReading ? m.device_peq_reading() : m.device_peq_read()}
+					</Button>
+				{/if}
+				{#if caps?.canWrite}
+					<Button
+						title={writeTarget
+							? m.device_peq_write_title()
+							: builtIn
+								? m.device_peq_builtin()
+								: m.device_peq_unreachable()}
+						size="sm"
+						disabled={!writeTarget || devicePeqStore.isBusy}
+						onclick={write}
+					>
+						{devicePeqStore.isWriting ? m.device_peq_writing() : m.device_peq_write()}
+					</Button>
+				{/if}
 			</div>
+
+			{#if canAutoWrite}
+				<div class="flex items-center gap-1">
+					<Switch
+						size="sm"
+						bind:checked={
+							() => devicePeqService.autoWriteOn, (on) => devicePeqService.setAutoWrite(on)
+						}
+						labelText={m.device_peq_auto_write()}
+						labelClass="text-sm text-base-content/70"
+					/>
+					<InfoPopover label={m.info_popover_about({ topic: m.device_peq_auto_write() })}>
+						<p>{m.device_peq_auto_write_hint()}</p>
+					</InfoPopover>
+				</div>
+			{/if}
 		{/if}
 
-		{#if status}
-			<p class="text-sm {toneClass[status.tone]}" role="status">{status.text}</p>
-		{/if}
+		<!-- Always rendered: a live region has to exist before its text changes -->
+		<div class="flex items-center gap-2">
+			<p class="min-w-0 flex-1 text-sm {status ? toneClass[status.tone] : ''}" role="status">
+				{status?.text ?? ''}
+			</p>
+			{#if status?.action === 'review'}
+				<Button
+					title={m.device_peq_auto_review()}
+					size="sm"
+					variant="outline"
+					class="shrink-0"
+					disabled={devicePeqStore.isBusy}
+					onclick={write}
+				>
+					{m.device_peq_auto_review()}
+				</Button>
+			{/if}
+		</div>
 	{/if}
 </section>
+
+<PushDialog
+	bind:open={showPushDialog}
+	plan={pendingPlan}
+	deviceName={connection?.name ?? ''}
+	onConfirm={() => pendingPlan && devicePeqService.write(pendingPlan)}
+/>

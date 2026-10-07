@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	biquadCoeffs,
-	biquadMagnitudeDb,
-	combinedResponseDb,
-	computeAutoPregain,
-	logFreqGrid
-} from './biquad';
+import { biquadCoeffs, biquadMagnitudeDb, combinedResponseDb, logFreqGrid } from './biquad';
 import type { EqFilter } from './model';
 
 describe('eq/biquad', () => {
@@ -60,17 +54,5 @@ describe('eq/biquad', () => {
 			grid.findIndex((f) => Math.abs(f - 1000) === Math.min(...grid.map((g) => Math.abs(g - 1000))))
 		];
 		expect(at1k).toBeCloseTo(5, 0);
-	});
-
-	it('computeAutoPregain compensates the positive peak', () => {
-		const filters: EqFilter[] = [{ type: 'PK', freq: 1000, gain: 6, q: 1, enabled: true }];
-		const pregain = computeAutoPregain(filters);
-		expect(pregain).toBeLessThanOrEqual(-5.9);
-		expect(pregain).toBeGreaterThanOrEqual(-6.5);
-	});
-
-	it('computeAutoPregain is 0 for cut-only EQ', () => {
-		const filters: EqFilter[] = [{ type: 'PK', freq: 1000, gain: -6, q: 1, enabled: true }];
-		expect(computeAutoPregain(filters)).toBe(0);
 	});
 });

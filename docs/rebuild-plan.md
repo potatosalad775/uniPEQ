@@ -7,8 +7,8 @@ Its decisions 1–7 carry over unchanged.
 
 Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
 Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 2026-10-06** (web and
-Android on real hardware). Phase 3 is next. Tick tasks as they land; record deviations in the
-Decisions section.
+Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked devices; the hardware
+check is open, see Phase 3). Tick tasks as they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -165,6 +165,39 @@ New:
     - UI is a stand-in: `DevicePanel` (connect, device row, Device EQ, Read, status line) and a
       read-only `BandTable` on the EQ tab, until Phase 4.
 
+20. **Phase 3 notes.**
+    - **Auto-write is modernGraphTool's**, in `device-peq-service.svelte.ts`. The prototype's
+      `AutoPushScheduler` is deleted: the service already debounces, coalesces edits made during a
+      write, and pauses for review. It keeps the prototype's settings (`autoPushEnabled`, default
+      on; `autoPushDelayMs`, default 1500 ms; modernGraphTool waits 700 ms). Manual-save mode is
+      `disconnectOnSave`: such a device gets no auto-write switch, only Write, then Reconnect.
+    - **Preamp.** `eqStore.preamp` is derived: `derivePreamp(filters)` while `autoPreamp` (a
+      preset's `pregain: 'auto'`), else the value read or set. `eq-preamp.ts` departs from
+      modernGraphTool: every eqcaps type counts (a resonant high-pass boosts), the result is never
+      positive, and it rounds up to 0.1 dB rather than to the nearest.
+    - **A disabled gainless band** (LPQ, HPQ, BP, NO, AP) can't be written "flat", so it goes as a
+      0 dB peak at its Fc and Q (`toWrittenFilter`). modernGraphTool has no gainless types.
+    - **Built-in presets.** With decision 1's table, `writeTarget` is also null on a built-in
+      preset, which modernGraphTool's status would call unreachable. `panelStatus` takes a
+      `builtIn` input that says so instead, ranked just above unreachable.
+    - **APO text** (`eq-apo.ts`) parses every eqcaps type and APO's shorthands (`LS`, `HP`, …), Q
+      from `BW Oct`, and no-Q passes and shelves as Q 0.707. It keeps `Preamp:` (summed, as APO
+      does), and skips and counts one-ear `Channel:` sections and slope variants (`LS 6dB`). Export
+      writes `OFF` for a disabled band and no `Gain` for gainless types.
+    - **Presets** (`eq/preset-file.ts`): v1 is migrated whenever a preset is read, and stored as v2
+      only when it is next saved. Imports always get a fresh id. The Presets tab is a plain list
+      (save, load, import, JSON/APO export, delete on a second press) until Phase 4. **Gap:** the
+      Android WebView drops downloads, so export copies the text to the clipboard there; real
+      export needs a file/share plugin (Phase 4).
+    - **Demo device** (`device-peq/demo.ts`): profile `unipeq-demo-dac` (10 bands, PK/LSC/HSC,
+      preamp −12…0 dB, USER1–3 plus Bypass, all writable) and `DemoDac`, a simulated
+      `fiio-usb-hid` device seeded through the bridge's own encoder. Its memories live for the page,
+      so a write survives a reconnect. `validateProfile` wants evidence for a verified status, so
+      the profile is `community-verified` with `demo.ts` itself as its `vendor-docs` source. The
+      Connect area offers it on every platform, including browsers without WebHID.
+    - **Left for Phase 4:** the explicit **Fit** action (invariant 3), undo/redo controls (the
+      undo snapshot doesn't keep `autoPreamp` yet), and the band editor.
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -241,18 +274,26 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 
 ### Phase 3: Push path, presets, demo · 1–2 days
 
-- [ ] Copy `push-plan.ts`, `eq-constraint.ts`, `eq-preamp.ts` and adapt them to the filter model
+- [x] Copy `push-plan.ts`, `eq-constraint.ts`, `eq-preamp.ts` and adapt them to the filter model
       (decision 5). Decide between our `AutoPushScheduler` and their `device-peq-service`
-      auto-write, keeping manual-save mode for `disconnectOnSave`.
-- [ ] Push-confirm dialog from `DevicePeqPushDialog`, which renders `fit` changes,
-      `unassigned` and `complete` warnings.
-- [ ] `BridgeError` → messages; `PushResult.reconnect` → reconnect flow; `setEnabled` for EQ
-      on/off and the Device EQ dropdown.
-- [ ] Presets: schemaVersion 2 + v1 migration (decision 5); import/export JSON; APO / AutoEq
-      text via `eq-apo.ts`.
-- [ ] Demo device (decision 2): demo profile + simulated `fiio-usb-hid` transport.
+      auto-write, keeping manual-save mode for `disconnectOnSave`. *Theirs (decision 20).
+      `eq-constraint.ts` and `eq-preamp.ts` live in `src/lib/eq/`.*
+- [x] Push-confirm dialog from `DevicePeqPushDialog`, which renders `fit` changes,
+      `unassigned` and `complete` warnings. *`components/device/PushDialog.svelte`; Android back
+      closes it.*
+- [x] `BridgeError` → messages; `PushResult.reconnect` → reconnect flow; `setEnabled` for EQ
+      on/off and the Device EQ dropdown. *Messages and `setEnabled` came in Phase 2; Write, the
+      auto-write switch and the restart-to-save flow are in `DevicePanel`.*
+- [x] Presets: schemaVersion 2 + v1 migration (decision 5); import/export JSON; APO / AutoEq
+      text via `eq-apo.ts`. *`eq/preset-file.ts`, `stores/preset-store.svelte.ts`, a plain
+      Presets tab (decision 20).*
+- [x] Demo device (decision 2): demo profile + simulated `fiio-usb-hid` transport.
 - **Exit:** applying a preset to a device shows an accurate diff and writes what `fit` produced.
   The demo pipeline test runs through `openDevice`.
+  *Code verified 2026-10-07: 176 tests. `demo.spec.ts` connects the demo through `openDevice`,
+  reads, plans, writes and reads back. `DevicePanel` specs check the review dialog's diff and
+  that a confirmed write sends `fit`'s values. Open: load a preset and write it to a real device
+  (web and Android), and the demo on Android.*
 
 ### Phase 4: Screens · 3–4 days
 

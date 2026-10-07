@@ -1,4 +1,5 @@
-// Adapted from modernGraphTool src/lib/device-peq/panel-status.ts @ 23ddc4dd.
+// Adapted from modernGraphTool src/lib/device-peq/panel-status.ts @ 23ddc4dd, plus `builtIn`
+// (writable presets, rebuild decision 1).
 /**
  * The one status line under the device's Read and Write buttons.
  *
@@ -26,6 +27,8 @@ export interface PanelStatusInput {
 	autoWriting: boolean;
 	autoPaused: boolean;
 	autoClipRisk: boolean;
+	/** Device EQ shows a built-in preset, which Write won't overwrite. */
+	builtIn: boolean;
 	/** Read or Write can't reach the preset Device EQ shows from where the device is. */
 	unreachable: boolean;
 	inSync: boolean | null;
@@ -37,6 +40,7 @@ export function panelStatus(s: PanelStatusInput): PanelStatus | null {
 	if (s.autoWriting && s.autoPaused) {
 		return { tone: 'warning', text: m.device_peq_auto_paused(), action: 'review' };
 	}
+	if (s.builtIn) return { tone: 'muted', text: m.device_peq_builtin() };
 	if (s.unreachable) return { tone: 'muted', text: m.device_peq_unreachable() };
 	if (s.autoWriting && s.autoClipRisk) {
 		return { tone: 'warning', text: m.device_peq_push_clip_risk() };

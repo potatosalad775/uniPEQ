@@ -2,8 +2,8 @@
  * Preset persistence. Backend: Web Storage (works on the web and in the Android WebView). The
  * interface is the stable part: swap in Capacitor Preferences/Filesystem without touching callers.
  *
- * Validating imported presets and migrating schemaVersion 1 ones moves to Phase 3 with the v2 model
- * (docs/rebuild-plan.md, decision 5); AutoEq/APO text parsing moves to eq-apo.ts there.
+ * Storage holds JSON and doesn't judge it: `parsePreset` (`$lib/eq/preset-file`) checks what comes
+ * back and migrates schemaVersion 1.
  */
 import type { PeqPreset } from '$lib/eq/model';
 

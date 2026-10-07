@@ -21,8 +21,8 @@ export interface EqState {
 }
 
 /**
- * A saved preset. schemaVersion 2 uses the eqcaps type codes; validating imports and migrating
- * schemaVersion 1 presets (`LSQ` → `LSC`, …) is Phase 3 (docs/rebuild-plan.md).
+ * A saved preset. schemaVersion 2 uses the eqcaps type codes; `preset-file.ts` checks stored and
+ * imported ones and migrates the prototype's schemaVersion 1 (`LSQ` → `LSC`, …).
  */
 export interface PeqPreset {
 	schemaVersion: 2;

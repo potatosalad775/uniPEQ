@@ -38,6 +38,7 @@ import {
 	type NativeUsbDevice
 } from '$lib/transports/native/device-io';
 import { listNativeHidDevices, openNativeHid } from '$lib/transports/native/native-hid-transport';
+import { DEMO_PROFILE, DemoHidTransport, demoDac } from './demo';
 import type { DeviceCandidate, DeviceConnection, ProfileSource } from './types';
 
 export type BridgeConnectionType = 'hid' | 'serial' | 'ble';
@@ -319,6 +320,27 @@ export async function connectBle(): Promise<ConnectResult> {
 		close: async () => {},
 		pickFrom: drivable(entries, 'ble')
 	});
+}
+
+// ── Demo ────────────────────────────────────────────────────────────────────
+
+/**
+ * The demo device (decision 2): a simulated FiiO-protocol DAC, driven by the real bridge through
+ * `openDevice`. Reopening finds the same simulated device, with what was written to it.
+ */
+export async function connectDemo(): Promise<ConnectResult> {
+	const protocol = protocolOf(DEMO_PROFILE);
+	if (!protocol) throw new Error('the demo profile has no protocol this bridge drives');
+	const r: Resolved = {
+		protocol,
+		profile: DEMO_PROFILE,
+		profileSource: 'device',
+		profileId: DEMO_PROFILE.id,
+		name: `${DEMO_PROFILE.device.brand} ${DEMO_PROFILE.device.model}`
+	};
+	const open = (): DeviceConnection =>
+		connection('hid', new DemoHidTransport(demoDac()), r, async () => open());
+	return { kind: 'connected', connection: open() };
 }
 
 // ── Android ─────────────────────────────────────────────────────────────────

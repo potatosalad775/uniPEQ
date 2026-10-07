@@ -1,5 +1,5 @@
 /**
- * Biquad magnitude-response math for the EQ response curve and pregain/headroom calculation.
+ * Biquad magnitude-response math for the EQ response curve and the preamp (`eq-preamp.ts`).
  * Pure functions, RBJ cookbook coefficients, over the eqcaps filter types.
  */
 import type { EqFilter, FilterType } from './model';
@@ -137,15 +137,4 @@ export function combinedResponseDb(
 		.filter((f) => f.enabled)
 		.map((f) => biquadCoeffs(f.type, f.freq, f.gain, f.q, sampleRate));
 	return freqs.map((f) => coeffs.reduce((sum, c) => sum + biquadMagnitudeDb(c, f, sampleRate), 0));
-}
-
-/**
- * Recommended pregain (to be replaced by modernGraphTool's eq-preamp.ts in Phase 3, which also
- * samples each band's own centre): negative of the maximum combined positive response,
- * so the EQ never clips. 0 when the curve never rises above 0 dB.
- */
-export function computeAutoPregain(filters: EqFilter[], sampleRate = 48000): number {
-	const response = combinedResponseDb(filters, logFreqGrid(256), sampleRate);
-	const peak = Math.max(0, ...response);
-	return peak > 0 ? -Math.ceil(peak * 10) / 10 : 0;
 }

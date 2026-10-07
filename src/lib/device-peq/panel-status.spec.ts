@@ -1,4 +1,4 @@
-// Adapted from modernGraphTool src/lib/device-peq/panel-status.spec.ts @ 23ddc4dd.
+// Adapted from modernGraphTool src/lib/device-peq/panel-status.spec.ts @ 23ddc4dd, plus `builtIn`.
 import { describe, it, expect } from 'vitest';
 import { panelStatus, type PanelStatusInput } from './panel-status';
 
@@ -8,6 +8,7 @@ const idle: PanelStatusInput = {
 	autoWriting: false,
 	autoPaused: false,
 	autoClipRisk: false,
+	builtIn: false,
 	unreachable: false,
 	inSync: null
 };
@@ -49,6 +50,12 @@ describe('panelStatus', () => {
 			/only read and write the preset it's using/
 		);
 		expect(status({ autoWriting: true, autoClipRisk: true })?.tone).toBe('warning');
+	});
+
+	it('says a built-in preset is not written, ahead of reachability', () => {
+		expect(status({ builtIn: true, unreachable: true, inSync: true })?.text).toMatch(
+			/built-in presets/
+		);
 	});
 
 	it('lets the last operation stand for "in sync", and drops it once the list moves', () => {
