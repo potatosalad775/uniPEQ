@@ -127,14 +127,12 @@ export function logFreqGrid(points = 128, fMin = 20, fMax = 20000): number[] {
 	return grid;
 }
 
-/** Combined response (dB) of enabled filters over a frequency grid. */
+/** Combined response (dB) of the filters over a frequency grid. */
 export function combinedResponseDb(
 	filters: EqFilter[],
 	freqs: number[],
 	sampleRate = 48000
 ): number[] {
-	const coeffs = filters
-		.filter((f) => f.enabled)
-		.map((f) => biquadCoeffs(f.type, f.freq, f.gain, f.q, sampleRate));
+	const coeffs = filters.map((f) => biquadCoeffs(f.type, f.freq, f.gain, f.q, sampleRate));
 	return freqs.map((f) => coeffs.reduce((sum, c) => sum + biquadMagnitudeDb(c, f, sampleRate), 0));
 }

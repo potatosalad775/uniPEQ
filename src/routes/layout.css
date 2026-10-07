@@ -8,6 +8,12 @@
 /* Class-based dark mode: .dark on <html> activates dark: variants (set by +layout.svelte). */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * `touch:` = a coarse pointer (a phone or tablet finger), whatever the width (decision 22). Atoms
+ * grow to touch size under it; a mouse keeps the compact sizes. Layout still switches on `wide:`.
+ */
+@custom-variant touch (@media (pointer: coarse));
+
 @theme {
 	--font-sans:
 		'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
@@ -22,6 +28,20 @@
 
 	/* Toolbar row height, read by the Button atom's `toolbar` size. */
 	--toolbar-height: calc(var(--spacing) * 8);
+
+	/* Sheets rise from the bottom edge (`animate-sheet-in`, the Sheet atom). */
+	--animate-sheet-in: sheet-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+	@keyframes sheet-in {
+		from {
+			transform: translateY(100%);
+		}
+	}
+	--animate-fade-in: fade-in 0.15s ease-out;
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+	}
 }
 
 /* Map the theme.css tokens to Tailwind color utilities; they switch with .dark. */
@@ -55,6 +75,15 @@
  * `--safe-area-inset-*` with the real values. Prefer those, then env(), then 0.
  * Use as `pt-(--inset-top)` etc.
  */
+/* The shell's toast sits above the EQ tab's sync bar while it shows. */
+:root {
+	--toast-lift: 0px;
+}
+
+:root:has([data-sync-bar]:not(.hidden)) {
+	--toast-lift: 3.5rem;
+}
+
 :root {
 	--inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 	--inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
@@ -109,6 +138,84 @@ textarea,
 [aria-busy='true'] {
 	pointer-events: none;
 	opacity: 0.6;
+}
+
+/* ─── Range inputs (the Slider atom) ──────────────────────────────────────── */
+/*
+ * A native range, restyled: a thin track filled up to the thumb (`--fill`, set by the atom) and a
+ * thumb large enough for a finger. The input's own height is the touch target.
+ */
+.range {
+	-webkit-appearance: none;
+	appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+
+.range:disabled {
+	cursor: not-allowed;
+	opacity: 0.5;
+}
+
+.range::-webkit-slider-runnable-track {
+	height: 4px;
+	border-radius: 9999px;
+	background: linear-gradient(
+		to right,
+		var(--color-primary) var(--fill, 0%),
+		color-mix(in oklch, var(--color-base-content) 20%, transparent) var(--fill, 0%)
+	);
+}
+
+.range::-moz-range-track {
+	height: 4px;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--color-base-content) 20%, transparent);
+}
+
+.range::-moz-range-progress {
+	height: 4px;
+	border-radius: 9999px;
+	background: var(--color-primary);
+}
+
+.range::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: var(--thumb, 16px);
+	height: var(--thumb, 16px);
+	margin-top: calc((4px - var(--thumb, 16px)) / 2);
+	border: none;
+	border-radius: 9999px;
+	background: var(--color-primary);
+	box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.range::-moz-range-thumb {
+	width: var(--thumb, 16px);
+	height: var(--thumb, 16px);
+	border: none;
+	border-radius: 9999px;
+	background: var(--color-primary);
+	box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.range:focus-visible {
+	outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-accent) 60%, transparent);
+}
+
+.range:active::-webkit-slider-thumb {
+	box-shadow: 0 0 0 8px color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+@media (pointer: coarse) {
+	.range {
+		--thumb: 24px;
+	}
 }
 
 /* ─── Scrollbars ──────────────────────────────────────────────────────────── */

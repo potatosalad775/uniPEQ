@@ -13,9 +13,12 @@ export const TYPE_LABEL: Record<FilterType, () => string> = {
 	AP: m.eq_type_ap
 };
 
-/** "1.23 kHz", "84.5 Hz". */
+/**
+ * "1234 Hz", "20000 Hz", "84.5 Hz": every digit, never rounded to kHz, and no grouping, so it reads
+ * as the number box does (decision 22). Graph ticks use `freqLabel` instead.
+ */
 export function formatHz(f: number): string {
-	return f >= 1000 ? `${+(f / 1000).toFixed(2)} kHz` : `${+f.toFixed(1)} Hz`;
+	return `${+f.toFixed(2)} Hz`;
 }
 
 /** "+3.5 dB", "-2 dB", "0 dB". */

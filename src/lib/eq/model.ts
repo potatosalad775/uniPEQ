@@ -1,6 +1,6 @@
 /**
- * The app's EQ model (rebuild decision 5): eqcaps filter type codes and units, plus `enabled`,
- * which is app-only (a disabled band is still on screen and still written, flat).
+ * The app's EQ model (rebuild decision 5): eqcaps filter type codes and units. There is no per-band
+ * on/off (decision 22): no device has one, so every band on screen is a band the device plays.
  */
 import { isKnownType, type Filter, type KnownFilterType } from '@potatosalad775/eqcaps-core';
 
@@ -10,7 +10,6 @@ export type FilterType = KnownFilterType;
 /** One band: Hz, RBJ-cookbook Q, dB, as eqcaps defines them. */
 export interface EqFilter extends Filter {
 	type: FilterType;
-	enabled: boolean;
 }
 
 /** The editable EQ: what the graph shows and a push writes. */
@@ -38,18 +37,12 @@ export interface PeqPreset {
 	filters: EqFilter[];
 }
 
-/** A band read from a device, enabled; null for a type the app can't edit (an `x-` type). */
+/** A band read from a device; null for a type the app can't edit (an `x-` type). */
 export function fromCapsFilter(filter: Filter): EqFilter | null {
 	if (!isKnownType(filter.type)) return null;
-	return { type: filter.type, freq: filter.freq, q: filter.q, gain: filter.gain, enabled: true };
+	return { type: filter.type, freq: filter.freq, q: filter.q, gain: filter.gain };
 }
 
 export function eqFiltersEqual(a: EqFilter, b: EqFilter): boolean {
-	return (
-		a.type === b.type &&
-		a.freq === b.freq &&
-		a.q === b.q &&
-		a.gain === b.gain &&
-		a.enabled === b.enabled
-	);
+	return a.type === b.type && a.freq === b.freq && a.q === b.q && a.gain === b.gain;
 }

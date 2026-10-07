@@ -1,5 +1,6 @@
 <!-- Copied from modernGraphTool src/lib/components/atoms/Input.svelte @ 23ddc4dd; its props also take
-	the input element's own attributes (aria-label, inputmode, …), which it already spread. -->
+	the input element's own attributes (aria-label, inputmode, …), which it already spread. 48 px
+	tall under `touch:` (decision 22). -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
@@ -36,7 +37,7 @@
 			{type}
 			bind:value
 			{placeholder}
-			class="block w-full rounded-md border border-base-content/20 px-3 py-2 focus:ring-1 focus:ring-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {icon
+			class="block w-full rounded-md border border-base-content/20 px-3 py-2 focus:ring-1 focus:ring-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 touch:h-12 touch:rounded-lg touch:text-base {icon
 				? 'pl-9'
 				: ''}"
 			{...restProps}

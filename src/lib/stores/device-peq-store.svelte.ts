@@ -50,6 +50,11 @@ class DevicePeqStore {
 	 * don't read again. Null hints: the preset couldn't be read. Dropped on any preset change.
 	 */
 	layout = $state.raw<{ slot: number | null; hints: (Filter | null)[] | null } | null>(null);
+	/**
+	 * When the waiting auto-write fires (`Date.now()` ms), while an edit waits for it; null
+	 * otherwise. The sync bar counts it down.
+	 */
+	autoDueAt = $state<number | null>(null);
 	/** Auto-write found a list the device can't hold exactly, and waits for a reviewed write. */
 	autoPaused = $state(false);
 	/** The last automatic write boosts with no way to lower the device's level. */

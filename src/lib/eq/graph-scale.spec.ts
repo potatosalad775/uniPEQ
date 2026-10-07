@@ -40,7 +40,7 @@ describe('graph scales', () => {
 });
 
 describe('dbRange', () => {
-	const band = (gain: number) => ({ type: 'PK' as const, freq: 1000, q: 1, gain, enabled: true });
+	const band = (gain: number) => ({ type: 'PK' as const, freq: 1000, q: 1, gain });
 
 	it('is at least ±12 dB', () => {
 		expect(dbRange(softwareProfile('s'), [], [])).toBe(12);
@@ -78,8 +78,8 @@ describe('graph helpers', () => {
 	});
 
 	it('puts a gainless band on the 0 dB line', () => {
-		expect(nodeDb({ type: 'HPQ', freq: 80, q: 0.7, gain: 5, enabled: true })).toBe(0);
-		expect(nodeDb({ type: 'PK', freq: 80, q: 0.7, gain: 5, enabled: true })).toBe(5);
+		expect(nodeDb({ type: 'HPQ', freq: 80, q: 0.7, gain: 5 })).toBe(0);
+		expect(nodeDb({ type: 'PK', freq: 80, q: 0.7, gain: 5 })).toBe(5);
 	});
 
 	it('lowers Q as fingers spread, and as the wheel turns down', () => {

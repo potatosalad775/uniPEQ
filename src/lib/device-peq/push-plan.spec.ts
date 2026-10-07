@@ -7,7 +7,6 @@ import { needsConfirmation, needsReview, planPush, readLayout } from './push-pla
 import type { PeqDevice } from './types';
 
 const pk = (freq: number, gain: number, extra: Partial<EqFilter> = {}): EqFilter => ({
-	enabled: true,
 	type: 'PK',
 	freq,
 	q: 1,
@@ -70,15 +69,10 @@ describe('planPush', () => {
 		expect(plan.filters).toHaveLength(5);
 	});
 
-	it('sends a disabled band flat in its own slot', () => {
-		const plan = planPush(
-			[pk(1000, 3, { enabled: false }), pk(4000, 1)],
-			-1,
-			FIVE_BAND,
-			WRITES_PREAMP
-		);
+	it('sends a list the device holds as it is, with nothing to confirm', () => {
+		const plan = planPush([pk(1000, 3), pk(4000, 1)], -3, FIVE_BAND, WRITES_PREAMP);
 		expect(plan.filters.slice(0, 2)).toEqual([
-			{ type: 'PK', freq: 1000, q: 1, gain: 0 },
+			{ type: 'PK', freq: 1000, q: 1, gain: 3 },
 			{ type: 'PK', freq: 4000, q: 1, gain: 1 }
 		]);
 		expect(plan.changes).toEqual([]);

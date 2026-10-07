@@ -3,8 +3,9 @@
  * imported preset is checked against, and the migration from the prototype's schemaVersion 1.
  *
  * v1 named the types differently (`LSQ`, `HPF`, `NOTCH`, …). Each maps onto its eqcaps code,
- * except `BSF` and `CQ`, which have no v2 equivalent: they become disabled peaks at their own
- * frequency, Q and gain, so the band stays visible and the caller can warn about it.
+ * except `BSF` and `CQ`, which have no v2 equivalent: those bands are dropped and counted, so the
+ * caller can warn about them. A band saved switched off (`enabled: false`, before decision 22)
+ * played nothing, so it is dropped without a word.
  */
 import { isKnownType, type FilterType as CapsFilterType } from '@potatosalad775/eqcaps-core';
 import { parseApo } from './eq-apo';
@@ -38,8 +39,8 @@ export class PresetError extends Error {
 
 export interface ParsedPreset {
 	preset: PeqPreset;
-	/** v1 bands whose type has no v2 equivalent, now disabled. */
-	disabled: number;
+	/** v1 bands whose type has no v2 equivalent, left out. */
+	dropped: number;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -51,7 +52,8 @@ function invalid(message: string): never {
 	throw new PresetError('invalid', message);
 }
 
-function parseFilter(raw: unknown, version: 1 | 2, index: number): EqFilter & { lost?: true } {
+/** The band, `null` for one saved switched off, `'lost'` for a v1 type with no v2 equivalent. */
+function parseFilter(raw: unknown, version: 1 | 2, index: number): EqFilter | null | 'lost' {
 	if (!isObject(raw)) invalid(`filter ${index + 1} is not an object`);
 	const { type, freq, q, gain, enabled } = raw;
 	if (!isPositive(freq) || !isPositive(q) || typeof gain !== 'number' || !isFinite(gain)) {
@@ -60,17 +62,17 @@ function parseFilter(raw: unknown, version: 1 | 2, index: number): EqFilter & { 
 	if (enabled !== undefined && typeof enabled !== 'boolean') {
 		invalid(`filter ${index + 1}: enabled must be true or false`);
 	}
-	const on = enabled ?? true;
+	const off = enabled === false;
 	if (typeof type !== 'string') invalid(`filter ${index + 1} has no type`);
 	if (version === 2) {
 		const known = type as CapsFilterType;
 		if (!isKnownType(known)) invalid(`filter ${index + 1} has an unknown type "${type}"`);
-		return { type: known, freq, q, gain, enabled: on };
+		return off ? null : { type: known, freq, q, gain };
 	}
 	const mapped = V1_TYPES[type];
 	if (mapped === undefined) invalid(`filter ${index + 1} has an unknown type "${type}"`);
-	if (mapped === null) return { type: 'PK', freq, q, gain, enabled: false, lost: true };
-	return { type: mapped, freq, q, gain, enabled: on };
+	if (mapped === null) return 'lost';
+	return off ? null : { type: mapped, freq, q, gain };
 }
 
 /**
@@ -107,9 +109,9 @@ export function parsePreset(raw: unknown): ParsedPreset {
 			? { source: raw.source as PeqPreset['source'] }
 			: {}),
 		pregain,
-		filters: parsed.map(({ type, freq, q, gain, enabled }) => ({ type, freq, q, gain, enabled }))
+		filters: parsed.filter((f) => f !== null && f !== 'lost')
 	};
-	return { preset, disabled: parsed.filter((f) => f.lost).length };
+	return { preset, dropped: parsed.filter((f) => f === 'lost').length };
 }
 
 /** A new preset holding `filters`, with a fresh id. */
@@ -180,8 +182,8 @@ export function importPreset(text: string, fileName: string): ImportedPreset {
 		json = undefined;
 	}
 	if (json !== undefined) {
-		const { preset, disabled } = parsePreset(json);
-		return { preset: { ...preset, id: crypto.randomUUID() }, disabled, skipped: 0 };
+		const { preset, dropped } = parsePreset(json);
+		return { preset: { ...preset, id: crypto.randomUUID() }, dropped, skipped: 0 };
 	}
 	const apo = parseApo(text);
 	if (apo.filters.length === 0) {
@@ -195,7 +197,7 @@ export function importPreset(text: string, fileName: string): ImportedPreset {
 		filters: apo.filters,
 		pregain: apo.preamp ?? 'auto'
 	});
-	return { preset, disabled: 0, skipped: apo.skipped };
+	return { preset, dropped: 0, skipped: apo.skipped };
 }
 
 /** The preset as an exported `.json` file's text. */

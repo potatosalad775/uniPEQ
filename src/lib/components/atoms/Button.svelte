@@ -39,21 +39,24 @@
 		link: 'text-primary underline-offset-4 hover:underline'
 	};
 
+	// uniPEQ: under `touch:` (a finger, decision 22) every size grows to a touch target and turns
+	// pill-shaped: `md` and `icon` are 48 px, `sm` and `icon-sm` 40 px, `xs` and `icon-xs` 32 px
+	// (only for a control that sits inside a larger tappable row).
 	const sizeClasses = {
-		xs: 'px-1.5 py-0.5 text-[10px]',
-		sm: 'px-2.5 py-1.5 text-xs',
-		md: 'px-4 py-2 text-sm',
-		lg: 'px-6 py-3 text-base',
+		xs: 'px-1.5 py-0.5 text-[10px] touch:min-h-8 touch:px-3 touch:text-xs',
+		sm: 'px-2.5 py-1.5 text-xs touch:min-h-10 touch:px-4 touch:text-sm',
+		md: 'px-4 py-2 text-sm touch:min-h-12 touch:px-6',
+		lg: 'px-6 py-3 text-base touch:min-h-14',
 		// Toolbar row: icon + label pinned to one height so the row lines up.
 		// Height comes from `--toolbar-height` in layout.css.
-		toolbar: 'h-(--toolbar-height) gap-1.5 px-2.5 text-xs',
-		icon: 'p-2',
-		'icon-sm': 'p-1.5',
-		'icon-xs': 'p-1'
+		toolbar: 'h-(--toolbar-height) gap-1.5 px-2.5 text-xs touch:h-10 touch:px-4 touch:text-sm',
+		icon: 'p-2 touch:size-12 touch:p-0 touch:[&_svg]:size-6',
+		'icon-sm': 'p-1.5 touch:size-10 touch:p-0 touch:[&_svg]:size-5',
+		'icon-xs': 'p-1 touch:size-8 touch:p-0'
 	};
 
 	const base =
-		'inline-flex cursor-pointer items-center justify-center rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-base-100';
+		'inline-flex cursor-pointer items-center justify-center rounded-md font-medium touch:rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-base-100';
 
 	const activeOnOpenClasses = 'data-[state=open]:bg-accent data-[state=open]:text-accent-content';
 

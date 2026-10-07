@@ -18,7 +18,7 @@ describe('PresetsPanel', () => {
 	beforeEach(async () => {
 		clearPresets();
 		await presetStore.refresh();
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true }], -3);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], -3);
 	});
 
 	afterEach(() => {
@@ -107,7 +107,7 @@ describe('PresetsPanel', () => {
 
 	it('says how each preset fits the connected device', async () => {
 		await presetStore.saveCurrent('Peaks');
-		eqStore.replace([{ type: 'NO', freq: 1000, q: 1, gain: 0, enabled: true }], 0);
+		eqStore.replace([{ type: 'NO', freq: 1000, q: 1, gain: 0 }], 0);
 		await presetStore.saveCurrent('Notch');
 		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
 		render(PresetsPanel);

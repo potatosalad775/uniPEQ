@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import SegmentedControl from '$lib/components/atoms/SegmentedControl.svelte';
+	import { ChevronRight, ExternalLink } from '@lucide/svelte';
+	import ListRow from '$lib/components/atoms/ListRow.svelte';
+	import ListSection from '$lib/components/atoms/ListSection.svelte';
+	import RadioDialog from '$lib/components/atoms/RadioDialog.svelte';
+	import Slider from '$lib/components/atoms/Slider.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LogDialog from '$lib/components/settings/LogDialog.svelte';
@@ -26,6 +29,10 @@
 	const locale = getLocale();
 
 	let logOpen = $state(false);
+	let themeOpen = $state(false);
+	let languageOpen = $state(false);
+	const themeLabel = $derived(themeOptions.find((o) => o.value === settingsStore.theme)?.label);
+	const languageLabel = languageOptions.find((o) => o.value === locale)?.label;
 	/** The device database the app holds: its data version and how many profiles. */
 	let database = $state<{ version: string; profiles: number } | null>(null);
 
@@ -45,101 +52,106 @@
 </script>
 
 <PageHeader title={m.nav_settings()} />
-<div class="flex flex-col gap-4 px-4 pb-4 wide:max-w-2xl">
-	<section class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
-		<h2 class="text-sm font-semibold">{m.settings_appearance()}</h2>
-		<div class="flex items-center justify-between gap-4">
-			<span class="text-sm">{m.settings_theme()}</span>
-			<SegmentedControl
-				bind:value={settingsStore.theme}
-				options={themeOptions}
-				label={m.settings_theme()}
-				class="w-56"
-			/>
-		</div>
-		<div class="flex items-center justify-between gap-4">
-			<span class="text-sm">{m.settings_language()}</span>
-			<SegmentedControl
-				value={locale}
-				options={languageOptions}
-				label={m.settings_language()}
-				onValueChange={(next) => setLocale(next)}
-				class="w-56"
-			/>
-		</div>
-	</section>
+<!-- Android-style lists (decision 22): rows with the control trailing, choices in radio dialogs. -->
+<div class="flex flex-col gap-5 px-4 pb-6 wide:max-w-2xl">
+	<ListSection title={m.settings_display()}>
+		<ListRow label={m.settings_theme()} onclick={() => (themeOpen = true)}>
+			{#snippet trailing()}
+				{themeLabel}
+				<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
+		<ListRow label={m.settings_language()} onclick={() => (languageOpen = true)}>
+			{#snippet trailing()}
+				{languageLabel}
+				<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
+	</ListSection>
 
-	<section class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
-		<h2 class="text-sm font-semibold">{m.settings_device()}</h2>
-		<Switch
-			size="sm"
-			bind:checked={() => settingsStore.autoPushEnabled, (on) => devicePeqService.setAutoWrite(on)}
-			labelText={m.device_peq_auto_write()}
-			labelClass="text-sm font-normal"
-		/>
-		<div class="flex flex-col gap-1 {settingsStore.autoPushEnabled ? '' : 'opacity-50'}">
-			<div class="flex items-center justify-between gap-4">
-				<label for="auto-delay" class="text-sm">{m.settings_auto_delay()}</label>
-				<span class="text-sm text-base-content/70 tabular-nums">
-					{m.settings_seconds({ seconds: delaySeconds })}
-				</span>
-			</div>
-			<input
-				id="auto-delay"
-				type="range"
-				min="500"
-				max="5000"
-				step="250"
+	<ListSection title={m.settings_device()}>
+		<ListRow
+			label={m.device_peq_auto_write()}
+			description={m.settings_auto_write_hint()}
+			for="auto-write"
+		>
+			{#snippet trailing()}
+				<Switch
+					id="auto-write"
+					bind:checked={
+						() => settingsStore.autoPushEnabled, (on) => devicePeqService.setAutoWrite(on)
+					}
+				/>
+			{/snippet}
+		</ListRow>
+		<ListRow
+			label={m.settings_auto_delay()}
+			description={m.settings_auto_delay_hint()}
+			disabled={!settingsStore.autoPushEnabled}
+		>
+			{#snippet trailing()}
+				<span class="tabular-nums">{m.settings_seconds({ seconds: delaySeconds })}</span>
+			{/snippet}
+			<Slider
+				min={500}
+				max={5000}
+				step={250}
 				bind:value={settingsStore.autoPushDelayMs}
 				disabled={!settingsStore.autoPushEnabled}
+				aria-label={m.settings_auto_delay()}
 				aria-valuetext={m.settings_seconds({ seconds: delaySeconds })}
-				class="h-6 w-full cursor-pointer accent-primary disabled:cursor-not-allowed"
 			/>
-			<p class="text-xs text-base-content/60">{m.settings_auto_delay_hint()}</p>
-		</div>
-	</section>
+		</ListRow>
+	</ListSection>
 
-	<section class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
-		<h2 class="text-sm font-semibold">{m.settings_diagnostics()}</h2>
-		<Switch
-			size="sm"
-			bind:checked={settingsStore.verboseLogging}
-			labelText={m.settings_verbose()}
-			labelClass="text-sm font-normal"
-		/>
-		<p class="text-xs text-base-content/60">{m.settings_verbose_hint()}</p>
-		<div>
-			<Button
-				title={m.settings_log_view()}
-				variant="outline"
-				size="sm"
-				onclick={() => (logOpen = true)}
-			>
-				{m.settings_log_view()}
-			</Button>
-		</div>
-	</section>
+	<ListSection title={m.settings_diagnostics()}>
+		<ListRow label={m.settings_verbose()} description={m.settings_verbose_hint()} for="verbose">
+			{#snippet trailing()}
+				<Switch id="verbose" bind:checked={settingsStore.verboseLogging} />
+			{/snippet}
+		</ListRow>
+		<ListRow label={m.settings_log_view()} onclick={() => (logOpen = true)}>
+			{#snippet trailing()}
+				<ChevronRight class="size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
+	</ListSection>
 
-	<section class="flex flex-col gap-1 rounded-xl bg-base-100 p-4">
-		<h2 class="text-sm font-semibold">{m.settings_about()}</h2>
-		<p class="text-sm text-base-content/70">
-			{m.app_name()} · {m.settings_version({ version: __APP_VERSION__ })}
-		</p>
+	<ListSection title={m.settings_about()}>
+		<ListRow label={m.app_name()} description={m.settings_version({ version: __APP_VERSION__ })} />
 		{#if database}
-			<p class="text-sm text-base-content/70">
-				{m.settings_database({ profiles: database.profiles, version: database.version })}
-			</p>
+			<ListRow
+				label={m.settings_database_label()}
+				description={m.settings_database_count({
+					profiles: database.profiles,
+					version: database.version
+				})}
+			/>
 		{/if}
-		<p class="text-sm text-base-content/70">
-			{m.settings_database_source()}
-			<a
-				href="https://potatosalad775.github.io/eqcaps/"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="text-primary underline-offset-4 hover:underline">eqcaps</a
-			>
-		</p>
-	</section>
+		<ListRow
+			label="eqcaps"
+			description={m.settings_source_hint()}
+			href="https://potatosalad775.github.io/eqcaps/"
+		>
+			{#snippet trailing()}
+				<ExternalLink class="size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
+	</ListSection>
 </div>
 
+<RadioDialog
+	bind:open={themeOpen}
+	title={m.settings_theme()}
+	value={settingsStore.theme}
+	options={themeOptions}
+	onValueChange={(next) => (settingsStore.theme = next)}
+/>
+<RadioDialog
+	bind:open={languageOpen}
+	title={m.settings_language()}
+	value={locale}
+	options={languageOptions}
+	onValueChange={(next) => setLocale(next)}
+/>
 <LogDialog bind:open={logOpen} />

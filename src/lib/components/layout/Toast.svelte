@@ -10,7 +10,7 @@
 </script>
 
 <div
-	class="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+var(--inset-bottom))] z-40 flex justify-center px-4 wide:bottom-[calc(1rem+var(--inset-bottom))] wide:pl-28"
+	class="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+var(--inset-bottom)+var(--toast-lift))] z-40 flex justify-center px-4 wide:bottom-[calc(1rem+var(--inset-bottom)+var(--toast-lift))] wide:pl-28"
 	role="status"
 	aria-live="polite"
 >

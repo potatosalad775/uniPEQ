@@ -23,24 +23,15 @@ import { eqFiltersEqual, type EqFilter, type FilterType } from './model';
  * Pure helpers between the app's `EqFilter` list and an eqcaps `Profile`.
  *
  * The engine (`fit`, `validateList`, `resolveSlot`, `project`) is eqcaps core's; this module only
- * bridges the list (with its app-only `enabled`) and the profile. The store is the source of
- * truth; everything here is stateless.
+ * bridges the list and the profile. The store is the source of truth; everything here is
+ * stateless.
  */
 
 // ─── Filters ────────────────────────────────────────────────────────────────
 
-/** A band in eqcaps units, without the app-only `enabled`. */
+/** A band as a plain eqcaps filter (a copy, so nothing downstream holds the store's object). */
 export function toCapsFilter(f: EqFilter): Filter {
 	return { type: f.type, freq: f.freq, q: f.q, gain: f.gain };
-}
-
-/**
- * The band as a push sends it: as is when enabled, else flat at its own Fc and Q. A type with no
- * gain (a low-pass, a notch) can't be made flat, so a disabled one goes as a 0 dB peak.
- */
-export function toWrittenFilter(f: EqFilter): Filter {
-	if (f.enabled) return toCapsFilter(f);
-	return { type: usesGain(f.type) ? f.type : 'PK', freq: f.freq, q: f.q, gain: 0 };
 }
 
 /** The app types a slot accepts, in the slot's preference order (`x-` types left out). */
@@ -115,26 +106,13 @@ export function graphicBandsOf(profile: Profile): { freq: number; q: number }[] 
 // ─── Slot analysis ──────────────────────────────────────────────────────────
 
 /**
- * The slot each band sits in. Enabled bands get the slot eqcaps' `assign` gives them (a band that
- * needs a low-shelf slot finds it); the rest take their position in the list, which is what any
- * slot of a uniform profile would be anyway.
+ * The slot each band sits in: the one eqcaps' `assign` gives it (a band that needs a low-shelf slot
+ * finds it), else its position in the list, which is what any slot of a uniform profile would be.
  */
 export function assignSlots(filters: EqFilter[], profile: Profile): number[] {
-	const live: number[] = [];
-	const caps: Filter[] = [];
-	filters.forEach((f, i) => {
-		if (!f.enabled) return;
-		live.push(i);
-		caps.push(toCapsFilter(f));
-	});
-	const slots: (number | null)[] = filters.map(() => null);
-	if (caps.length && profile.bandCount !== null) {
-		const assigned = assign(profile, caps).slotOf;
-		live.forEach((i, k) => (slots[i] = assigned[k] ?? null));
-	}
-	return slots.map((s, position) =>
-		profile.bandCount === null ? 0 : clampSlot(profile, s ?? position)
-	);
+	if (profile.bandCount === null) return filters.map(() => 0);
+	const assigned = filters.length ? assign(profile, filters.map(toCapsFilter)).slotOf : [];
+	return filters.map((_, position) => clampSlot(profile, assigned[position] ?? position));
 }
 
 /** What's wrong with a band, per field. All `false` means it's valid. */
@@ -148,23 +126,16 @@ export interface FilterViolation {
 const PASS: FilterViolation = { type: false, freq: false, q: false, gain: false };
 
 /**
- * Per-band field flags from eqcaps' `validateList`. Disabled bands are never flagged; neither is
- * a band past the cap, which `isPastMaxBands` greys instead. A broken cross-band rule (ascending
- * frequency, minimum spacing) is a frequency problem.
+ * Per-band field flags from eqcaps' `validateList`. A band past the cap isn't flagged:
+ * `isPastMaxBands` greys it instead. A broken cross-band rule (ascending frequency, minimum
+ * spacing) is a frequency problem.
  */
 export function filterViolations(filters: EqFilter[], profile: Profile): FilterViolation[] {
 	const out: FilterViolation[] = filters.map(() => ({ ...PASS }));
-	const live: number[] = [];
-	const caps: Filter[] = [];
-	filters.forEach((f, i) => {
-		if (!f.enabled) return;
-		live.push(i);
-		caps.push(toCapsFilter(f));
-	});
-	if (!caps.length) return out;
-	for (const v of validateList(profile, caps)) {
+	if (!filters.length) return out;
+	for (const v of validateList(profile, filters.map(toCapsFilter))) {
 		if (v.filter === undefined || v.code === 'too-many-bands') continue;
-		const flags = out[live[v.filter]];
+		const flags = out[v.filter];
 		if (v.field === 'type') flags.type = true;
 		else if (v.field === 'q') flags.q = true;
 		else if (v.field === 'gain') flags.gain = true;
@@ -243,7 +214,7 @@ export function newBand(filters: EqFilter[], profile: Profile): EqFilter {
 	const [freq] = spreadNominal(edges[widest], edges[widest + 1], 1);
 	const types = appTypesOf(slotOf(profile, slot).types);
 	const type = types.includes('PK') ? 'PK' : (types[0] ?? 'PK');
-	return projectFilter({ enabled: true, type, freq, q: 1, gain: 0 }, profile, slot);
+	return projectFilter({ type, freq, q: 1, gain: 0 }, profile, slot);
 }
 
 /** Whether two lists hold the same bands, in order. */
@@ -304,7 +275,6 @@ export function padToBandCount(filters: EqFilter[], profile: Profile): EqFilter[
 	}
 	const added: EqFilter[] = counts.flatMap((count, g) =>
 		spreadNominal(edges[g], edges[g + 1], count).map((freq) => ({
-			enabled: true,
 			type: 'PK' as const,
 			freq,
 			q: 1,
@@ -350,7 +320,7 @@ const GRAPHIC_FOLD_LOG_THRESHOLD = Math.log(2); // ±1 octave
 
 function foldOntoGraphicBands(filters: EqFilter[], profile: Profile): EqFilter[] {
 	const bands = graphicBandsOf(profile);
-	const sources = filters.filter((f) => f.enabled && usesGain(f.type));
+	const sources = filters.filter((f) => usesGain(f.type));
 	return bands.map((band, slot): EqFilter => {
 		let bestGain = 0;
 		let bestDelta = Infinity;
@@ -361,10 +331,6 @@ function foldOntoGraphicBands(filters: EqFilter[], profile: Profile): EqFilter[]
 				bestGain = f.gain;
 			}
 		}
-		return projectFilter(
-			{ enabled: true, type: 'PK', freq: band.freq, q: band.q, gain: bestGain },
-			profile,
-			slot
-		);
+		return projectFilter({ type: 'PK', freq: band.freq, q: band.q, gain: bestGain }, profile, slot);
 	});
 }

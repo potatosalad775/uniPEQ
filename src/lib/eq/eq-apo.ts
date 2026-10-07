@@ -109,6 +109,8 @@ export function parseApo(text: string): ApoImport {
 		if (!match) continue;
 
 		const [, onOff, rawType, rest] = match;
+		// An OFF band plays nothing, and the app has no switched-off bands (decision 22): leave it out.
+		if (onOff?.toUpperCase() === 'OFF') continue;
 		const name = rawType.toUpperCase();
 		const type = TYPE_FROM_APO[name];
 		const freq = parseFloat(rest.match(FC)?.[1] ?? '');
@@ -128,7 +130,7 @@ export function parseApo(text: string): ApoImport {
 			skipped++;
 			continue;
 		}
-		filters.push({ enabled: onOff?.toUpperCase() !== 'OFF', type, freq, q, gain });
+		filters.push({ type, freq, q, gain });
 	}
 
 	return { filters, preamp, skipped };
@@ -137,16 +139,14 @@ export function parseApo(text: string): ApoImport {
 const num = (value: number, places: number) => String(+value.toFixed(places));
 
 /**
- * Emit an Equalizer APO parametric config. A disabled band is written `OFF`, so the file describes
- * the EQ on screen and round-trips through `parseApo`. Types without gain are written without it.
+ * Emit an Equalizer APO parametric config, every band `ON`; it round-trips through `parseApo`.
+ * Types without gain are written without it.
  */
 export function formatApo(filters: EqFilter[], preamp: number): string {
 	let text = `Preamp: ${preamp.toFixed(1)} dB\n`;
 	filters.forEach((f, i) => {
 		const gain = GAINLESS.has(f.type) ? '' : ` Gain ${num(f.gain, 2)} dB`;
-		text +=
-			`Filter ${i + 1}: ${f.enabled ? 'ON' : 'OFF'} ${f.type} Fc ${num(f.freq, 2)} Hz` +
-			`${gain} Q ${num(f.q, 3)}\n`;
+		text += `Filter ${i + 1}: ON ${f.type} Fc ${num(f.freq, 2)} Hz` + `${gain} Q ${num(f.q, 3)}\n`;
 	});
 	return text;
 }

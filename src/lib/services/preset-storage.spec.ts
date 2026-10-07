@@ -32,7 +32,7 @@ const preset = (id: string, name: string): PeqPreset => ({
 	createdAt: '2026-10-06T00:00:00.000Z',
 	updatedAt: '2026-10-06T00:00:00.000Z',
 	pregain: 'auto',
-	filters: [{ type: 'LSC', freq: 105, q: 0.7, gain: 4, enabled: true }]
+	filters: [{ type: 'LSC', freq: 105, q: 0.7, gain: 4 }]
 });
 
 describe('LocalPresetStorage', () => {

@@ -1,7 +1,8 @@
 <!--
 	Saved presets: save the EQ, search, load one into it, rename and tag, duplicate, import and
 	export files, delete. With a device connected, each preset says how it fits the device (the
-	prototype's compatibility badge, now from eqcaps' `fit`).
+	prototype's compatibility badge, now from eqcaps' `fit`). Phase 4.5 (decision 22): a one-line
+	save, and touch-height rows.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -16,14 +17,12 @@
 	import { logger } from '$lib/services/logger';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
-	import { parseTags } from '$lib/eq/preset-file';
 	import { searchPresets } from '$lib/services/preset-storage';
 	import { presetStore } from '$lib/stores/preset-store.svelte';
 	import EditPresetDialog from './EditPresetDialog.svelte';
 	import { describePresetError, FIT_TONE_CLASS, fitBadge, withWarnings } from './preset-messages';
 
 	let name = $state('');
-	let tags = $state('');
 	let query = $state('');
 	let notice = $state<{ text: string; isError: boolean } | null>(null);
 	/** The preset whose Delete was picked and waits for the confirming press. */
@@ -68,9 +67,8 @@
 
 	const save = () =>
 		run('save', async () => {
-			const preset = await presetStore.saveCurrent(name.trim(), parseTags(tags));
+			const preset = await presetStore.saveCurrent(name.trim());
 			name = '';
-			tags = '';
 			return m.presets_saved({ name: preset.name });
 		});
 
@@ -128,13 +126,11 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<section
-		aria-labelledby="save-heading"
-		class="flex flex-col gap-3 rounded-xl bg-base-100 p-4 wide:flex-row wide:items-end"
-	>
+	<section aria-labelledby="save-heading" class="rounded-xl bg-base-100 p-4">
 		<h2 id="save-heading" class="sr-only">{m.presets_save_title()}</h2>
+		<!-- One line: name and Save. Tags are set in Edit, or in the EQ tab's save dialog. -->
 		<form
-			class="flex flex-1 flex-col gap-2 wide:flex-row wide:items-end"
+			class="flex items-end gap-2"
 			onsubmit={(e) => {
 				e.preventDefault();
 				void save();
@@ -144,12 +140,6 @@
 				bind:value={name}
 				label={m.presets_save_label()}
 				placeholder={m.presets_save_placeholder()}
-				class="flex-col"
-			/>
-			<Input
-				bind:value={tags}
-				label={m.presets_tags_label()}
-				placeholder={m.presets_tags_placeholder()}
 				class="flex-col"
 			/>
 			<Button
@@ -208,9 +198,9 @@
 			<ul class="flex flex-col divide-y divide-base-content/10" aria-label={m.presets_list_label()}>
 				{#each shown as entry (entry.id)}
 					{@const fit = fits[entry.id]}
-					<li class="flex flex-wrap items-center gap-2 py-2">
+					<li class="flex min-h-14 flex-wrap items-center gap-2 py-2 touch:min-h-16">
 						<div class="min-w-0 flex-1">
-							<p class="truncate text-sm font-medium">{entry.name}</p>
+							<p class="truncate text-sm font-medium touch:text-base">{entry.name}</p>
 							<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/60">
 								<span>{dateOf(entry.updatedAt)}</span>
 								{#each entry.tags as tag (tag)}

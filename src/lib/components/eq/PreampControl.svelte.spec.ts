@@ -10,7 +10,7 @@ import PreampControl from './PreampControl.svelte';
 describe('PreampControl', () => {
 	beforeEach(() => {
 		eqStore.reset();
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 6, enabled: true }], -6);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 6 }], -6);
 	});
 
 	afterEach(() => devicePeqStore.setDisconnected());
@@ -24,7 +24,8 @@ describe('PreampControl', () => {
 
 		await page.getByRole('switch', { name: 'Auto' }).click();
 		expect(eqStore.autoPreamp).toBe(true);
-		await expect.element(slider).toBeDisabled();
+		// Auto follows the bands: the slider steps aside until Auto is off again.
+		await expect.element(slider).not.toBeInTheDocument();
 	});
 
 	it('warns when the preamp leaves too little room for the boost', async () => {

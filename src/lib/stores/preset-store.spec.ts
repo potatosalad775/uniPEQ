@@ -29,8 +29,8 @@ const V1_PRESET = {
 	updatedAt: '2026-01-01T00:00:00.000Z',
 	pregain: 'auto',
 	filters: [
-		{ type: 'LSQ', freq: 105, gain: 6, q: 0.7, enabled: true },
-		{ type: 'BSF', freq: 3000, gain: -3, q: 2, enabled: true }
+		{ type: 'LSQ', freq: 105, gain: 6, q: 0.7 },
+		{ type: 'BSF', freq: 3000, gain: -3, q: 2 }
 	]
 };
 
@@ -45,7 +45,7 @@ describe('PresetStore', () => {
 	});
 
 	it('saves the EQ as it is, preamp mode included, and lists it', async () => {
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true }], 'auto');
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], 'auto');
 		const saved = await store.saveCurrent('Mine');
 		expect(saved.pregain).toBe('auto');
 		expect(store.index.map((e) => e.name)).toEqual(['Mine']);
@@ -54,12 +54,9 @@ describe('PresetStore', () => {
 
 	it('loads a prototype preset, migrated, into the EQ', async () => {
 		storage.setItem('unipeq.preset.proto', JSON.stringify(V1_PRESET));
-		const { disabled } = await store.apply('proto');
-		expect(disabled).toBe(1);
-		expect(eqStore.filters.map((f) => [f.type, f.enabled])).toEqual([
-			['LSC', true],
-			['PK', false]
-		]);
+		const { dropped } = await store.apply('proto');
+		expect(dropped).toBe(1);
+		expect(eqStore.filters.map((f) => f.type)).toEqual(['LSC']);
 		// `pregain: 'auto'` follows the bands: -6 dB for a +6 dB shelf.
 		expect(eqStore.autoPreamp).toBe(true);
 		expect(eqStore.preamp).toBe(-6);

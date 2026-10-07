@@ -2,21 +2,27 @@
 	Adapted from modernGraphTool src/lib/components/features/DevicePeq.svelte @ 23ddc4dd: connect
 	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
 	Phase 4 added the profile's status and experimental badges, and links to the profile in the
-	eqcaps inspector and to its wrong-constraint form.
+	eqcaps inspector and to its wrong-constraint form. Phase 4.5 (decision 22): list rows with the
+	switch trailing and hints as supporting text, Device EQ in a radio dialog, the connection facts
+	inline rather than in a popover, and the status line moved to the EQ tab's sync bar (with the
+	review dialog, now `devicePeqService.review`). On a phone this is the device sheet's body.
 -->
 <script lang="ts">
-	import { FlaskConical, Info, TriangleAlert, Usb } from '@lucide/svelte';
+	import { ChevronRight, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
 	import Button from '$lib/components/atoms/Button.svelte';
-	import InfoPopover from '$lib/components/atoms/InfoPopover.svelte';
+	import ListRow from '$lib/components/atoms/ListRow.svelte';
+	import RadioDialog from '$lib/components/atoms/RadioDialog.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
-	import { panelStatus } from '$lib/device-peq/panel-status';
-	import { needsConfirmation, type PushPlan } from '$lib/device-peq/push-plan';
 	import * as m from '$lib/paraglide/messages';
 	import { isNative } from '$lib/platform/native';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import PushDialog from './PushDialog.svelte';
+
+	let {
+		heading = true
+	}: { /** Show the "Device" heading (not in the sheet, which has its own). */ heading?: boolean } =
+		$props();
 
 	const INSPECTOR_URL = 'https://potatosalad775.github.io/eqcaps/connect';
 	const PROFILE_URL = 'https://potatosalad775.github.io/eqcaps/p/';
@@ -125,63 +131,56 @@
 	/** Auto-write needs a device that can be written without restarting after each save. */
 	const canAutoWrite = $derived(!!caps?.canWrite && !caps.disconnectOnSave);
 
-	/** The one line under Read and Write. */
-	const status = $derived(
-		panelStatus({
-			message: devicePeqStore.statusMessage,
-			messageIsError: devicePeqStore.statusIsError,
-			autoWriting: devicePeqService.autoWriting,
-			autoPaused: devicePeqStore.autoPaused,
-			autoClipRisk: devicePeqStore.autoClipRisk,
-			builtIn,
-			unreachable:
-				(!!caps?.canWrite && !builtIn && !writeTarget) || (!!caps?.canRead && !readTarget),
-			inSync: devicePeqStore.inSync
-		})
+	/** Device EQ's choices for the radio dialog: the listed presets, and off where it can be. */
+	const eqChoices = $derived(
+		eqOptions.flatMap((o) => (o.disabled ? [] : [{ value: o.value, label: o.label }]))
 	);
-
-	// ── Writing: straight away when the device holds the list exactly, else after a review ──
-
-	let showPushDialog = $state(false);
-	let pendingPlan = $state.raw<PushPlan | null>(null);
-
-	async function write() {
-		const plan = await devicePeqService.prepare();
-		if (!plan) return;
-		if (needsConfirmation(plan)) {
-			pendingPlan = plan;
-			showPushDialog = true;
-		} else {
-			void devicePeqService.write(plan);
-		}
-	}
-	const toneClass = {
-		muted: 'text-base-content/70',
-		success: 'text-success',
-		warning: 'text-warning',
-		error: 'text-error'
-	} as const;
+	const eqCurrentLabel = $derived(eqOptions.find((o) => o.value === eqValue)?.label ?? '');
+	let eqDialogOpen = $state(false);
 </script>
 
-<section aria-labelledby="device-heading" class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
-	<h2 id="device-heading" class="text-sm font-semibold">{m.device_peq_label()}</h2>
+{#snippet link(href: string, text: string)}
+	<a
+		{href}
+		target="_blank"
+		rel="noopener noreferrer"
+		class="text-primary underline-offset-4 hover:underline">{text}</a
+	>
+{/snippet}
+
+<section
+	aria-labelledby={heading ? 'device-heading' : undefined}
+	aria-label={heading ? undefined : m.device_peq_label()}
+	class="flex flex-col gap-3 {heading ? 'rounded-xl bg-base-100 p-4' : ''}"
+>
+	{#if heading}
+		<h2 id="device-heading" class="text-sm font-semibold">{m.device_peq_label()}</h2>
+	{/if}
 
 	{#if !connection}
 		{#if devicePeqService.choice}
-			<fieldset class="flex flex-col gap-2">
+			<fieldset class="flex flex-col gap-1">
 				<legend class="mb-1 text-sm text-base-content/70">
 					{isNative ? m.device_peq_choose_device_prompt() : m.device_peq_choose_prompt()}
 				</legend>
 				{#each devicePeqService.choice.candidates as candidate (candidate.id)}
-					<label class="flex items-center gap-2 text-sm">
-						<input type="radio" name="device-choice" value={candidate.id} bind:group={chosenId} />
+					<label
+						class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-1 text-sm touch:min-h-12 touch:text-base"
+					>
+						<input
+							type="radio"
+							name="device-choice"
+							value={candidate.id}
+							bind:group={chosenId}
+							class="size-4 accent-primary touch:size-5"
+						/>
 						{candidate.label}
 					</label>
 				{/each}
-				<div class="flex gap-2">
+				<div class="mt-1 flex gap-2">
 					<Button
 						title={m.device_peq_choose_confirm()}
-						size="sm"
+						class="flex-1"
 						disabled={!chosenId || devicePeqStore.isConnecting}
 						onclick={() => devicePeqService.choose(chosenId)}
 					>
@@ -189,8 +188,8 @@
 					</Button>
 					<Button
 						title={m.device_peq_choose_cancel()}
-						size="sm"
 						variant="ghost"
+						class="flex-1"
 						onclick={() => devicePeqService.cancelChoice()}
 					>
 						{m.device_peq_choose_cancel()}
@@ -201,7 +200,7 @@
 			{#if !canConnect}
 				<p class="text-sm text-base-content/70">{m.device_peq_no_webhid()}</p>
 			{/if}
-			<div class="flex flex-wrap gap-2">
+			<div class="flex flex-col gap-2">
 				{#if canConnect}
 					<Button
 						title={m.device_peq_connect_usb()}
@@ -231,14 +230,7 @@
 		{#if devicePeqService.notFound === 'unsupported'}
 			<p class="text-sm text-base-content/70">
 				{m.device_peq_unsupported()}
-				<a
-					href={INSPECTOR_URL}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="text-primary underline-offset-4 hover:underline"
-				>
-					{m.device_peq_help_add()}
-				</a>
+				{@render link(INSPECTOR_URL, m.device_peq_help_add())}
 			</p>
 		{:else if devicePeqService.notFound === 'no-device'}
 			<p class="text-sm text-base-content/70">{m.device_peq_no_device()}</p>
@@ -255,9 +247,9 @@
 	{:else}
 		<div class="flex items-start justify-between gap-2">
 			<div class="min-w-0">
-				<p class="truncate text-sm font-medium">{connection.name}</p>
-				<p class="text-xs text-base-content/60">{limitsSummary}</p>
-				<p class="mt-1 flex flex-wrap gap-1">
+				<p class="truncate font-medium">{connection.name}</p>
+				<p class="text-xs text-base-content/60 touch:text-sm">{limitsSummary}</p>
+				<p class="mt-1.5 flex flex-wrap gap-1">
 					{#if statusBadge}
 						<span
 							class="rounded-full px-2 py-0.5 text-[11px] font-medium {badgeClass[
@@ -277,93 +269,63 @@
 					{/if}
 				</p>
 			</div>
-			<div class="flex shrink-0 items-center gap-1">
-				{#if hasNotices}
-					<InfoPopover label={m.device_peq_facts()} size="sm" align="end">
-						{#snippet icon()}
-							{#if noticesWarn}
-								<TriangleAlert class="size-4 text-warning" />
-							{:else}
-								<Info class="size-4" />
-							{/if}
-						{/snippet}
-						{#if connection.profileSource === 'guess'}
-							<p>
-								{m.device_peq_guess_notice()}
-								<a
-									href={INSPECTOR_URL}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="text-primary underline-offset-4 hover:underline"
-								>
-									{m.device_peq_help_add()}
-								</a>
-							</p>
-						{:else if connection.profileSource === 'group'}
-							<p>{m.device_peq_group_notice()}</p>
-						{/if}
-						{#if isDraft}
-							<p>
-								{m.device_peq_draft_notice()}
-								{#if reportUrl}
-									<a
-										href={reportUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="text-primary underline-offset-4 hover:underline"
-									>
-										{m.device_peq_report_limits()}
-									</a>
-								{/if}
-							</p>
-						{/if}
-						{#if isExperimental}
-							<p>{m.device_peq_experimental()}</p>
-						{/if}
-						{#if isWriteOnly}
-							<p>{m.device_peq_write_only()}</p>
-						{/if}
-						{#if profileUrl}
-							<p class="flex flex-wrap gap-x-3">
-								<a
-									href={profileUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="text-primary underline-offset-4 hover:underline"
-								>
-									{m.device_peq_view_profile()}
-								</a>
-								{#if reportUrl && !isDraft}
-									<a
-										href={reportUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="text-primary underline-offset-4 hover:underline"
-									>
-										{m.device_peq_report_limits()}
-									</a>
-								{/if}
-							</p>
-						{/if}
-					</InfoPopover>
-				{/if}
-				<Button
-					title={m.device_peq_disconnect()}
-					size="sm"
-					variant="ghost"
-					onclick={() => devicePeqService.disconnect()}
-				>
-					{m.device_peq_disconnect()}
-				</Button>
-			</div>
+			<Button
+				title={m.device_peq_disconnect()}
+				size="sm"
+				variant="ghost"
+				class="shrink-0"
+				onclick={() => devicePeqService.disconnect()}
+			>
+				{m.device_peq_disconnect()}
+			</Button>
 		</div>
+
+		<!-- What's worth knowing about the profile, as text rather than behind a popover. -->
+		{#if hasNotices}
+			<div
+				class="flex flex-col gap-1.5 rounded-lg px-3 py-2 text-xs touch:text-sm {noticesWarn
+					? 'bg-warning/10'
+					: 'bg-base-200'}"
+				aria-label={m.device_peq_facts()}
+				role="group"
+			>
+				{#if noticesWarn}
+					<TriangleAlert class="size-4 text-warning" aria-hidden="true" />
+				{/if}
+				{#if connection.profileSource === 'guess'}
+					<p>
+						{m.device_peq_guess_notice()}
+						{@render link(INSPECTOR_URL, m.device_peq_help_add())}
+					</p>
+				{:else if connection.profileSource === 'group'}
+					<p>{m.device_peq_group_notice()}</p>
+				{/if}
+				{#if isDraft}
+					<p>
+						{m.device_peq_draft_notice()}
+						{#if reportUrl}{@render link(reportUrl, m.device_peq_report_limits())}{/if}
+					</p>
+				{/if}
+				{#if isExperimental}
+					<p>{m.device_peq_experimental()}</p>
+				{/if}
+				{#if isWriteOnly}
+					<p>{m.device_peq_write_only()}</p>
+				{/if}
+				{#if profileUrl}
+					<p class="flex flex-wrap gap-x-3">
+						{@render link(profileUrl, m.device_peq_view_profile())}
+						{#if reportUrl && !isDraft}{@render link(reportUrl, m.device_peq_report_limits())}{/if}
+					</p>
+				{/if}
+			</div>
+		{/if}
 
 		{#if devicePeqStore.needsReconnect}
 			<div class="flex items-center justify-between gap-2">
 				<p class="text-sm text-base-content/70">{m.device_peq_reconnect_prompt()}</p>
 				<Button
 					title={m.device_peq_reconnect()}
-					size="sm"
 					disabled={devicePeqStore.isConnecting}
 					onclick={() => devicePeqService.reconnect()}
 				>
@@ -371,48 +333,57 @@
 				</Button>
 			</div>
 		{:else}
-			{#if hasPresets}
-				<div class="flex items-center gap-1">
-					<label class="flex min-w-0 flex-1 items-center gap-2 text-sm text-base-content/70">
-						<span class="shrink-0">{eqLabel}</span>
-						<select
-							value={eqValue}
-							disabled={devicePeqStore.isBusy}
-							onchange={(e) => {
-								const select = e.currentTarget;
-								// A failed switch leaves the device as it was: show that again.
-								void devicePeqService.switchTo(select.value).then(() => (select.value = eqValue));
-							}}
-							class="min-w-0 flex-1 rounded-md border border-base-content/20 bg-base-200 px-2 py-1.5 text-sm text-base-content disabled:opacity-60"
-						>
-							{#each eqOptions as option (option.value)}
-								<option value={option.value} disabled={option.disabled}>{option.label}</option>
-							{/each}
-						</select>
-					</label>
-					<InfoPopover label={m.info_popover_about({ topic: eqLabel })}>
-						<p>{caps?.canEnable ? m.device_peq_eq_hint() : m.device_peq_preset_hint()}</p>
-					</InfoPopover>
-				</div>
-			{:else if hasOnOff}
-				<Switch
-					size="sm"
-					bind:checked={
-						() => devicePeqStore.eqEnabled !== false,
-						(on) => void devicePeqService.switchTo(on ? 'on' : 'off')
-					}
-					disabled={devicePeqStore.isBusy}
-					labelText={m.device_peq_eq_label()}
-					labelClass="text-sm text-base-content/70"
-				/>
-			{/if}
+			<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
+				{#if hasPresets}
+					<ListRow
+						label={eqLabel}
+						description={caps?.canEnable ? m.device_peq_eq_hint() : m.device_peq_preset_hint()}
+						disabled={devicePeqStore.isBusy}
+						onclick={() => (eqDialogOpen = true)}
+					>
+						{#snippet trailing()}
+							<span class="max-w-32 truncate">{eqCurrentLabel}</span>
+							<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+						{/snippet}
+					</ListRow>
+				{:else if hasOnOff}
+					<ListRow label={m.device_peq_eq_label()} for="device-eq-on">
+						{#snippet trailing()}
+							<Switch
+								id="device-eq-on"
+								bind:checked={
+									() => devicePeqStore.eqEnabled !== false,
+									(on) => void devicePeqService.switchTo(on ? 'on' : 'off')
+								}
+								disabled={devicePeqStore.isBusy}
+							/>
+						{/snippet}
+					</ListRow>
+				{/if}
+				{#if canAutoWrite}
+					<ListRow
+						label={m.device_peq_auto_write()}
+						description={m.settings_auto_write_hint()}
+						for="device-auto-write"
+					>
+						{#snippet trailing()}
+							<Switch
+								id="device-auto-write"
+								bind:checked={
+									() => devicePeqService.autoWriteOn, (on) => devicePeqService.setAutoWrite(on)
+								}
+							/>
+						{/snippet}
+					</ListRow>
+				{/if}
+			</div>
 
-			<div class="flex flex-wrap items-center gap-2">
+			<div class="flex gap-2">
 				{#if caps?.canRead}
 					<Button
 						title={readTarget ? m.device_peq_read_title() : m.device_peq_unreachable()}
-						size="sm"
 						variant="outline"
+						class="flex-1"
 						disabled={!readTarget || devicePeqStore.isBusy}
 						onclick={() => devicePeqService.read()}
 					>
@@ -426,56 +397,22 @@
 							: builtIn
 								? m.device_peq_builtin()
 								: m.device_peq_unreachable()}
-						size="sm"
+						class="flex-1"
 						disabled={!writeTarget || devicePeqStore.isBusy}
-						onclick={write}
+						onclick={() => devicePeqService.requestWrite()}
 					>
 						{devicePeqStore.isWriting ? m.device_peq_writing() : m.device_peq_write()}
 					</Button>
 				{/if}
 			</div>
-
-			{#if canAutoWrite}
-				<div class="flex items-center gap-1">
-					<Switch
-						size="sm"
-						bind:checked={
-							() => devicePeqService.autoWriteOn, (on) => devicePeqService.setAutoWrite(on)
-						}
-						labelText={m.device_peq_auto_write()}
-						labelClass="text-sm text-base-content/70"
-					/>
-					<InfoPopover label={m.info_popover_about({ topic: m.device_peq_auto_write() })}>
-						<p>{m.device_peq_auto_write_hint()}</p>
-					</InfoPopover>
-				</div>
-			{/if}
 		{/if}
-
-		<!-- Always rendered: a live region has to exist before its text changes -->
-		<div class="flex items-center gap-2">
-			<p class="min-w-0 flex-1 text-sm {status ? toneClass[status.tone] : ''}" role="status">
-				{status?.text ?? ''}
-			</p>
-			{#if status?.action === 'review'}
-				<Button
-					title={m.device_peq_auto_review()}
-					size="sm"
-					variant="outline"
-					class="shrink-0"
-					disabled={devicePeqStore.isBusy}
-					onclick={write}
-				>
-					{m.device_peq_auto_review()}
-				</Button>
-			{/if}
-		</div>
 	{/if}
 </section>
 
-<PushDialog
-	bind:open={showPushDialog}
-	plan={pendingPlan}
-	deviceName={connection?.name ?? ''}
-	onConfirm={() => pendingPlan && devicePeqService.write(pendingPlan)}
+<RadioDialog
+	bind:open={eqDialogOpen}
+	title={eqLabel}
+	value={eqValue}
+	options={eqChoices}
+	onValueChange={(next) => void devicePeqService.switchTo(next)}
 />

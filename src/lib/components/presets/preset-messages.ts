@@ -3,9 +3,9 @@ import { PresetError } from '$lib/eq/preset-file';
 import * as m from '$lib/paraglide/messages';
 
 /** Each warning a load or import came with, after its own message. */
-export function withWarnings(text: string, w: { disabled: number; skipped?: number }): string {
+export function withWarnings(text: string, w: { dropped: number; skipped?: number }): string {
 	const parts = [text];
-	if (w.disabled > 0) parts.push(m.presets_disabled_bands({ count: w.disabled }));
+	if (w.dropped > 0) parts.push(m.presets_dropped_bands({ count: w.dropped }));
 	if (w.skipped) parts.push(m.presets_skipped_lines({ count: w.skipped }));
 	return parts.join(' ');
 }

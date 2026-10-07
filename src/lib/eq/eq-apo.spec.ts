@@ -15,9 +15,9 @@ describe('parseApo', () => {
 			preamp: -6.3,
 			skipped: 0,
 			filters: [
-				{ enabled: true, type: 'LSC', freq: 105, gain: 2.6, q: 0.7 },
-				{ enabled: true, type: 'PK', freq: 2510, gain: -3.2, q: 1.41 },
-				{ enabled: true, type: 'HSC', freq: 10000, gain: -1.5, q: 0.7 }
+				{ type: 'LSC', freq: 105, gain: 2.6, q: 0.7 },
+				{ type: 'PK', freq: 2510, gain: -3.2, q: 1.41 },
+				{ type: 'HSC', freq: 10000, gain: -1.5, q: 0.7 }
 			]
 		});
 	});
@@ -27,9 +27,14 @@ describe('parseApo', () => {
 		expect(parseApo('Filter 1: ON PK Fc 100 Hz Gain 1 dB Q 1').preamp).toBeNull();
 	});
 
-	it('honours OFF as a disabled band', () => {
-		const { filters } = parseApo('Filter 1: OFF PK Fc 1000 Hz Gain 3 dB Q 1');
-		expect(filters[0].enabled).toBe(false);
+	it('leaves out an OFF band without counting it as skipped', () => {
+		const text =
+			'Filter 1: OFF PK Fc 1000 Hz Gain 3 dB Q 1\nFilter 2: ON PK Fc 2000 Hz Gain 1 dB Q 1';
+		expect(parseApo(text)).toEqual({
+			filters: [{ type: 'PK', freq: 2000, gain: 1, q: 1 }],
+			preamp: null,
+			skipped: 0
+		});
 	});
 
 	it('accepts a decimal centre frequency and a filter line without a number', () => {
@@ -48,9 +53,9 @@ describe('parseApo', () => {
 			'Filter 1: ON NO Fc 50 Hz Q 30\nFilter 2: ON HP Fc 20 Hz\nFilter 3: ON LS Fc 100 Hz Gain 3 dB'
 		);
 		expect(filters).toEqual([
-			{ enabled: true, type: 'NO', freq: 50, q: 30, gain: 0 },
-			{ enabled: true, type: 'HPQ', freq: 20, q: 0.707, gain: 0 },
-			{ enabled: true, type: 'LSC', freq: 100, q: 0.707, gain: 3 }
+			{ type: 'NO', freq: 50, q: 30, gain: 0 },
+			{ type: 'HPQ', freq: 20, q: 0.707, gain: 0 },
+			{ type: 'LSC', freq: 100, q: 0.707, gain: 3 }
 		]);
 	});
 
@@ -106,15 +111,15 @@ describe('parseApo', () => {
 describe('formatApo', () => {
 	it('writes the preamp, then one numbered line per band', () => {
 		const filters: EqFilter[] = [
-			{ enabled: true, type: 'LSC', freq: 105, gain: 2.6, q: 0.7 },
-			{ enabled: false, type: 'PK', freq: 2510.5, gain: -3.25, q: 1.414 },
-			{ enabled: true, type: 'HPQ', freq: 20, gain: 0, q: 0.707 }
+			{ type: 'LSC', freq: 105, gain: 2.6, q: 0.7 },
+			{ type: 'PK', freq: 2510.5, gain: -3.25, q: 1.414 },
+			{ type: 'HPQ', freq: 20, gain: 0, q: 0.707 }
 		];
 		expect(formatApo(filters, -6.3)).toBe(
 			[
 				'Preamp: -6.3 dB',
 				'Filter 1: ON LSC Fc 105 Hz Gain 2.6 dB Q 0.7',
-				'Filter 2: OFF PK Fc 2510.5 Hz Gain -3.25 dB Q 1.414',
+				'Filter 2: ON PK Fc 2510.5 Hz Gain -3.25 dB Q 1.414',
 				'Filter 3: ON HPQ Fc 20 Hz Q 0.707',
 				''
 			].join('\n')
@@ -124,7 +129,6 @@ describe('formatApo', () => {
 	it('round-trips every type through parseApo', () => {
 		const filters: EqFilter[] = (['PK', 'LSC', 'HSC', 'LPQ', 'HPQ', 'BP', 'NO', 'AP'] as const).map(
 			(type, i) => ({
-				enabled: i % 2 === 0,
 				type,
 				freq: 100 * (i + 1),
 				q: [0.5, 0.7, 1, 1.41, 2, 3, 4.5, 10][i],

@@ -1,4 +1,7 @@
-<!-- Copied from modernGraphTool src/lib/components/atoms/SegmentedControl.svelte @ 23ddc4dd. -->
+<!--
+	Copied from modernGraphTool src/lib/components/atoms/SegmentedControl.svelte @ 23ddc4dd. uniPEQ:
+	40 px items under `touch:` (decision 22).
+-->
 <script lang="ts" generics="T extends string">
 	import { ToggleGroup } from 'bits-ui';
 
@@ -50,7 +53,7 @@
 		<ToggleGroup.Item
 			value={option.value}
 			title={option.title}
-			class="relative flex-1 border-base-content/20 bg-base-100 px-2 py-1 text-xs font-medium text-base-content/70 transition-colors not-first:border-l first:rounded-l-md last:rounded-r-md hover:bg-base-content/5 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-content"
+			class="relative flex-1 border-base-content/20 bg-base-100 px-2 py-1 text-xs font-medium text-base-content/70 transition-colors not-first:border-l first:rounded-l-md last:rounded-r-md hover:bg-base-content/5 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-content touch:min-h-10 touch:text-sm"
 		>
 			{option.label}
 		</ToggleGroup.Item>

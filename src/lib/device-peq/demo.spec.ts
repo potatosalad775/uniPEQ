@@ -70,7 +70,7 @@ describe('demo device', () => {
 		const read = toApp((await device.pull({})).filters.filter((f) => f !== null));
 		const edited: EqFilter[] = [
 			{ ...read[0], gain: 6 },
-			{ enabled: true, type: 'PK', freq: 3150, q: 0.707, gain: -13 },
+			{ type: 'PK', freq: 3150, q: 0.707, gain: -13 },
 			...read.slice(2, 5)
 		];
 		const hints = await readLayout(device, {});
@@ -101,7 +101,7 @@ describe('demo device', () => {
 		const { device } = await connect();
 		const before = await device.pull({});
 		const plan = planPush(
-			[{ enabled: true, type: 'PK', freq: 1000, q: 1, gain: 3 }],
+			[{ type: 'PK', freq: 1000, q: 1, gain: 3 }],
 			-3,
 			DEMO_PROFILE,
 			device.capabilities

@@ -4,9 +4,14 @@
 	src/lib/components/equalizer/EqFilterCard.svelte @ 23ddc4dd: a locked domain shows a read-only
 	value, a value list slides along its values, Escape reverts what arrow keys already committed,
 	and the hint says what the device takes. Arrow keys step musically (`nudge`), as on the graph.
+	Phase 4.5 (decision 22): − and + steppers either side of the number (the same musical steps, so
+	repeated taps are one undo step), a touch-sized slider, and the allowed-range hint only while
+	the number is being typed or the value is one the device won't take.
 -->
 <script lang="ts">
+	import { Minus, Plus } from '@lucide/svelte';
 	import { domainBounds, type Domain } from '@potatosalad775/eqcaps-core';
+	import Slider from '$lib/components/atoms/Slider.svelte';
 	import { domainHint } from '$lib/eq/eq-domain-hint';
 	import { linearToLog, logToLinear } from '$lib/eq/log-scale';
 	import { nudge, roundField, type BandField } from '$lib/eq/nudge';
@@ -63,6 +68,13 @@
 	}
 
 	let focusValue: number | null = null;
+	let editing = $state(false);
+
+	function step(dir: 1 | -1) {
+		onChange(nudge(domain, field, value, dir), `key-${field}`);
+	}
+	const atMin = $derived(value <= bounds.min);
+	const atMax = $derived(value >= bounds.max);
 
 	function commit(input: HTMLInputElement) {
 		const parsed = parseFloat(input.value);
@@ -88,54 +100,85 @@
 	}
 </script>
 
-<div class="flex flex-col gap-1">
+<div class="flex flex-col">
 	<div class="flex items-center justify-between gap-2">
-		<label for="{id}-num" class="text-xs text-base-content/70">{label}</label>
+		<label for="{id}-num" class="text-sm text-base-content/70">{label}</label>
 		{#if locked}
 			<span
 				id="{id}-num"
-				class="rounded bg-base-300 px-1.5 py-0.5 text-xs text-base-content/80 tabular-nums"
+				class="rounded bg-base-300 px-2 py-1 text-sm text-base-content/80 tabular-nums"
 				title={m.eq_field_locked()}
 			>
 				{value}{unit ? ` ${unit}` : ''}
 			</span>
 		{:else}
-			<span class="inline-flex items-baseline gap-1">
-				<input
-					id="{id}-num"
-					type="number"
-					inputmode="decimal"
-					value={String(value)}
-					min={bounds.min}
-					max={bounds.max}
-					step="any"
-					aria-invalid={violation}
-					aria-describedby="{id}-hint"
-					onfocus={() => (focusValue = value)}
-					onblur={() => (focusValue = null)}
-					onchange={(e) => commit(e.currentTarget)}
-					{onkeydown}
-					class="w-20 [appearance:textfield] rounded bg-transparent px-1.5 py-1 text-right text-sm tabular-nums ring-1 outline-none focus:bg-base-200 focus:ring-accent/60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-						{violation ? 'ring-error' : 'ring-base-content/25'}"
-				/>
-				{#if unit}<span class="text-xs text-base-content/60">{unit}</span>{/if}
+			<span class="inline-flex items-center gap-1">
+				<button
+					type="button"
+					tabindex="-1"
+					aria-label={m.eq_field_step_down({ field: label })}
+					disabled={atMin}
+					class="flex size-8 items-center justify-center rounded-full text-base-content/70 hover:bg-base-content/10 active:bg-base-content/15 disabled:opacity-40 touch:size-10"
+					onclick={() => step(-1)}
+				>
+					<Minus class="size-4" aria-hidden="true" />
+				</button>
+				<span class="inline-flex items-baseline gap-1">
+					<input
+						id="{id}-num"
+						type="number"
+						inputmode="decimal"
+						value={String(value)}
+						min={bounds.min}
+						max={bounds.max}
+						step="any"
+						aria-invalid={violation}
+						aria-describedby="{id}-hint"
+						onfocus={() => {
+							focusValue = value;
+							editing = true;
+						}}
+						onblur={() => {
+							focusValue = null;
+							editing = false;
+						}}
+						onchange={(e) => commit(e.currentTarget)}
+						{onkeydown}
+						class="w-20 [appearance:textfield] rounded-md bg-transparent px-1.5 py-1 text-right text-sm tabular-nums ring-1 outline-none focus:bg-base-200 focus:ring-accent/60 touch:h-9 touch:text-base [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+							{violation ? 'ring-error' : 'ring-base-content/25'}"
+					/>
+					<span class="w-5 text-xs text-base-content/60">{unit}</span>
+				</span>
+				<button
+					type="button"
+					tabindex="-1"
+					aria-label={m.eq_field_step_up({ field: label })}
+					disabled={atMax}
+					class="flex size-8 items-center justify-center rounded-full text-base-content/70 hover:bg-base-content/10 active:bg-base-content/15 disabled:opacity-40 touch:size-10"
+					onclick={() => step(1)}
+				>
+					<Plus class="size-4" aria-hidden="true" />
+				</button>
 			</span>
 		{/if}
 	</div>
 	{#if !locked}
-		<input
-			type="range"
-			min="0"
+		<Slider
+			min={0}
 			max={sliderMax}
-			step="1"
+			step={1}
 			value={sliderValue}
 			aria-label={label}
 			aria-valuetext="{value}{unit ? ` ${unit}` : ''}"
 			oninput={(e) => onChange(fromSlider(Number(e.currentTarget.value)), `slider-${field}`)}
-			class="h-6 w-full cursor-pointer accent-primary"
 		/>
 	{/if}
-	<p id="{id}-hint" class="text-[11px] {violation ? 'text-error' : 'text-base-content/50'}">
+	<p
+		id="{id}-hint"
+		class="text-xs {violation ? 'text-error' : 'text-base-content/50'} {violation || editing
+			? ''
+			: 'sr-only'}"
+	>
 		{violation ? m.eq_field_violation({ allowed: hint }) : m.eq_field_allowed({ allowed: hint })}
 	</p>
 </div>

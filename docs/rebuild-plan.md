@@ -9,8 +9,9 @@ Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay
 Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 2026-10-06** (web and
 Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked devices; the hardware
 check is open, see Phase 3). **Phase 4 code done 2026-10-07** (demo device, web at desktop and phone
-widths; the real-phone and hardware checks are open, see Phase 4). Tick tasks as they land; record
-deviations in the Decisions section.
+widths; the user found every feature working on a real Samsung phone, see Phase 4). **Phase 4.5
+(mobile UX pass) started 2026-10-07**, decision 22. Tick tasks as they land; record deviations in
+the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -64,7 +65,8 @@ rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
 5. **Preset format.** Adopt eqcaps filter type codes (`PK LSC HSC LPQ HPQ BP NO AP`) in the app
    model; `PeqPreset.schemaVersion` 2, with v1 presets migrated on load (`LSQ→LSC`, `HSQ→HSC`,
    `LPF→LPQ`, `HPF→HPQ`, `BPF→BP`, `NOTCH→NO`, `APF→AP`; `BSF` and `CQ` have no v1 equivalent and
-   become disabled bands with a warning). `enabled` stays app-only. Code copied from
+   become disabled bands with a warning). `enabled` stays app-only. *(Superseded by decision 22:
+   no `enabled` at all; `BSF` / `CQ` bands are dropped with the warning.)* Code copied from
    modernGraphTool (whose model is `PK LSQ HSQ` + `channel`) is adapted to this model, not the other
    way round.
 6. **Network devices and extras.** Dropped for now. *(modernGraphTool's `device-peq/network.ts`
@@ -246,6 +248,39 @@ New:
     - New atom `ModalDialog` (bits-ui Dialog + Android back); `PushDialog` uses it. `Input` now
       types the input attributes it already spread. `BandTable` is gone.
 
+22. **Mobile UX pass (Phase 4.5, 2026-10-07).** After a first run on a real phone (Samsung), the
+    UI worked but felt like a desktop page: the atoms are modernGraphTool's mouse-sized ones
+    (`sm` buttons ≈ 28 px, `icon-xs` ≈ 20 px), switches sit left of their labels, help hides in
+    `?` popovers, and the EQ tab is one long stack whose write status sits at the top while edits
+    happen at the bottom.
+    - **Touch sizing by pointer, not width.** A `touch:` variant (`@media (pointer: coarse)`) makes
+      the atoms touch-sized (48 px targets); a mouse keeps the compact sizes at any width. `wide:`
+      stays the only layout breakpoint. Material conventions on phones: switches trailing their
+      label, whole rows tappable, settings as list rows, choices in radio dialogs, help as
+      supporting text rather than popovers.
+    - **EQ tab on a phone: fixed top and bottom, only the bands scroll.** An app bar (device chip,
+      undo/redo, an overflow menu with Load preset / Save preset / Fit), the graph pinned under it
+      (~30 dvh), then the preamp row and the band rows in the one scrolling area, and a sync bar
+      above the tab bar. The device card becomes a device sheet opened from the chip. The toolbar
+      and the "scroll the graph to the top" effect go. Load and Save stay reachable from the EQ
+      tab, in the overflow menu.
+    - **Sync bar** (replaces the device panel's status line, keeps `panelStatus`'s ranking). Manual
+      mode: what isn't on the device and a Write button. Auto-write: waiting (counts the delay
+      down), writing, written (then "synced"), paused with Review. The chip's dot repeats the state.
+      No toast per write; a failure gets a toast and an error haptic, a write a light haptic tick
+      (`@capacitor/haptics`, native only).
+    - **No per-band on/off.** No eqcaps protocol has a per-band enable (`setEnabled` is the whole
+      EQ); the app faked it by writing 0 dB, so an "off" band still took a device slot and a
+      gainless one turned into a 0 dB peak. Hardware EQ apps don't offer it; EqualizerAPO-style
+      software EQs do because their engine can skip a band. `enabled` leaves the model: APO
+      `OFF` lines and v1 `BSF` / `CQ` bands are dropped on import (with the existing warning for the
+      latter), stored presets drop their disabled bands on load, APO export writes every band `ON`.
+      A/B listening uses the device's EQ on/off. Supersedes the `enabled` parts of decisions 5
+      and 20.
+    - **Frequencies in full.** Band values show every digit (`1234 Hz`, `20000 Hz`, `84.5 Hz`),
+      never rounded to kHz, with no thousands separator so they match the number box. Graph axis
+      ticks keep `1k` / `10k`.
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -367,6 +402,48 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
   two new plugins. Open, for the user: on a real phone, graph drags at 60 fps (Risks), pinch for
   Q, the bottom sheet, Android back closing it and the dialogs, export through the share sheet,
   and importing a file; on hardware, Fit then Write on a real device (web and Android).*
+  *2026-10-07: the user ran it on a Samsung phone with hardware; every feature worked. The
+  feedback became Phase 4.5.*
+
+### Phase 4.5: Mobile UX pass · 2–3 days
+
+Decision 22. Order: atoms first, then the screens that use them.
+
+- [x] **Model:** drop per-band `enabled` (model, store, push, preamp, graph, preset file, APO
+      import/export, the row and editor switches). *`toWrittenFilter` is gone (`planPush` sends
+      `toCapsFilter`); `ParsedPreset.disabled` became `dropped`.*
+- [x] **Frequencies in full** in the band rows, the editor and the graph's node labels.
+- [x] **Atoms:** `touch:` variant; a size scale that is touch-sized under it (Button, Switch,
+      SegmentedControl, icon buttons); `ListRow` (label, supporting text, trailing control, whole
+      row tappable); a generic `Sheet` (from `BandSheet`); `Slider` (bits-ui, large thumb and touch
+      area) for the native ranges; `RadioDialog` for one-of-N settings. *`Slider` is a restyled
+      native range (`.range` in layout.css), not bits-ui: it keeps the slider role, keyboard steps
+      and the specs that drive it. Also `ListSection`, `ChipGroup`, and `Input` at 48 px on touch.*
+- [x] **Settings** as list rows: Theme and Language as rows that open a radio dialog, switches
+      trailing, the auto-write delay as a slider row, help as supporting text.
+- [x] **EQ tab:** app bar with the device chip, undo/redo and an overflow menu (Load, Save, Fit);
+      device sheet holding the device panel; graph pinned; preamp as one row; band rows; sync bar.
+      Wide keeps its two columns, with the sync bar at the bottom of the content. *`EqToolbar` is
+      gone (`EqAppBar`). The device panel's Device EQ is a row and a radio dialog, its facts are
+      inline text, and its status line is the sync bar. The review dialog is
+      `devicePeqService.review` (`requestWrite` / `confirmReview`), shown by `ReviewDialog`, so the
+      sync bar's Write and the panel's share it. The preamp slider hides under Auto.*
+- [x] **Sync bar states** for manual and auto-write, the chip's dot, haptics on native.
+      *`device-peq/sync-status.ts` ranks them over `panelStatus`; `devicePeqStore.autoDueAt`
+      drives the countdown ring. Before the first read or write the bar offers Read (and Write in
+      manual mode). An edit that leaves the list as the device has it (a read, an undo) schedules
+      nothing. A failed auto-write also shows a toast, which sits above the sync bar.*
+- [x] **Band editor:** type as chips, each value a stepper (− value +) over a slider, the
+      allowed-range hint only when it's violated, sized to its content. *The hint also shows while
+      the number is being typed. The sheet's title names the band and its type.*
+- [x] **Presets tab:** the same row and touch treatment. *Save is one line (name + Save); tags
+      are set in Edit or in the EQ tab's save dialog.*
+- **Exit:** on a real phone, no control under 48 px, editing a band never needs a scroll to see
+  whether the device has it, and the build, check, lint and tests are green.
+  *Code done 2026-10-07: 248 tests, build green. Checked in Chromium with Playwright's Pixel 7
+  emulation (coarse pointer) and at 1280 px with a mouse, demo device. Open, for the user: the
+  whole pass on a real phone (sheets, Android back on the sheets and the menu, haptics, the
+  countdown ring), and with hardware.*
 
 ### Phase 5: Serial and Bluetooth in the browser · 1 day
 

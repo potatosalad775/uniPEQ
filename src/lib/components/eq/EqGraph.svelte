@@ -66,7 +66,7 @@
 	const selectedArea = $derived.by(() => {
 		const f = selected === null ? undefined : filters[selected];
 		if (!f) return '';
-		const own = combinedResponseDb([{ ...f, enabled: true }], FREQS);
+		const own = combinedResponseDb([f], FREQS);
 		const line = pathOf(
 			xs,
 			own.map((r) => yOf(r, plot))
@@ -78,7 +78,6 @@
 		const parts = [m.eq_band_number({ band: i + 1 }), f.type, formatHz(f.freq)];
 		if (usesGain(f.type)) parts.push(formatDb(f.gain));
 		parts.push(`Q ${formatQ(f.q)}`);
-		if (!f.enabled) parts.push(m.bands_off());
 		return parts.join(', ');
 	}
 
@@ -389,25 +388,17 @@
 						cy={y}
 						r={isSelected ? 11 : 9}
 						stroke-width={flagged ? 2.5 : 1.5}
-						class="{f.enabled
-							? isSelected
-								? 'fill-primary'
-								: 'fill-base-content/70'
-							: 'fill-base-100'} {flagged
+						class="{isSelected ? 'fill-primary' : 'fill-base-content/70'} {flagged
 							? 'stroke-error'
-							: f.enabled
-								? 'stroke-base-100'
-								: 'stroke-base-content/50'}"
+							: 'stroke-base-100'}"
 					/>
 					<text
 						{x}
 						y={y + 3.5}
 						text-anchor="middle"
-						class="pointer-events-none text-[10px] font-semibold {f.enabled
-							? isSelected
-								? 'fill-primary-content'
-								: 'fill-base-100'
-							: 'fill-base-content/60'}">{i + 1}</text
+						class="pointer-events-none text-[10px] font-semibold {isSelected
+							? 'fill-primary-content'
+							: 'fill-base-100'}">{i + 1}</text
 					>
 				</g>
 			{/each}

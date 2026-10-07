@@ -20,10 +20,10 @@ const V1 = {
 	source: { deviceId: 'fiio/ka17', app: 'uniPEQ', appVersion: '0.0.1' },
 	pregain: -4,
 	filters: [
-		{ type: 'LSQ', freq: 105, gain: 4, q: 0.7, enabled: true },
+		{ type: 'LSQ', freq: 105, gain: 4, q: 0.7 },
 		{ type: 'NOTCH', freq: 50, gain: 0, q: 30, enabled: false },
-		{ type: 'HPF', freq: 20, gain: 0, q: 0.707, enabled: true },
-		{ type: 'CQ', freq: 3000, gain: -2, q: 2, enabled: true }
+		{ type: 'HPF', freq: 20, gain: 0, q: 0.707 },
+		{ type: 'CQ', freq: 3000, gain: -2, q: 2 }
 	]
 };
 
@@ -38,10 +38,9 @@ function codeOf(fn: () => unknown): string | undefined {
 
 describe('parsePreset', () => {
 	it('migrates a v1 preset to the eqcaps type codes', () => {
-		const { preset, disabled } = parsePreset(V1);
+		const { preset, dropped } = parsePreset(V1);
 		expect(preset.schemaVersion).toBe(2);
-		expect(preset.filters.map((f) => f.type)).toEqual(['LSC', 'NO', 'HPQ', 'PK']);
-		expect(preset.filters[1].enabled).toBe(false);
+		expect(preset.filters.map((f) => f.type)).toEqual(['LSC', 'HPQ']);
 		expect(preset).toMatchObject({
 			id: 'old',
 			name: 'Prototype preset',
@@ -50,23 +49,26 @@ describe('parsePreset', () => {
 			createdAt: V1.createdAt,
 			source: V1.source
 		});
-		expect(disabled).toBe(1);
+		expect(dropped).toBe(1);
 	});
 
-	it('keeps a v1 band with no v2 type, disabled, at its own values', () => {
-		const { preset } = parsePreset(V1);
-		expect(preset.filters[3]).toEqual({
-			type: 'PK',
-			freq: 3000,
-			q: 2,
-			gain: -2,
-			enabled: false
+	it('drops a band saved switched off without counting it, and keeps no enabled field', () => {
+		const { preset, dropped } = parsePreset({
+			schemaVersion: 2,
+			id: 'x',
+			name: 'Old switches',
+			filters: [
+				{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true },
+				{ type: 'PK', freq: 2000, q: 1, gain: 9, enabled: false }
+			]
 		});
+		expect(preset.filters).toEqual([{ type: 'PK', freq: 1000, q: 1, gain: 3 }]);
+		expect(dropped).toBe(0);
 	});
 
 	it('reads a v2 preset back as it was written', () => {
 		const v2 = parsePreset(V1).preset;
-		expect(parsePreset(JSON.parse(presetJson(v2)))).toEqual({ preset: v2, disabled: 0 });
+		expect(parsePreset(JSON.parse(presetJson(v2)))).toEqual({ preset: v2, dropped: 0 });
 	});
 
 	it('fills in what an older or hand-written file leaves out', () => {
@@ -78,7 +80,6 @@ describe('parsePreset', () => {
 		});
 		expect(preset.tags).toEqual([]);
 		expect(preset.pregain).toBe('auto');
-		expect(preset.filters[0].enabled).toBe(true);
 	});
 
 	it('refuses what is not a preset, or a version it does not know', () => {
@@ -99,7 +100,7 @@ describe('parsePreset', () => {
 
 describe('createPreset', () => {
 	it('copies the bands and stamps the app', () => {
-		const filters = [{ type: 'PK' as const, freq: 1000, q: 1, gain: 3, enabled: true }];
+		const filters = [{ type: 'PK' as const, freq: 1000, q: 1, gain: 3 }];
 		const preset = createPreset({ name: 'Mine', filters, pregain: 'auto', deviceId: 'fiio-ka17' });
 		expect(preset.filters).toEqual(filters);
 		expect(preset.filters[0]).not.toBe(filters[0]);
@@ -110,10 +111,10 @@ describe('createPreset', () => {
 
 describe('importPreset', () => {
 	it('imports preset JSON under a fresh id', () => {
-		const { preset, disabled } = importPreset(JSON.stringify(V1), 'old.json');
+		const { preset, dropped } = importPreset(JSON.stringify(V1), 'old.json');
 		expect(preset.id).not.toBe('old');
 		expect(preset.name).toBe('Prototype preset');
-		expect(disabled).toBe(1);
+		expect(dropped).toBe(1);
 	});
 
 	it('imports AutoEq text named after the file, with its preamp', () => {
@@ -141,7 +142,7 @@ describe('importPreset', () => {
 	it('round-trips through its own export', () => {
 		const original: PeqPreset = createPreset({
 			name: 'Round',
-			filters: [{ type: 'HSC', freq: 8000, q: 0.7, gain: -2, enabled: true }],
+			filters: [{ type: 'HSC', freq: 8000, q: 0.7, gain: -2 }],
 			pregain: -1
 		});
 		const { preset } = importPreset(presetJson(original), 'Round.json');

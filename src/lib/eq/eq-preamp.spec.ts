@@ -5,13 +5,12 @@ import { derivePreamp } from './eq-preamp';
 import type { EqFilter } from './model';
 
 function makeFilter(overrides: Partial<EqFilter> = {}): EqFilter {
-	return { enabled: true, type: 'PK', freq: 1000, q: 1.0, gain: 0, ...overrides };
+	return { type: 'PK', freq: 1000, q: 1.0, gain: 0, ...overrides };
 }
 
 describe('derivePreamp', () => {
-	it('is zero for an empty or all-disabled list', () => {
+	it('is zero for an empty list', () => {
 		expect(derivePreamp([])).toBe(0);
-		expect(derivePreamp([makeFilter({ gain: 6, enabled: false })])).toBe(0);
 	});
 
 	it('is minus the largest boost', () => {

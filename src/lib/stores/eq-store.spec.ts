@@ -6,8 +6,7 @@ const pk = (freq: number, gain: number): EqFilter => ({
 	type: 'PK',
 	freq,
 	q: 1,
-	gain,
-	enabled: true
+	gain
 });
 
 describe('eqStore editing', () => {

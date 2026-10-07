@@ -45,9 +45,8 @@ describe('eq/biquad', () => {
 
 	it('combinedResponseDb sums filters', () => {
 		const filters: EqFilter[] = [
-			{ type: 'PK', freq: 1000, gain: 3, q: 1, enabled: true },
-			{ type: 'PK', freq: 1000, gain: 2, q: 1, enabled: true },
-			{ type: 'PK', freq: 1000, gain: 5, q: 1, enabled: false } // disabled → ignored
+			{ type: 'PK', freq: 1000, gain: 3, q: 1 },
+			{ type: 'PK', freq: 1000, gain: 2, q: 1 }
 		];
 		const grid = logFreqGrid(64);
 		const at1k = combinedResponseDb(filters, grid)[

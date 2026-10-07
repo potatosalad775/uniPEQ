@@ -17,8 +17,7 @@ const band = (type: EqFilter['type'], freq: number, gain: number): EqFilter => (
 	type,
 	freq,
 	q: 1,
-	gain,
-	enabled: true
+	gain
 });
 
 describe('presetFit', () => {

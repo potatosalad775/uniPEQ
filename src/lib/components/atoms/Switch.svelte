@@ -1,4 +1,8 @@
-<!-- Copied from modernGraphTool src/lib/components/atoms/Switch.svelte @ 23ddc4dd. -->
+<!--
+	Copied from modernGraphTool src/lib/components/atoms/Switch.svelte @ 23ddc4dd. uniPEQ: under
+	`touch:` an `sm` switch grows to `md`, and `labelSide="start"` puts the label first, filling the
+	row, as Android lists do (decision 22).
+-->
 <script lang="ts">
 	import { Switch, Label, useId, type WithoutChildrenOrChild } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -12,6 +16,7 @@
 		children,
 		size = 'md',
 		variant = 'accent',
+		labelSide = 'end',
 		...restProps
 	}: WithoutChildrenOrChild<Switch.RootProps> & {
 		labelText?: string | undefined;
@@ -19,16 +24,18 @@
 		children?: Snippet;
 		size?: 'sm' | 'md' | 'lg';
 		variant?: 'accent' | 'muted';
+		/** `start`: the label first, filling the row, the switch trailing it. */
+		labelSide?: 'start' | 'end';
 	} = $props();
 
 	const sizeClasses = {
-		sm: 'h-5 w-9',
+		sm: 'h-5 w-9 touch:h-6 touch:w-11',
 		md: 'h-6 w-11',
 		lg: 'h-7 w-14'
 	} as const;
 
 	const thumbSizeClasses = {
-		sm: 'size-3.5 data-[state=checked]:translate-x-4',
+		sm: 'size-3.5 data-[state=checked]:translate-x-4 touch:size-[18px] touch:data-[state=checked]:translate-x-5',
 		md: 'size-[18px] data-[state=checked]:translate-x-5',
 		lg: 'size-[22px] data-[state=checked]:translate-x-7'
 	} as const;
@@ -46,7 +53,7 @@
 	} as const;
 </script>
 
-<div class="flex items-center">
+<div class="flex items-center {labelSide === 'start' ? 'flex-row-reverse justify-end gap-3' : ''}">
 	<Switch.Root
 		bind:checked
 		bind:ref
@@ -65,7 +72,9 @@
 	{#if labelText}
 		<Label.Root
 			for={id}
-			class="ml-2 text-sm font-medium {restProps.disabled == true && 'opacity-50'} {labelClass}"
+			class="{labelSide === 'start'
+				? 'min-w-0 flex-1'
+				: 'ml-2'} text-sm font-medium {restProps.disabled == true && 'opacity-50'} {labelClass}"
 			>{labelText}</Label.Root
 		>
 	{/if}

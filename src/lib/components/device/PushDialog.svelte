@@ -56,8 +56,8 @@
 	}
 
 	function confirm() {
-		open = false;
 		onConfirm();
+		open = false;
 	}
 </script>
 

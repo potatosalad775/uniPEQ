@@ -3,8 +3,8 @@
 Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being rebuilt from
 Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
 `devices/`, the registry, handlers, web transports and the adaptation engine).
-**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–2
-done, Phases 3–4 code done pending real-phone and hardware checks, Phase 5 next); what to copy from
+**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4
+done, Phase 4.5 mobile UX pass in progress, Phase 5 next); what to copy from
 `../modernGraphTool`:
 [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
 [ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.
@@ -53,6 +53,11 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   `src/lib/paraglide/` is generated and gitignored.
 - One layout breakpoint, `wide:` (900 px): side rail above, bottom tab bar below. Pad for system
   bars with `pt-(--inset-top)` etc. (from `layout.css`), never raw `env()`.
+- Touch sizing is the `touch:` variant (`pointer: coarse`), not a width: atoms grow to 48 px
+  targets under it. On phones follow Android patterns (decision 22): `ListRow`/`ListSection` with
+  the control trailing, `RadioDialog` for one-of-N, `Sheet` for panels, supporting text not
+  popovers. The EQ tab's device status is the sync bar (`device-peq/sync-status.ts`), its one
+  status line.
 - Devices: protocols, limits and device data are eqcaps' job (`../eqcaps`); a protocol bug or a
   missing device is fixed there. `src/lib/device-peq/` follows modernGraphTool's
   `device-peq/AGENTS.md` invariants (fit before every write, never retarget, connect never edits

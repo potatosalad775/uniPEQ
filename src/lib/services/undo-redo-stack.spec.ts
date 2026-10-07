@@ -4,7 +4,7 @@ import { UndoRedoStack } from './undo-redo-stack';
 
 const state = (gain: number): EqState => ({
 	preamp: -gain,
-	filters: [{ type: 'PK', freq: 1000, q: 1, gain, enabled: true }]
+	filters: [{ type: 'PK', freq: 1000, q: 1, gain }]
 });
 
 describe('UndoRedoStack', () => {

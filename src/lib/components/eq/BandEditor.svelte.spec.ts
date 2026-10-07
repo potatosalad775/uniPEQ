@@ -11,7 +11,7 @@ describe('BandEditor', () => {
 	beforeEach(() => {
 		eqStore.reset();
 		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true }], 0);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], 0);
 	});
 
 	afterEach(() => devicePeqStore.setDisconnected());
@@ -35,6 +35,20 @@ describe('BandEditor', () => {
 		await expect.element(page.getByText('Allowed: -12 – 12 dB, step 0.1')).toBeVisible();
 	});
 
+	it('steps with − and +, musically, as one undo step', async () => {
+		render(BandEditor, { index: 0 });
+		const raise = page.getByRole('button', { name: 'Raise Frequency' });
+		await raise.click();
+		await raise.click();
+		expect(eqStore.filters[0].freq).toBe(1059);
+		await page.getByRole('button', { name: 'Lower Gain' }).click();
+		expect(eqStore.filters[0].gain).toBe(2.9);
+		eqStore.undo();
+		expect(eqStore.filters[0].freq).toBe(1059);
+		eqStore.undo();
+		expect(eqStore.filters[0].freq).toBe(1000);
+	});
+
 	it('steps with the arrow keys, and Escape takes the steps back', async () => {
 		render(BandEditor, { index: 0 });
 		const freq = page.getByRole('spinbutton', { name: 'Frequency' });
@@ -46,7 +60,7 @@ describe('BandEditor', () => {
 	});
 
 	it("flags a value the device won't take, without changing it", async () => {
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 15, enabled: true }], 0);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 15 }], 0);
 		render(BandEditor, { index: 0 });
 		await expect
 			.element(page.getByRole('spinbutton', { name: 'Gain' }))
@@ -63,8 +77,8 @@ describe('BandEditor', () => {
 		devicePeqStore.setConnected(fakeConnection(profile), null);
 		eqStore.replace(
 			[
-				{ type: 'PK', freq: 125, q: 1.41, gain: 2, enabled: true },
-				{ type: 'PK', freq: 1000, q: 1.41, gain: 0, enabled: true }
+				{ type: 'PK', freq: 125, q: 1.41, gain: 2 },
+				{ type: 'PK', freq: 1000, q: 1.41, gain: 0 }
 			],
 			0
 		);
@@ -80,7 +94,7 @@ describe('BandEditor', () => {
 
 	it('hides gain for a type that has none', async () => {
 		devicePeqStore.setDisconnected();
-		eqStore.replace([{ type: 'HPQ', freq: 80, q: 0.7, gain: 0, enabled: true }], 0);
+		eqStore.replace([{ type: 'HPQ', freq: 80, q: 0.7, gain: 0 }], 0);
 		render(BandEditor, { index: 0 });
 		await expect.element(page.getByText('This filter type has no gain.')).toBeVisible();
 		await expect.element(page.getByRole('spinbutton', { name: 'Gain' })).not.toBeInTheDocument();

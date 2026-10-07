@@ -15,13 +15,11 @@ import {
 	newBand,
 	padToBandCount,
 	projectFilter,
-	sameFilters,
-	toWrittenFilter
+	sameFilters
 } from './eq-constraint';
 import type { EqFilter } from './model';
 
 const pk = (freq: number, gain: number, q = 1, extra: Partial<EqFilter> = {}): EqFilter => ({
-	enabled: true,
 	type: 'PK',
 	freq,
 	q,
@@ -58,21 +56,6 @@ const PARTITIONED = hardwareProfile('partitioned', {
 describe('filters', () => {
 	it('lists the app types a slot takes, in its order, without x- types', () => {
 		expect(appTypesOf(['HSC', 'x-vendor', 'LPQ', 'PK'])).toEqual(['HSC', 'LPQ', 'PK']);
-	});
-
-	it('writes a disabled band flat at its own Fc and Q', () => {
-		expect(toWrittenFilter(pk(1000, 3, 2, { enabled: false }))).toEqual({
-			type: 'PK',
-			freq: 1000,
-			q: 2,
-			gain: 0
-		});
-		expect(toWrittenFilter({ ...pk(100, 3), type: 'LSC', enabled: false }).type).toBe('LSC');
-	});
-
-	it('writes a disabled gainless band as a flat peak, not as the filter it was', () => {
-		const lowPass: EqFilter = { enabled: false, type: 'LPQ', freq: 8000, q: 0.7, gain: 0 };
-		expect(toWrittenFilter(lowPass)).toEqual({ type: 'PK', freq: 8000, q: 0.7, gain: 0 });
 	});
 });
 
@@ -119,10 +102,6 @@ describe('assignSlots', () => {
 	it('puts a low shelf in the low-shelf slot whatever its list position', () => {
 		const filters = [pk(1000, 3), { ...pk(80, 4), type: 'LSC' as const }];
 		expect(assignSlots(filters, PARTITIONED)).toEqual([1, 0]);
-	});
-
-	it('places disabled bands by position', () => {
-		expect(assignSlots([pk(1000, 0), pk(2000, 1, 1, { enabled: false })], PARAM)).toEqual([0, 1]);
 	});
 });
 
@@ -231,11 +210,6 @@ describe('filterViolations', () => {
 	it('flags an off-band frequency on a graphic EQ', () => {
 		expect(filterViolations([pk(900, 3)], GRAPHIC)[0].freq).toBe(true);
 	});
-
-	it('never flags a disabled band', () => {
-		const v = filterViolations([pk(50, 9, 1, { enabled: false })], PARAM);
-		expect(v).toEqual([{ type: false, freq: false, q: false, gain: false }]);
-	});
 });
 
 describe('isPastMaxBands', () => {
@@ -251,7 +225,7 @@ describe('isPastMaxBands', () => {
 
 describe('editFilter', () => {
 	const p = hardwareProfile('h', { bandCount: 4 });
-	const band: EqFilter = { type: 'PK', freq: 1000, q: 1, gain: 0, enabled: true };
+	const band: EqFilter = { type: 'PK', freq: 1000, q: 1, gain: 0 };
 
 	it('projects the patched fields onto the slot', () => {
 		expect(editFilter(band, { gain: 20, freq: 1000.4 }, p, 0)).toMatchObject({
@@ -269,10 +243,10 @@ describe('editFilter', () => {
 describe('newBand', () => {
 	it('puts a flat peak in the widest gap, on a nominal frequency', () => {
 		const p = softwareProfile('s');
-		expect(newBand([], p)).toEqual({ type: 'PK', freq: 630, q: 1, gain: 0, enabled: true });
+		expect(newBand([], p)).toEqual({ type: 'PK', freq: 630, q: 1, gain: 0 });
 		const lows: EqFilter[] = [
-			{ type: 'PK', freq: 100, q: 1, gain: 0, enabled: true },
-			{ type: 'PK', freq: 200, q: 1, gain: 0, enabled: true }
+			{ type: 'PK', freq: 100, q: 1, gain: 0 },
+			{ type: 'PK', freq: 200, q: 1, gain: 0 }
 		];
 		expect(newBand(lows, p).freq).toBe(2000);
 	});
@@ -294,14 +268,14 @@ describe('fitFilters', () => {
 				gain: { min: -12, max: 12, step: 0.1 }
 			}
 		});
-		const out = fitFilters([{ type: 'LSC', freq: 100, q: 0.7, gain: 15, enabled: true }], p);
+		const out = fitFilters([{ type: 'LSC', freq: 100, q: 0.7, gain: 15 }], p);
 		expect(out).toHaveLength(3);
 		expect(out[0]).toMatchObject({ type: 'PK', gain: 12 });
 		expect(out.slice(1).every((f) => f.gain === 0)).toBe(true);
 	});
 
 	it('changes nothing that already fits a software EQ', () => {
-		const list: EqFilter[] = [{ type: 'PK', freq: 100, q: 1, gain: 3, enabled: true }];
+		const list: EqFilter[] = [{ type: 'PK', freq: 100, q: 1, gain: 3 }];
 		expect(sameFilters(fitFilters(list, softwareProfile('s')), list)).toBe(true);
 	});
 });

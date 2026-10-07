@@ -11,13 +11,22 @@ import { untrack } from 'svelte';
 import type { ConnectResult } from '$lib/device-peq/connect';
 import { describeDeviceError, isConnectionLost } from '$lib/device-peq/errors';
 import { readRequest } from '$lib/device-peq/preset';
-import { needsReview, planPush, readLayout, type PushPlan } from '$lib/device-peq/push-plan';
+import {
+	needsConfirmation,
+	needsReview,
+	planPush,
+	readLayout,
+	type PushPlan
+} from '$lib/device-peq/push-plan';
+import { syncStatus, type SyncStatus } from '$lib/device-peq/sync-status';
 import type { DeviceCandidate, DeviceConnection } from '$lib/device-peq/types';
 import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
 import * as m from '$lib/paraglide/messages';
+import { hapticError, hapticTick } from '$lib/platform/haptics';
 import { isNative } from '$lib/platform/native';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
+import { noticeStore } from '$lib/stores/notice-store.svelte';
 import { settingsStore } from '$lib/stores/settings-store.svelte';
 import type { Filter } from '@potatosalad775/eqcaps-core';
 import { logger } from './logger';
@@ -36,6 +45,9 @@ class DevicePeqService {
 	choice = $state.raw<{ candidates: DeviceCandidate[] } | null>(null);
 	/** Why the last connect attempt found nothing to drive, until the next one. */
 	notFound = $state<'unsupported' | 'no-device' | null>(null);
+
+	/** A write waiting for the user to confirm what doesn't fit (the review dialog shows it). */
+	review = $state.raw<PushPlan | null>(null);
 
 	#choice: Choice | null = null;
 	#installed = false;
@@ -56,6 +68,33 @@ class DevicePeqService {
 	get autoWriting(): boolean {
 		const caps = devicePeqStore.connection?.device.capabilities;
 		return this.autoWriteOn && !!caps?.canWrite && !caps.disconnectOnSave;
+	}
+
+	/** What the sync bar and the device chip show (decision 22); null with no device. */
+	get sync(): SyncStatus | null {
+		const store = devicePeqStore;
+		const caps = store.connection?.device.capabilities;
+		// Device EQ shows a built-in preset: Write is off by design, not because of where it is.
+		const builtIn = !!caps?.canWrite && !store.targetWritable;
+		return syncStatus({
+			connected: !!store.connection,
+			reading: store.isReading,
+			writing: store.isWriting,
+			needsReconnect: store.needsReconnect,
+			autoDueAt: store.autoDueAt,
+			canWrite: !!caps?.canWrite && !!store.writeTarget,
+			canRead: !!caps?.canRead && !!store.readTarget,
+			message: store.statusMessage,
+			messageIsError: store.statusIsError,
+			autoWriting: this.autoWriting,
+			autoPaused: store.autoPaused,
+			autoClipRisk: store.autoClipRisk,
+			builtIn,
+			unreachable:
+				(!!caps?.canWrite && !builtIn && !store.writeTarget) ||
+				(!!caps?.canRead && !store.readTarget),
+			inSync: store.inSync
+		});
 	}
 
 	/** Load the connect module and the device database before a click needs them. */
@@ -210,6 +249,24 @@ class DevicePeqService {
 	}
 
 	/**
+	 * The Write button (and the sync bar's Write and Review): straight away when the device holds
+	 * the list exactly, else after the user reviews the changes in the dialog (`review`).
+	 */
+	async requestWrite(): Promise<void> {
+		const plan = await this.prepare();
+		if (!plan) return;
+		if (needsConfirmation(plan)) this.review = plan;
+		else void this.write(plan);
+	}
+
+	/** The review dialog's answer: write the plan it showed, or drop it. */
+	confirmReview(confirmed: boolean): void {
+		const plan = this.review;
+		this.review = null;
+		if (confirmed && plan) void this.write(plan);
+	}
+
+	/**
 	 * Send `plan` to the preset Device EQ shows. Whether it was written. An automatic write that
 	 * fails stops auto-write on this connection.
 	 */
@@ -252,10 +309,15 @@ class DevicePeqService {
 				);
 			}
 			logger.info(`wrote ${count} band(s) to ${conn.name}${auto ? ' (auto)' : ''}`);
+			hapticTick();
 			return true;
 		} catch (e) {
 			if (auto) devicePeqStore.autoStopped = true;
 			this.fail(e, 'write', auto ? m.device_peq_auto_stopped() : undefined);
+			hapticError();
+			// An automatic write fails while the user looks at something else (the band editor
+			// covers the sync bar): say so where they are.
+			if (auto && devicePeqStore.statusMessage) noticeStore.say(devicePeqStore.statusMessage, true);
 			return false;
 		} finally {
 			devicePeqStore.isWriting = false;
@@ -340,17 +402,27 @@ class DevicePeqService {
 		if (before.filters === now.filters && before.preamp === now.preamp) return;
 		if (!this.autoWriting) return;
 		this.#cancelPending();
-		this.#timer = setTimeout(() => void this.#flush(), settingsStore.autoPushDelayMs);
+		// A read, or an undo back to what the device has: nothing to write, so nothing to wait for.
+		if (devicePeqStore.inSync === true) return;
+		this.#schedule();
+	}
+
+	#schedule(): void {
+		const delay = settingsStore.autoPushDelayMs;
+		this.#timer = setTimeout(() => void this.#flush(), delay);
+		devicePeqStore.autoDueAt = Date.now() + delay;
 	}
 
 	#cancelPending(): void {
 		clearTimeout(this.#timer);
 		this.#timer = undefined;
+		devicePeqStore.autoDueAt = null;
 	}
 
 	/** One write at a time; edits made during one are written next, as the list is by then. */
 	async #flush(): Promise<void> {
 		this.#timer = undefined;
+		devicePeqStore.autoDueAt = null;
 		if (this.#running) {
 			this.#again = true;
 			return;
@@ -362,7 +434,7 @@ class DevicePeqService {
 				if (!this.autoWriting || devicePeqStore.needsReconnect) return;
 				if (devicePeqStore.isBusy) {
 					// A read, a switch or a button write is under way: try again after it.
-					this.#timer = setTimeout(() => void this.#flush(), settingsStore.autoPushDelayMs);
+					this.#schedule();
 					return;
 				}
 				if (devicePeqStore.inSync === true) {

@@ -12,8 +12,7 @@ const pk = (freq: number, gain: number): EqFilter => ({
 	type: 'PK',
 	freq,
 	q: 1,
-	gain,
-	enabled: true
+	gain
 });
 
 /** The centre of band `n`'s dot, in client coordinates. */
@@ -55,7 +54,7 @@ describe('EqGraph', () => {
 			.element(page.getByRole('button', { name: /^Band 1, PK, 100 Hz, \+3 dB/ }))
 			.toBeVisible();
 		await expect
-			.element(page.getByRole('button', { name: /^Band 2, PK, 1 kHz, -2 dB/ }))
+			.element(page.getByRole('button', { name: /^Band 2, PK, 1000 Hz, -2 dB/ }))
 			.toBeVisible();
 	});
 

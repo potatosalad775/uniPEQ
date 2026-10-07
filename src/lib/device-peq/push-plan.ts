@@ -11,7 +11,7 @@
  * holding a different EQ from the one on screen.
  */
 import { complete, fit, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
-import { toWrittenFilter } from '$lib/eq/eq-constraint';
+import { toCapsFilter } from '$lib/eq/eq-constraint';
 import type { EqFilter } from '$lib/eq/model';
 import { logger } from '$lib/services/logger';
 import type { PresetRequest } from './preset';
@@ -58,10 +58,7 @@ export function needsConfirmation(plan: PushPlan): boolean {
 	return needsReview(plan) || plan.clipRisk;
 }
 
-/**
- * Plan a push of the app's band list to a device described by `profile`. A disabled band is sent
- * flat (0 dB at its own Fc and Q), so it keeps its slot the way vendor apps keep theirs.
- */
+/** Plan a push of the app's band list to a device described by `profile`. */
 export function planPush(
 	filters: EqFilter[],
 	preamp: number,
@@ -69,7 +66,7 @@ export function planPush(
 	capabilities: Pick<PeqCapabilities, 'writesPreamp'>,
 	hints?: readonly (Filter | null)[]
 ): PushPlan {
-	const wanted = filters.map(toWrittenFilter);
+	const wanted = filters.map(toCapsFilter);
 	const mode = profile.preamp.mode;
 	const result = fit(profile, wanted, preamp);
 	const changes: PlanChange[] = [];

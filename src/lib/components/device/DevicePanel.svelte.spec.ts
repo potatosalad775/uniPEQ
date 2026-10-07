@@ -10,7 +10,16 @@ import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
 import BandList from '$lib/components/eq/BandList.svelte';
 import DevicePanel from './DevicePanel.svelte';
+import ReviewDialog from './ReviewDialog.svelte';
+import SyncBar from './SyncBar.svelte';
 import { devicePeqService } from '$lib/services/device-peq-service.svelte';
+
+/** The panel as the EQ tab has it: its status in the sync bar, its review in the dialog. */
+function renderPanel() {
+	render(DevicePanel);
+	render(SyncBar);
+	render(ReviewDialog);
+}
 
 function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof vi.fn> } } {
 	const capabilities: PeqCapabilities = {
@@ -73,35 +82,35 @@ describe('DevicePanel', () => {
 	afterEach(() => devicePeqStore.setDisconnected());
 
 	it('offers to connect a USB device when nothing is connected', async () => {
-		render(DevicePanel);
+		renderPanel();
 		await expect.element(page.getByRole('button', { name: 'Connect USB device' })).toBeVisible();
 	});
 
 	it('shows the device, its limits and Device EQ, and reads its bands', async () => {
 		const conn = ka17();
 		devicePeqStore.setConnected(conn, 4);
-		render(DevicePanel);
+		renderPanel();
 		render(BandList);
 
 		await expect.element(page.getByText('FiiO KA17')).toBeVisible();
 		await expect.element(page.getByText('10 bands · -12 to 12 dB')).toBeVisible();
-		const deviceEq = page.getByRole('combobox', { name: 'Device EQ' });
-		await expect.element(deviceEq).toHaveValue('p4');
+		await expect.element(page.getByRole('button', { name: /^Device EQ.*USER1$/ })).toBeVisible();
 
 		await page.getByRole('button', { name: "Replace the band list with the device's EQ" }).click();
 		await expect.element(page.getByText('Read 2 band(s) from the device')).toBeVisible();
 		expect(conn.device.pull).toHaveBeenCalledWith({});
 		expect(eqStore.filters.map((f) => f.type)).toEqual(['LSC', 'PK']);
 		expect(eqStore.preamp).toBe(-4);
-		await expect.element(page.getByText('3 kHz')).toBeVisible();
+		await expect.element(page.getByText('3000 Hz')).toBeVisible();
 	});
 
 	it('switches the device when Device EQ changes', async () => {
 		const conn = ka17();
 		devicePeqStore.setConnected(conn, 4);
-		render(DevicePanel);
+		renderPanel();
 
-		await page.getByRole('combobox', { name: 'Device EQ' }).selectOptions('Off (EQ bypassed)');
+		await page.getByRole('button', { name: /^Device EQ/ }).click();
+		await page.getByRole('dialog').getByRole('radio', { name: 'Off (EQ bypassed)' }).click();
 		await vi.waitFor(() => expect(conn.device.setEnabled).toHaveBeenCalledWith(false));
 		expect(devicePeqStore.selection).toBe('off');
 	});
@@ -109,7 +118,7 @@ describe('DevicePanel', () => {
 	it('disconnects', async () => {
 		const conn = ka17();
 		devicePeqStore.setConnected(conn, 4);
-		render(DevicePanel);
+		renderPanel();
 
 		await page.getByRole('button', { name: 'Disconnect' }).click();
 		await expect.element(page.getByRole('button', { name: 'Connect USB device' })).toBeVisible();
@@ -119,9 +128,9 @@ describe('DevicePanel', () => {
 	it('says a built-in preset is not written, and keeps Write off', async () => {
 		const conn = ka17();
 		devicePeqStore.setConnected(conn, 0);
-		render(DevicePanel);
+		renderPanel();
 
-		await expect.element(page.getByText(/built-in presets/)).toBeVisible();
+		await expect.element(page.getByRole('status').getByText(/built-in presets/)).toBeVisible();
 		await expect.element(page.getByRole('button', { name: /built-in presets/ })).toBeDisabled();
 	});
 });
@@ -156,8 +165,8 @@ describe('DevicePanel writing', () => {
 	it('writes straight away when the device holds the list exactly', async () => {
 		const { conn, push } = peaksOnly();
 		devicePeqStore.setConnected(conn, 4);
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true }], -3);
-		render(DevicePanel);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], -3);
+		renderPanel();
 
 		await page.getByRole('button', { name: 'Send the band list to the device' }).click();
 		await vi.waitFor(() => expect(push).toHaveBeenCalled());
@@ -171,8 +180,8 @@ describe('DevicePanel writing', () => {
 	it('shows what fit changed and writes only once confirmed', async () => {
 		const { conn, push } = peaksOnly();
 		devicePeqStore.setConnected(conn, 4);
-		eqStore.replace([{ type: 'LSC', freq: 105, q: 0.707, gain: 4, enabled: true }], -4);
-		render(DevicePanel);
+		eqStore.replace([{ type: 'LSC', freq: 105, q: 0.707, gain: 4 }], -4);
+		renderPanel();
 
 		await page.getByRole('button', { name: 'Send the band list to the device' }).click();
 		const dialog = page.getByRole('dialog');
@@ -195,8 +204,8 @@ describe('DevicePanel writing', () => {
 		(conn.device.capabilities as { disconnectOnSave: boolean }).disconnectOnSave = true;
 		push.mockResolvedValue({ reconnect: true });
 		devicePeqStore.setConnected(conn, 4);
-		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3, enabled: true }], -3);
-		render(DevicePanel);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], -3);
+		renderPanel();
 
 		await expect.element(page.getByText('Write changes automatically')).not.toBeInTheDocument();
 		await page.getByRole('button', { name: 'Send the band list to the device' }).click();
@@ -204,14 +213,14 @@ describe('DevicePanel writing', () => {
 			.element(page.getByText('Saved. The device restarts after saving; reconnect to carry on.'))
 			.toBeVisible();
 		expect(conn.device.close).toHaveBeenCalled();
-		await expect.element(page.getByRole('button', { name: 'Reconnect' })).toBeVisible();
+		await expect.element(page.getByRole('button', { name: 'Reconnect' }).first()).toBeVisible();
 	});
 
 	it('writes nothing when the review is cancelled', async () => {
 		const { conn, push } = peaksOnly();
 		devicePeqStore.setConnected(conn, 4);
-		eqStore.replace([{ type: 'LSC', freq: 105, q: 0.7, gain: 4, enabled: true }], -4);
-		render(DevicePanel);
+		eqStore.replace([{ type: 'LSC', freq: 105, q: 0.7, gain: 4 }], -4);
+		renderPanel();
 
 		await page.getByRole('button', { name: 'Send the band list to the device' }).click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
@@ -232,12 +241,12 @@ describe('DevicePanel with the demo device', () => {
 	});
 
 	it('connects the demo device and reads its preset', async () => {
-		render(DevicePanel);
+		renderPanel();
 		render(BandList);
 
 		await page.getByRole('button', { name: /simulated DAC/ }).click();
 		await expect.element(page.getByText('uniPEQ Demo DAC')).toBeVisible();
-		await expect.element(page.getByRole('combobox', { name: 'Device EQ' })).toHaveValue('p1');
+		await expect.element(page.getByRole('button', { name: /^Device EQ.*USER1$/ })).toBeVisible();
 
 		await page.getByRole('button', { name: "Replace the band list with the device's EQ" }).click();
 		await expect.element(page.getByText('Read 10 band(s) from the device')).toBeVisible();
