@@ -1,6 +1,8 @@
-<!-- Copied from modernGraphTool src/lib/components/atoms/Input.svelte @ 23ddc4dd. -->
+<!-- Copied from modernGraphTool src/lib/components/atoms/Input.svelte @ 23ddc4dd; its props also take
+	the input element's own attributes (aria-label, inputmode, …), which it already spread. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	let {
 		icon,
@@ -10,7 +12,7 @@
 		class: className = '',
 		type = 'text',
 		...restProps
-	}: {
+	}: Omit<HTMLInputAttributes, 'value' | 'type' | 'class' | 'placeholder'> & {
 		icon?: Snippet;
 		label?: string;
 		placeholder?: string;

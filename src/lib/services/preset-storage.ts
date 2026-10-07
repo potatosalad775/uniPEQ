@@ -17,6 +17,19 @@ export interface PresetIndexEntry {
 	updatedAt: string;
 }
 
+/**
+ * The entries whose name or a tag contains every word of `query`, ignoring case; all of them for
+ * an empty query. Newest first either way.
+ */
+export function searchPresets(index: PresetIndexEntry[], query: string): PresetIndexEntry[] {
+	const words = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+	const hits = index.filter((e) => {
+		const text = [e.name, ...e.tags].join('\n').toLocaleLowerCase();
+		return words.every((w) => text.includes(w));
+	});
+	return hits.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
 export interface PresetStorage {
 	list(): Promise<PresetIndexEntry[]>;
 	/** The stored JSON, unvalidated: a prototype install holds schemaVersion 1 presets. */

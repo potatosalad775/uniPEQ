@@ -1,7 +1,8 @@
 <!--
 	Adapted from modernGraphTool src/lib/components/features/DevicePeq.svelte @ 23ddc4dd: connect
 	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
-	The Phase 4 Main screen re-lays this out around the graph.
+	Phase 4 added the profile's status and experimental badges, and links to the profile in the
+	eqcaps inspector and to its wrong-constraint form.
 -->
 <script lang="ts">
 	import { FlaskConical, Info, TriangleAlert, Usb } from '@lucide/svelte';
@@ -18,6 +19,7 @@
 	import PushDialog from './PushDialog.svelte';
 
 	const INSPECTOR_URL = 'https://potatosalad775.github.io/eqcaps/connect';
+	const PROFILE_URL = 'https://potatosalad775.github.io/eqcaps/p/';
 	const ISSUES_URL = 'https://github.com/potatosalad775/eqcaps/issues/new';
 
 	/** USB HID: the DeviceIo plugin on Android, WebHID in Chrome and Edge. */
@@ -77,7 +79,35 @@
 	const isExperimental = $derived(!!caps?.experimental && connection?.profileSource !== 'guess');
 	const isWriteOnly = $derived(!!caps && !caps.canRead);
 	const noticesWarn = $derived(connection?.profileSource === 'guess' || isDraft || isExperimental);
-	const hasNotices = $derived(noticesWarn || connection?.profileSource === 'group' || isWriteOnly);
+	const profileUrl = $derived(
+		connection?.profileId ? PROFILE_URL + encodeURIComponent(connection.profileId) : null
+	);
+	const hasNotices = $derived(
+		noticesWarn || connection?.profileSource === 'group' || isWriteOnly || !!profileUrl
+	);
+
+	/** How far the profile's limits are confirmed (eqcaps `meta.status`), as a badge. */
+	const statusBadge = $derived.by(() => {
+		if (!connection) return null;
+		if (connection.profileSource === 'guess') {
+			return { text: m.device_peq_status_guessed(), tone: 'warning' as const };
+		}
+		const status = connection.profile.meta.status;
+		if (status === 'draft') return { text: m.device_peq_status_draft(), tone: 'warning' as const };
+		if (status === 'deprecated') {
+			return { text: m.device_peq_status_deprecated(), tone: 'error' as const };
+		}
+		if (status === 'maintainer-verified') {
+			return { text: m.device_peq_status_maintainer(), tone: 'success' as const };
+		}
+		return { text: m.device_peq_status_community(), tone: 'info' as const };
+	});
+	const badgeClass = {
+		success: 'bg-success/15 text-success',
+		info: 'bg-info/15 text-info',
+		warning: 'bg-warning/15 text-warning',
+		error: 'bg-error/15 text-error'
+	} as const;
 	const reportUrl = $derived.by(() => {
 		if (!connection?.profileId) return null;
 		const url = new URL(ISSUES_URL);
@@ -227,6 +257,25 @@
 			<div class="min-w-0">
 				<p class="truncate text-sm font-medium">{connection.name}</p>
 				<p class="text-xs text-base-content/60">{limitsSummary}</p>
+				<p class="mt-1 flex flex-wrap gap-1">
+					{#if statusBadge}
+						<span
+							class="rounded-full px-2 py-0.5 text-[11px] font-medium {badgeClass[
+								statusBadge.tone
+							]}"
+						>
+							{statusBadge.text}
+						</span>
+					{/if}
+					{#if isExperimental}
+						<span
+							class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium {badgeClass.warning}"
+						>
+							<FlaskConical class="size-3" aria-hidden="true" />
+							{m.device_peq_experimental_badge()}
+						</span>
+					{/if}
+				</p>
 			</div>
 			<div class="flex shrink-0 items-center gap-1">
 				{#if hasNotices}
@@ -273,6 +322,28 @@
 						{/if}
 						{#if isWriteOnly}
 							<p>{m.device_peq_write_only()}</p>
+						{/if}
+						{#if profileUrl}
+							<p class="flex flex-wrap gap-x-3">
+								<a
+									href={profileUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-primary underline-offset-4 hover:underline"
+								>
+									{m.device_peq_view_profile()}
+								</a>
+								{#if reportUrl && !isDraft}
+									<a
+										href={reportUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-primary underline-offset-4 hover:underline"
+									>
+										{m.device_peq_report_limits()}
+									</a>
+								{/if}
+							</p>
 						{/if}
 					</InfoPopover>
 				{/if}

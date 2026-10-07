@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { PeqPreset } from './model';
-import { createPreset, importPreset, parsePreset, PresetError, presetJson } from './preset-file';
+import {
+	createPreset,
+	editedPreset,
+	importPreset,
+	parsePreset,
+	parseTags,
+	PresetError,
+	presetJson
+} from './preset-file';
 
 const V1 = {
 	schemaVersion: 1,
@@ -138,5 +146,21 @@ describe('importPreset', () => {
 		});
 		const { preset } = importPreset(presetJson(original), 'Round.json');
 		expect({ ...preset, id: original.id }).toEqual(original);
+	});
+});
+
+describe('parseTags', () => {
+	it('splits on commas, trims, and drops empties and repeats', () => {
+		expect(parseTags(' bass, warm ,, bass,')).toEqual(['bass', 'warm']);
+		expect(parseTags('')).toEqual([]);
+	});
+});
+
+describe('editedPreset', () => {
+	it('renames and retags, stamping the update', () => {
+		const p = createPreset({ name: 'A', filters: [], pregain: 0 });
+		const next = editedPreset({ ...p, updatedAt: '2000-01-01T00:00:00.000Z' }, { name: 'B' });
+		expect(next).toMatchObject({ id: p.id, name: 'B', tags: [] });
+		expect(next.updatedAt > '2000').toBe(true);
 	});
 });

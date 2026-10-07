@@ -138,6 +138,31 @@ export function createPreset(opts: {
 	};
 }
 
+/** `preset` renamed or retagged, stamped as updated now. */
+export function editedPreset(
+	preset: PeqPreset,
+	changes: { name?: string; tags?: string[] }
+): PeqPreset {
+	return {
+		...preset,
+		...(changes.name !== undefined ? { name: changes.name } : {}),
+		...(changes.tags !== undefined ? { tags: changes.tags } : {}),
+		updatedAt: new Date().toISOString()
+	};
+}
+
+/** Tags as typed in one field: comma-separated, trimmed, without empties or repeats. */
+export function parseTags(text: string): string[] {
+	return [
+		...new Set(
+			text
+				.split(',')
+				.map((t) => t.trim())
+				.filter(Boolean)
+		)
+	];
+}
+
 export interface ImportedPreset extends ParsedPreset {
 	/** APO lines that couldn't be represented (see `ApoImport.skipped`). */
 	skipped: number;

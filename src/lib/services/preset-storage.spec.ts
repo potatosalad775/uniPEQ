@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PeqPreset } from '$lib/eq/model';
-import { LocalPresetStorage } from './preset-storage';
+import { LocalPresetStorage, searchPresets } from './preset-storage';
 
 class MemoryStorage implements Storage {
 	#items = new Map<string, string>();
@@ -82,5 +82,23 @@ describe('LocalPresetStorage', () => {
 
 		expect((await storage.list())[0].id).toBe('old');
 		expect(await storage.load('old')).toEqual({ schemaVersion: 1, id: 'old' });
+	});
+});
+
+describe('searchPresets', () => {
+	const index = [
+		{ id: '1', name: 'Bass boost', tags: ['warm'], updatedAt: '2026-01-01' },
+		{ id: '2', name: 'Vocal', tags: ['bright', 'IEM'], updatedAt: '2026-03-01' },
+		{ id: '3', name: 'Flat', tags: [], updatedAt: '2026-02-01' }
+	];
+
+	it('lists everything newest first for an empty query', () => {
+		expect(searchPresets(index, ' ').map((e) => e.id)).toEqual(['2', '3', '1']);
+	});
+
+	it('matches every word in the name or a tag, ignoring case', () => {
+		expect(searchPresets(index, 'iem').map((e) => e.id)).toEqual(['2']);
+		expect(searchPresets(index, 'boost WARM').map((e) => e.id)).toEqual(['1']);
+		expect(searchPresets(index, 'boost bright')).toEqual([]);
 	});
 });

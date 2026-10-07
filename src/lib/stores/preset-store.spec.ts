@@ -90,4 +90,23 @@ describe('PresetStore', () => {
 		await store.remove(saved.id);
 		expect(store.index).toEqual([]);
 	});
+
+	it('renames and retags a preset, keeping its bands', async () => {
+		const saved = await store.saveCurrent('Old', ['a']);
+		await store.edit(saved.id, { name: 'New', tags: ['b', 'c'] });
+		expect(store.index).toEqual([expect.objectContaining({ name: 'New', tags: ['b', 'c'] })]);
+		const { preset } = await store.load(saved.id);
+		expect(preset.filters).toEqual(saved.filters);
+	});
+
+	it('duplicates a preset under a fresh id', async () => {
+		const saved = await store.saveCurrent('Base', ['x']);
+		const copy = await store.duplicate(saved.id, 'Base (copy)');
+		expect(copy.id).not.toBe(saved.id);
+		expect(store.index.map((e) => e.name).sort()).toEqual(['Base', 'Base (copy)']);
+		expect((await store.load(copy.id)).preset).toMatchObject({
+			filters: saved.filters,
+			tags: ['x']
+		});
+	});
 });

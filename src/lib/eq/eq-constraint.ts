@@ -17,7 +17,7 @@ import {
 	type FilterType as CapsFilterType,
 	type Profile
 } from '@potatosalad775/eqcaps-core';
-import type { EqFilter, FilterType } from './model';
+import { eqFiltersEqual, type EqFilter, type FilterType } from './model';
 
 /**
  * Pure helpers between the app's `EqFilter` list and an eqcaps `Profile`.
@@ -47,6 +47,28 @@ export function toWrittenFilter(f: EqFilter): Filter {
 export function appTypesOf(types: readonly CapsFilterType[]): FilterType[] {
 	return types.filter(isKnownType);
 }
+
+// ─── The profile with no device ─────────────────────────────────────────────
+
+/**
+ * What the editor checks against while no device is connected: every app type, and ranges wide
+ * enough for any preset file, so nothing is flagged. A device's profile replaces it on connect.
+ */
+export const UNCONSTRAINED: Profile = {
+	schemaVersion: '1.0',
+	id: 'unipeq-unconstrained',
+	kind: 'software',
+	device: { brand: 'uniPEQ', model: 'Unconstrained' },
+	bandCount: null,
+	band: {
+		types: ['PK', 'LSC', 'HSC', 'LPQ', 'HPQ', 'BP', 'NO', 'AP'],
+		freq: { min: 10, max: 24000 },
+		q: { min: 0.05, max: 30 },
+		gain: { min: -30, max: 30 }
+	},
+	preamp: { mode: 'manual', gain: { min: -30, max: 10 } },
+	meta: { status: 'maintainer-verified', sources: [] }
+};
 
 // ─── Reading profiles ───────────────────────────────────────────────────────
 
@@ -180,6 +202,62 @@ export function projectFilter(filter: EqFilter, profile: Profile, slot: number):
 		out[field] = project(out[field], slotOf(profile, slot, out)[field], field);
 	}
 	return out;
+}
+
+/**
+ * Band `filter` with `patch` applied, each patched number projected onto slot `slot`'s domain (as
+ * resolved for the patched band, so conditional domains apply). Fields the patch leaves alone stay
+ * as they are, out of range or not: an edit never fixes other fields behind the user's back (that's
+ * Fit's job). A type the slot doesn't take is kept too; the UI offers only the slot's types.
+ */
+export function editFilter(
+	filter: EqFilter,
+	patch: Partial<EqFilter>,
+	profile: Profile,
+	slot: number
+): EqFilter {
+	const out: EqFilter = { ...filter, ...patch };
+	for (const field of ['freq', 'q', 'gain'] as const) {
+		if (patch[field] === undefined) continue;
+		out[field] = project(patch[field], slotOf(profile, slot, out)[field], field);
+	}
+	return out;
+}
+
+/**
+ * A band to add to `filters`: flat, in the widest log-frequency gap of the slot's range (ends
+ * included), at the nearest one-third-octave nominal frequency, projected onto the slot it will
+ * take. A peak when the slot takes one, else the slot's first type.
+ */
+export function newBand(filters: EqFilter[], profile: Profile): EqFilter {
+	const slot = profile.bandCount === null ? 0 : clampSlot(profile, filters.length);
+	const { min, max } = domainBounds(slotOf(profile, slot).freq);
+	const lo = Math.max(min, 20);
+	const hi = Math.min(max, 20000);
+	const taken = filters.flatMap((f) => (f.freq > lo && f.freq < hi ? [f.freq] : []));
+	const edges = [...new Set([lo, ...taken, hi])].sort((a, b) => a - b);
+	let widest = 0;
+	for (let g = 1; g < edges.length - 1; g++) {
+		if (edges[g + 1] / edges[g] > edges[widest + 1] / edges[widest]) widest = g;
+	}
+	const [freq] = spreadNominal(edges[widest], edges[widest + 1], 1);
+	const types = appTypesOf(slotOf(profile, slot).types);
+	const type = types.includes('PK') ? 'PK' : (types[0] ?? 'PK');
+	return projectFilter({ enabled: true, type, freq, q: 1, gain: 0 }, profile, slot);
+}
+
+/** Whether two lists hold the same bands, in order. */
+export function sameFilters(a: EqFilter[], b: EqFilter[]): boolean {
+	return a.length === b.length && a.every((f, i) => eqFiltersEqual(f, b[i]));
+}
+
+/**
+ * What Fit makes of the list: folded onto the profile (`conformFilters`), and for a hardware
+ * device filled up to its band count with flat bands, so it holds what the device will after a
+ * push. Fit is always the user's call (device-peq invariant 3).
+ */
+export function fitFilters(filters: EqFilter[], profile: Profile): EqFilter[] {
+	return padToBandCount(conformFilters(filters, profile), profile);
 }
 
 /**

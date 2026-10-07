@@ -1,14 +1,13 @@
 <!--
 	Adapted from modernGraphTool src/lib/components/features/DevicePeqPushDialog.svelte @ 23ddc4dd:
 	our messages, eqcaps type codes shown as they are, no per-channel line, and Android back closes
-	it.
+	it (through ModalDialog).
 -->
 <script lang="ts">
-	import { Dialog } from 'bits-ui';
 	import Button from '$lib/components/atoms/Button.svelte';
+	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
 	import type { PlanChange, PushPlan } from '$lib/device-peq/push-plan';
 	import * as m from '$lib/paraglide/messages';
-	import { onBack } from '$lib/platform/back-button';
 
 	/**
 	 * Shown before a write whenever the device can't hold the EQ on screen as it is: what eqcaps'
@@ -60,64 +59,45 @@
 		open = false;
 		onConfirm();
 	}
-
-	$effect(() => {
-		if (!open) return;
-		return onBack(() => {
-			open = false;
-			return true;
-		});
-	});
 </script>
 
-<Dialog.Root bind:open>
-	<Dialog.Portal>
-		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40" />
-		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-11/12 max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-xl bg-base-200 p-6 shadow-2xl"
+<ModalDialog
+	bind:open
+	title={m.device_peq_push_title({ device: deviceName })}
+	description={m.device_peq_push_intro()}
+>
+	{#if plan}
+		<ul class="flex-1 space-y-1 overflow-y-auto text-sm text-base-content/80 tabular-nums">
+			{#each plan.changes as change, i (i)}
+				<li>{describe(change)}</li>
+			{/each}
+		</ul>
+		{#if plan.clipRisk}
+			<p
+				class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-base-content"
+			>
+				{m.device_peq_push_clip_risk()}
+			</p>
+		{/if}
+		{#if plan.infeasible}
+			<p
+				class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-base-content"
+			>
+				{m.device_peq_push_infeasible()}
+			</p>
+		{/if}
+	{/if}
+	{#snippet footer()}
+		<Button
+			title={m.device_peq_push_cancel()}
+			variant="ghost"
+			size="sm"
+			onclick={() => (open = false)}
 		>
-			<Dialog.Title class="text-lg font-semibold text-base-content">
-				{m.device_peq_push_title({ device: deviceName })}
-			</Dialog.Title>
-			<Dialog.Description class="text-sm text-base-content/70">
-				{m.device_peq_push_intro()}
-			</Dialog.Description>
-
-			{#if plan}
-				<ul class="flex-1 space-y-1 overflow-y-auto text-sm text-base-content/80 tabular-nums">
-					{#each plan.changes as change, i (i)}
-						<li>{describe(change)}</li>
-					{/each}
-				</ul>
-				{#if plan.clipRisk}
-					<p
-						class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-base-content"
-					>
-						{m.device_peq_push_clip_risk()}
-					</p>
-				{/if}
-				{#if plan.infeasible}
-					<p
-						class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-base-content"
-					>
-						{m.device_peq_push_infeasible()}
-					</p>
-				{/if}
-			{/if}
-
-			<div class="flex justify-end gap-2">
-				<Button
-					title={m.device_peq_push_cancel()}
-					variant="ghost"
-					size="sm"
-					onclick={() => (open = false)}
-				>
-					{m.device_peq_push_cancel()}
-				</Button>
-				<Button title={m.device_peq_push_confirm()} variant="primary" size="sm" onclick={confirm}>
-					{m.device_peq_push_confirm()}
-				</Button>
-			</div>
-		</Dialog.Content>
-	</Dialog.Portal>
-</Dialog.Root>
+			{m.device_peq_push_cancel()}
+		</Button>
+		<Button title={m.device_peq_push_confirm()} variant="primary" size="sm" onclick={confirm}>
+			{m.device_peq_push_confirm()}
+		</Button>
+	{/snippet}
+</ModalDialog>

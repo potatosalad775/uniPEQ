@@ -5,6 +5,7 @@
 	import { onBack } from '$lib/platform/back-button';
 	import * as m from '$lib/paraglide/messages';
 	import { TABS, activeTab } from './tabs';
+	import Toast from './Toast.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -61,3 +62,5 @@
 		{@render children()}
 	</main>
 </div>
+
+<Toast />

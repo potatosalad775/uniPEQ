@@ -3,11 +3,14 @@
  * read back goes through `parsePreset`, so a prototype install's schemaVersion 1 presets load as
  * v2 (rebuild decision 5); they are stored as v2 the next time they are saved.
  */
+import { presetFit, type PresetFit } from '$lib/device-peq/preset-fit';
+import type { PeqCapabilities } from '$lib/device-peq/types';
 import { formatApo } from '$lib/eq/eq-apo';
 import { derivePreamp } from '$lib/eq/eq-preamp';
 import type { PeqPreset } from '$lib/eq/model';
 import {
 	createPreset,
+	editedPreset,
 	importPreset,
 	parsePreset,
 	presetJson,
@@ -19,6 +22,7 @@ import {
 	type PresetIndexEntry,
 	type PresetStorage
 } from '$lib/services/preset-storage';
+import type { Profile } from '@potatosalad775/eqcaps-core';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 
@@ -37,12 +41,13 @@ export class PresetStore {
 	}
 
 	/** Save the EQ as it is now under `name`, naming the connected device's profile. */
-	async saveCurrent(name: string): Promise<PeqPreset> {
+	async saveCurrent(name: string, tags: string[] = []): Promise<PeqPreset> {
 		const preset = createPreset({
 			name,
 			filters: eqStore.filters,
 			pregain: eqStore.pregain,
-			deviceId: devicePeqStore.connection?.profileId ?? undefined
+			deviceId: devicePeqStore.connection?.profileId ?? undefined,
+			tags
 		});
 		await this.storage.save(preset);
 		await this.refresh();
@@ -67,9 +72,48 @@ export class PresetStore {
 		return imported;
 	}
 
+	/** Rename a stored preset or change its tags. */
+	async edit(id: string, changes: { name?: string; tags?: string[] }): Promise<PeqPreset> {
+		const next = editedPreset((await this.load(id)).preset, changes);
+		await this.storage.save(next);
+		await this.refresh();
+		return next;
+	}
+
+	/** Store a copy of a preset under a fresh id, named `name`. */
+	async duplicate(id: string, name: string): Promise<PeqPreset> {
+		const { preset } = await this.load(id);
+		const copy = createPreset({
+			name,
+			filters: preset.filters,
+			pregain: preset.pregain,
+			deviceId: preset.source?.deviceId,
+			tags: preset.tags
+		});
+		await this.storage.save(copy);
+		await this.refresh();
+		return copy;
+	}
+
 	async remove(id: string): Promise<void> {
 		await this.storage.remove(id);
 		await this.refresh();
+	}
+
+	/** How each listed preset fits a device, by id. A damaged preset is left out. */
+	async fits(
+		profile: Profile,
+		capabilities: Pick<PeqCapabilities, 'writesPreamp'>
+	): Promise<Record<string, PresetFit>> {
+		const out: Record<string, PresetFit> = {};
+		for (const entry of this.index) {
+			try {
+				out[entry.id] = presetFit((await this.load(entry.id)).preset, profile, capabilities);
+			} catch {
+				// Loading it reports the damage; the list just shows no badge.
+			}
+		}
+		return out;
 	}
 
 	/** A stored preset as a file: uniPEQ JSON, or Equalizer APO text. */

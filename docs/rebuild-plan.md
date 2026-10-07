@@ -8,7 +8,9 @@ Its decisions 1–7 carry over unchanged.
 Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
 Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 2026-10-06** (web and
 Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked devices; the hardware
-check is open, see Phase 3). Tick tasks as they land; record deviations in the Decisions section.
+check is open, see Phase 3). **Phase 4 code done 2026-10-07** (demo device, web at desktop and phone
+widths; the real-phone and hardware checks are open, see Phase 4). Tick tasks as they land; record
+deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -196,7 +198,53 @@ New:
       the profile is `community-verified` with `demo.ts` itself as its `vendor-docs` source. The
       Connect area offers it on every platform, including browsers without WebHID.
     - **Left for Phase 4:** the explicit **Fit** action (invariant 3), undo/redo controls (the
-      undo snapshot doesn't keep `autoPreamp` yet), and the band editor.
+      undo snapshot doesn't keep `autoPreamp` yet), and the band editor. *All three landed in
+      Phase 4 (decision 21).*
+
+21. **Phase 4 notes.**
+    - **The graph** (`components/eq/EqGraph.svelte`, scales in `eq/graph-scale.ts`) is one SVG on
+      pointer events, not d3: touch and mouse share one path, and synthetic events drive it in
+      specs. Drag moves frequency and gain (only the fields the slot doesn't lock; a gainless type
+      sits on 0 dB and moves sideways only), Q comes from a two-finger pinch anywhere or the wheel,
+      a double-click on the background adds a band, a tap deselects. A drag is one undo step; moves
+      under 3 px are taps; edits run once per animation frame; the dB range is held during a
+      gesture so the plot doesn't rescale under the finger. Nodes are focusable buttons: arrows,
+      Page Up/Down and Delete edit them. Keyboard steps are musical (`eq/nudge.ts`: 1/24 octave
+      for frequency, 1/12 octave for Q, 0.1 dB or the grid for gain), shared with the editor.
+    - **Editing** goes through `eqStore` methods (`update`, `add`, `remove`, `setPreamp`,
+      `setAutoPreamp`, `undo`, `redo`). `update` takes a coalesce key, so a slider drag or a held
+      arrow key is one undo step (`COALESCE_MS`). Snapshots keep `autoPreamp` (`UndoRedoStack` is
+      generic now). An edit projects only the fields it changes onto the band's slot
+      (`editFilter`); everything else stays as it is, flagged, until the user presses **Fit**
+      (`fitFilters` = `conformFilters` + `padToBandCount`, modernGraphTool's "Fit to device").
+      Connecting still never edits (invariant 3); the band list says how many bands don't fit.
+    - **Constraints** are derived in `stores/eq-constraint-store.svelte.ts`: the connected profile,
+      or `UNCONSTRAINED` (every type, ranges wide enough for any preset file) with none. Still no
+      constraint picker.
+    - **Layout.** Wide: the toolbar, graph and preamp sit sticky on the left; the device panel and
+      the band list on the right, the selected row opening the editor in place. Phone: device,
+      graph, preamp and bands stacked; the selected band's editor is a non-modal bottom sheet
+      (`BandSheet`, Android back closes it), and opening it scrolls the graph to the top so the
+      band stays in sight and draggable above the sheet.
+    - **Preamp** (`eq/preamp-control.ts`): `manual` and `unknown` get a slider (`unknown` over a
+      guessed −20…0 dB, with a note) and an Auto switch; `auto` shows nothing; `none`, or a
+      protocol that can't write a preamp, shows a warning while the EQ boosts. The slider warns
+      when it leaves less headroom than the bands boost.
+    - **Device row**: a status badge from `meta.status` (or "Guessed protocol"), an experimental
+      badge, and in its popover links to the profile in the inspector (`/eqcaps/p/<id>`) and to
+      the wrong-constraint form.
+    - **Presets screen**: search over names and tags, tags, rename, duplicate, JSON / APO export,
+      delete behind a confirming press, and a fit badge per preset while connected
+      (`device-peq/preset-fit.ts`, the same `planPush` a write runs; it replaces the prototype's
+      loss score). The EQ screen loads and saves presets through dialogs; outcomes there go to a
+      shell-level toast (`notice-store`), as the dialog has closed by then.
+    - **Android export** closes decision 20's gap: `@capacitor/filesystem` writes the file to the
+      cache and `@capacitor/share` opens the share sheet (the app's FileProvider already exposes
+      the cache). Diagnostics log export uses the same path.
+    - **Settings**: auto-write switch and delay (0.5–5 s), verbose logging, a log viewer with
+      clear and export, and the eqcaps data version and profile count under About.
+    - New atom `ModalDialog` (bits-ui Dialog + Android back); `PushDialog` uses it. `Input` now
+      types the input attributes it already spread. `BandTable` is gone.
 
 ## Phases
 
@@ -297,20 +345,28 @@ That spike doesn't depend on the UI, so everything it produces carries over to t
 
 ### Phase 4: Screens · 3–4 days
 
-- [ ] **Main.** A large interactive `EqGraph` is the main element: response from `biquad.ts`,
+- [x] **Main.** A large interactive `EqGraph` is the main element: response from `biquad.ts`,
       draggable band nodes, tap-to-select with a touch path for Q. Band list/editor from
       `EqFilterCard`. Device row + Device EQ + single status line from `DevicePeq`. Undo/redo,
       load/save preset. Desktop puts the graph and editor side by side; phone stacks them, with the
-      band editor in a bottom sheet.
-- [ ] Per-band domains from `resolveSlot` / `slotOf`: min/max/step, fixed value lists, locked
+      band editor in a bottom sheet. *Decision 21; plus Fit, Ctrl+Z / Ctrl+Y.*
+- [x] Per-band domains from `resolveSlot` / `slotOf`: min/max/step, fixed value lists, locked
       fields read-only, allowed types. `isGraphic` profiles get a fixed-frequency layout. Live
-      `validateList` flags while editing.
-- [ ] Preamp by `preamp.mode`: `manual` slider, `auto` hidden, `none` warns on boost, `unknown`
+      `validateList` flags while editing. *`BandEditor` / `BandField`; graphic bands drag only in
+      gain and have no add or remove.*
+- [x] Preamp by `preamp.mode`: `manual` slider, `auto` hidden, `none` warns on boost, `unknown`
       slider with a note.
-- [ ] Profile status badge, experimental badge, links to the eqcaps inspector and its
+- [x] Profile status badge, experimental badge, links to the eqcaps inspector and its
       "wrong constraint" form.
-- [ ] **Presets** and **Settings** (theme, language, auto-push delay, diagnostics log viewer/export).
+- [x] **Presets** and **Settings** (theme, language, auto-push delay, diagnostics log viewer/export).
+      *Plus real file export on Android (share sheet).*
 - **Exit:** feature parity with the Vue prototype, on desktop and phone widths.
+  *Code verified 2026-10-07: 242 tests (graph gestures and keys, the editor's domains, the preamp
+  modes, presets search / rename / duplicate / fit, the log viewer). Checked by hand in Chromium
+  with the demo device at 1280 and 390 px, light and dark, en and ko; the debug APK builds with the
+  two new plugins. Open, for the user: on a real phone, graph drags at 60 fps (Risks), pinch for
+  Q, the bottom sheet, Android back closing it and the dialogs, export through the share sheet,
+  and importing a file; on hardware, Fit then Write on a real device (web and Android).*
 
 ### Phase 5: Serial and Bluetooth in the browser · 1 day
 

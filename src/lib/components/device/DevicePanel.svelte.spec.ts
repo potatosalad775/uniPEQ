@@ -8,7 +8,7 @@ import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
 import { settingsStore } from '$lib/stores/settings-store.svelte';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
-import BandTable from './BandTable.svelte';
+import BandList from '$lib/components/eq/BandList.svelte';
 import DevicePanel from './DevicePanel.svelte';
 import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 
@@ -54,7 +54,12 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 			kind: 'hardware',
 			device: { brand: 'FiiO', model: 'KA17' },
 			bandCount: 10,
-			band: { types: ['PK'], gain: { min: -12, max: 12 } },
+			band: {
+				types: ['PK'],
+				freq: { min: 20, max: 20000 },
+				q: { min: 0.1, max: 10 },
+				gain: { min: -12, max: 12 }
+			},
 			preamp: { mode: 'manual', gain: { min: -12, max: 0 } },
 			meta: { status: 'draft', sources: [] }
 		} as Profile,
@@ -76,7 +81,7 @@ describe('DevicePanel', () => {
 		const conn = ka17();
 		devicePeqStore.setConnected(conn, 4);
 		render(DevicePanel);
-		render(BandTable);
+		render(BandList);
 
 		await expect.element(page.getByText('FiiO KA17')).toBeVisible();
 		await expect.element(page.getByText('10 bands · -12 to 12 dB')).toBeVisible();
@@ -87,7 +92,7 @@ describe('DevicePanel', () => {
 		await expect.element(page.getByText('Read 2 band(s) from the device')).toBeVisible();
 		expect(conn.device.pull).toHaveBeenCalledWith({});
 		expect(eqStore.filters.map((f) => f.type)).toEqual(['LSC', 'PK']);
-		await expect.element(page.getByText('Preamp -4 dB')).toBeVisible();
+		expect(eqStore.preamp).toBe(-4);
 		await expect.element(page.getByText('3 kHz')).toBeVisible();
 	});
 
@@ -228,7 +233,7 @@ describe('DevicePanel with the demo device', () => {
 
 	it('connects the demo device and reads its preset', async () => {
 		render(DevicePanel);
-		render(BandTable);
+		render(BandList);
 
 		await page.getByRole('button', { name: /simulated DAC/ }).click();
 		await expect.element(page.getByText('uniPEQ Demo DAC')).toBeVisible();
@@ -236,6 +241,7 @@ describe('DevicePanel with the demo device', () => {
 
 		await page.getByRole('button', { name: "Replace the band list with the device's EQ" }).click();
 		await expect.element(page.getByText('Read 10 band(s) from the device')).toBeVisible();
-		await expect.element(page.getByText('Preamp -4.5 dB')).toBeVisible();
+		await expect.element(page.getByRole('region', { name: /Bands 10/ })).toBeVisible();
+		expect(eqStore.preamp).toBe(-4.5);
 	});
 });

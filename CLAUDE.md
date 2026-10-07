@@ -4,7 +4,8 @@ Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being 
 Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
 `devices/`, the registry, handlers, web transports and the adaptation engine).
 **Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–2
-done, Phase 3 code done pending a hardware check, Phase 4 next); what to copy from `../modernGraphTool`:
+done, Phases 3–4 code done pending real-phone and hardware checks, Phase 5 next); what to copy from
+`../modernGraphTool`:
 [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
 [ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.
 
@@ -41,7 +42,7 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   `src/lib/styles/theme.css` (`bg-base-100`, `text-base-content/60`, …); reach for
   `src/lib/components/atoms/` before raw elements. Files are kebab-case.
 - Files copied from modernGraphTool start with a comment naming the source path and commit.
-- Layout: `src/routes/` (one route per tab, `ssr = false`), `src/lib/components/{atoms,layout}`,
+- Layout: `src/routes/` (one route per tab, `ssr = false`), `src/lib/components/{atoms,layout,eq,device,presets,settings}`,
   `src/lib/eq/` (app filter model with eqcaps type codes, `biquad.ts`), `src/lib/services/`
   (framework-free), `src/lib/stores/`, `src/lib/platform/` (Capacitor glue: back button, system
   bars), `src/lib/transports/native/` (USB HID plugin wrapper → eqcaps `HidTransport`).
@@ -55,6 +56,10 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   the filters, one status line). `connect.ts`, the bridge, the client and the snapshot stay behind
   dynamic `import()`; only `eqcaps-core` may be in the boot bundle. State in
   `stores/device-peq-store.svelte.ts`, actions in `services/device-peq-service.svelte.ts`.
+- EQ edits go through `eqStore` methods, never by assigning `filters`: each is an undo step, or
+  joins one through a coalesce key (slider drags, held keys) or `record()` at a gesture's start.
+  Project an edit onto the band's slot with `editFilter` first; only Fit (`fitFilters`) folds the
+  whole list onto the device. Limits for the UI come from `stores/eq-constraint-store.svelte.ts`.
 - Overlays that should close on Android back register with `onBack()` from
   `$lib/platform/back-button` and remove the handler when they close.
 - Component specs load no Tailwind: don't assert layout or computed utility styles there.

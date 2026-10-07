@@ -5,13 +5,17 @@ import {
 	appTypesOf,
 	assignSlots,
 	conformFilters,
+	editFilter,
 	filterViolations,
+	fitFilters,
 	graphicBandsOf,
 	isGraphicProfile,
 	isPastMaxBands,
 	maxBandsOf,
+	newBand,
 	padToBandCount,
 	projectFilter,
+	sameFilters,
 	toWrittenFilter
 } from './eq-constraint';
 import type { EqFilter } from './model';
@@ -242,5 +246,62 @@ describe('isPastMaxBands', () => {
 
 	it('returns false when unlimited', () => {
 		expect(isPastMaxBands(99, softwareProfile('free'))).toBe(false);
+	});
+});
+
+describe('editFilter', () => {
+	const p = hardwareProfile('h', { bandCount: 4 });
+	const band: EqFilter = { type: 'PK', freq: 1000, q: 1, gain: 0, enabled: true };
+
+	it('projects the patched fields onto the slot', () => {
+		expect(editFilter(band, { gain: 20, freq: 1000.4 }, p, 0)).toMatchObject({
+			gain: 12,
+			freq: 1000
+		});
+	});
+
+	it('leaves the fields it was not asked to change alone, out of range or not', () => {
+		const wild = { ...band, q: 50 };
+		expect(editFilter(wild, { gain: 3 }, p, 0)).toMatchObject({ q: 50, gain: 3 });
+	});
+});
+
+describe('newBand', () => {
+	it('puts a flat peak in the widest gap, on a nominal frequency', () => {
+		const p = softwareProfile('s');
+		expect(newBand([], p)).toEqual({ type: 'PK', freq: 630, q: 1, gain: 0, enabled: true });
+		const lows: EqFilter[] = [
+			{ type: 'PK', freq: 100, q: 1, gain: 0, enabled: true },
+			{ type: 'PK', freq: 200, q: 1, gain: 0, enabled: true }
+		];
+		expect(newBand(lows, p).freq).toBe(2000);
+	});
+
+	it("takes the slot's own type where it has no peak", () => {
+		const p = softwareProfile('s', { types: ['LSC', 'HSC'] });
+		expect(newBand([], p).type).toBe('LSC');
+	});
+});
+
+describe('fitFilters', () => {
+	it('folds the list onto a device and fills its remaining bands flat', () => {
+		const p = hardwareProfile('h', {
+			bandCount: 3,
+			band: {
+				types: ['PK'],
+				freq: { min: 20, max: 20000, step: 1 },
+				q: { min: 0.1, max: 10, step: 0.01 },
+				gain: { min: -12, max: 12, step: 0.1 }
+			}
+		});
+		const out = fitFilters([{ type: 'LSC', freq: 100, q: 0.7, gain: 15, enabled: true }], p);
+		expect(out).toHaveLength(3);
+		expect(out[0]).toMatchObject({ type: 'PK', gain: 12 });
+		expect(out.slice(1).every((f) => f.gain === 0)).toBe(true);
+	});
+
+	it('changes nothing that already fits a software EQ', () => {
+		const list: EqFilter[] = [{ type: 'PK', freq: 100, q: 1, gain: 3, enabled: true }];
+		expect(sameFilters(fitFilters(list, softwareProfile('s')), list)).toBe(true);
 	});
 });

@@ -1,62 +1,76 @@
 <!--
-	Saved presets: save the EQ, load one into it, import and export files. Plain on purpose: the
-	Phase 4 Presets screen adds search, tags, renaming and duplicates (docs/rebuild-plan.md).
+	Saved presets: save the EQ, search, load one into it, rename and tag, duplicate, import and
+	export files, delete. With a device connected, each preset says how it fits the device (the
+	prototype's compatibility badge, now from eqcaps' `fit`).
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { EllipsisVertical, FileUp, Search } from '@lucide/svelte';
+	import { DropdownMenu } from 'bits-ui';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Input from '$lib/components/atoms/Input.svelte';
-	import { PresetError } from '$lib/eq/preset-file';
+	import type { PresetFit } from '$lib/device-peq/preset-fit';
 	import * as m from '$lib/paraglide/messages';
 	import { saveTextFile } from '$lib/platform/save-file';
+	import type { PresetIndexEntry } from '$lib/services/preset-storage';
 	import { logger } from '$lib/services/logger';
+	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import { parseTags } from '$lib/eq/preset-file';
+	import { searchPresets } from '$lib/services/preset-storage';
 	import { presetStore } from '$lib/stores/preset-store.svelte';
+	import EditPresetDialog from './EditPresetDialog.svelte';
+	import { describePresetError, FIT_TONE_CLASS, fitBadge, withWarnings } from './preset-messages';
 
 	let name = $state('');
+	let tags = $state('');
+	let query = $state('');
 	let notice = $state<{ text: string; isError: boolean } | null>(null);
-	/** The preset whose Delete was pressed once and waits for the second press. */
+	/** The preset whose Delete was picked and waits for the confirming press. */
 	let confirmingDelete = $state<string | null>(null);
+	let editing = $state<PresetIndexEntry | null>(null);
+	let fits = $state.raw<Record<string, PresetFit>>({});
 	let fileInput: HTMLInputElement | undefined = $state();
+
+	const shown = $derived(searchPresets(presetStore.index, query));
 
 	onMount(() => {
 		void presetStore.refresh();
 	});
 
+	$effect(() => {
+		const profile = devicePeqStore.profile;
+		const caps = devicePeqStore.capabilities;
+		void presetStore.index;
+		if (!profile || !caps) {
+			fits = {};
+			return;
+		}
+		let stale = false;
+		void presetStore.fits(profile, caps).then((next) => {
+			if (!stale) fits = next;
+		});
+		return () => (stale = true);
+	});
+
 	const say = (text: string, isError = false) => (notice = { text, isError });
 
-	/** Each warning a load or import came with, after its own message. */
-	function withWarnings(text: string, w: { disabled: number; skipped?: number }): string {
-		const parts = [text];
-		if (w.disabled > 0) parts.push(m.presets_disabled_bands({ count: w.disabled }));
-		if (w.skipped) parts.push(m.presets_skipped_lines({ count: w.skipped }));
-		return parts.join(' ');
-	}
-
-	function describeError(e: unknown): string {
-		if (e instanceof PresetError) {
-			if (e.code === 'not-a-preset') return m.presets_error_not_a_preset();
-			if (e.code === 'version') return m.presets_error_version();
-			if (e.code === 'empty') return m.presets_error_empty();
-			return m.presets_error_invalid({ detail: e.message });
-		}
-		return m.presets_error_generic();
-	}
-
-	async function run(op: string, action: () => Promise<string>) {
+	async function run(op: string, action: () => Promise<string | null>) {
 		confirmingDelete = null;
 		try {
-			say(await action());
+			const text = await action();
+			if (text) say(text);
 		} catch (e) {
 			logger.error(`preset ${op} failed:`, e instanceof Error ? e.message : String(e));
-			say(describeError(e), true);
+			say(describePresetError(e), true);
 		}
 	}
 
 	const save = () =>
 		run('save', async () => {
-			const preset = await presetStore.saveCurrent(name.trim());
+			const preset = await presetStore.saveCurrent(name.trim(), parseTags(tags));
 			name = '';
+			tags = '';
 			return m.presets_saved({ name: preset.name });
 		});
 
@@ -69,22 +83,32 @@
 	const exportAs = (id: string, format: 'json' | 'apo') =>
 		run('export', async () => {
 			const file = await presetStore.exportFile(id, format);
-			const how = await saveTextFile(file.name, file.text, file.type);
-			return how === 'copied'
-				? m.presets_exported_clipboard({ name: file.name })
+			const outcome = await saveTextFile(file.name, file.text, file.type);
+			if (outcome === 'cancelled') return null;
+			return outcome === 'shared'
+				? m.presets_exported_shared({ name: file.name })
 				: m.presets_exported({ name: file.name });
 		});
 
-	function remove(id: string, presetName: string) {
-		if (confirmingDelete !== id) {
-			confirmingDelete = id;
-			return;
-		}
-		void run('delete', async () => {
-			await presetStore.remove(id);
-			return m.presets_deleted({ name: presetName });
+	const duplicate = (entry: PresetIndexEntry) =>
+		run('duplicate', async () => {
+			const copy = await presetStore.duplicate(entry.id, m.presets_copy_name({ name: entry.name }));
+			return m.presets_duplicated({ name: copy.name });
+		});
+
+	function saveEdit(id: string, changes: { name: string; tags: string[] }) {
+		editing = null;
+		void run('edit', async () => {
+			const preset = await presetStore.edit(id, changes);
+			return m.presets_edited({ name: preset.name });
 		});
 	}
+
+	const remove = (entry: PresetIndexEntry) =>
+		run('delete', async () => {
+			await presetStore.remove(entry.id);
+			return m.presets_deleted({ name: entry.name });
+		});
 
 	async function importFile(e: Event & { currentTarget: HTMLInputElement }) {
 		const input = e.currentTarget;
@@ -98,101 +122,190 @@
 	}
 
 	const dateOf = (iso: string) => new Date(iso).toLocaleDateString();
+
+	const menuItem =
+		'flex cursor-pointer items-center rounded px-2 py-1.5 text-sm outline-none select-none data-highlighted:bg-base-content/10';
 </script>
 
-<section aria-labelledby="presets-heading" class="flex flex-col gap-4 rounded-xl bg-base-100 p-4">
-	<h2 id="presets-heading" class="sr-only">{m.nav_presets()}</h2>
-
-	<form
-		class="flex items-end gap-2"
-		onsubmit={(e) => {
-			e.preventDefault();
-			void save();
-		}}
+<div class="flex flex-col gap-4">
+	<section
+		aria-labelledby="save-heading"
+		class="flex flex-col gap-3 rounded-xl bg-base-100 p-4 wide:flex-row wide:items-end"
 	>
-		<Input
-			bind:value={name}
-			label={m.presets_save_label()}
-			placeholder={m.presets_save_placeholder()}
-			class="flex-col"
-		/>
-		<Button
-			title={m.presets_save_title()}
-			type="submit"
-			disabled={!name.trim() || eqStore.filters.length === 0}
+		<h2 id="save-heading" class="sr-only">{m.presets_save_title()}</h2>
+		<form
+			class="flex flex-1 flex-col gap-2 wide:flex-row wide:items-end"
+			onsubmit={(e) => {
+				e.preventDefault();
+				void save();
+			}}
 		>
-			{m.presets_save()}
-		</Button>
-	</form>
+			<Input
+				bind:value={name}
+				label={m.presets_save_label()}
+				placeholder={m.presets_save_placeholder()}
+				class="flex-col"
+			/>
+			<Input
+				bind:value={tags}
+				label={m.presets_tags_label()}
+				placeholder={m.presets_tags_placeholder()}
+				class="flex-col"
+			/>
+			<Button
+				title={m.presets_save_title()}
+				type="submit"
+				class="shrink-0"
+				disabled={!name.trim() || eqStore.filters.length === 0}
+			>
+				{m.presets_save()}
+			</Button>
+		</form>
+	</section>
 
-	<div class="flex flex-wrap items-center gap-2">
-		<Button title={m.presets_import_title()} variant="outline" onclick={() => fileInput?.click()}>
-			{m.presets_import()}
-		</Button>
-		<input
-			bind:this={fileInput}
-			type="file"
-			accept=".json,.txt,application/json,text/plain"
-			class="hidden"
-			onchange={importFile}
-		/>
-	</div>
+	<section aria-labelledby="presets-heading" class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
+		<div class="flex items-center gap-2">
+			<h2 id="presets-heading" class="sr-only">{m.presets_list_label()}</h2>
+			<Input
+				bind:value={query}
+				type="search"
+				placeholder={m.presets_search_placeholder()}
+				aria-label={m.presets_search_placeholder()}
+			>
+				{#snippet icon()}<Search class="size-4 text-base-content/50" />{/snippet}
+			</Input>
+			<Button
+				title={m.presets_import_title()}
+				variant="outline"
+				class="shrink-0 gap-1.5"
+				onclick={() => fileInput?.click()}
+			>
+				<FileUp class="size-4" aria-hidden="true" />
+				{m.presets_import()}
+			</Button>
+			<input
+				bind:this={fileInput}
+				type="file"
+				accept=".json,.txt,application/json,text/plain"
+				class="hidden"
+				onchange={importFile}
+			/>
+		</div>
 
-	<p
-		class="text-sm {notice?.isError ? 'text-error' : 'text-base-content/70'}"
-		role="status"
-		aria-live="polite"
-	>
-		{notice?.text ?? ''}
-	</p>
+		<p
+			class="text-sm {notice?.isError ? 'text-error' : 'text-base-content/70'}"
+			role="status"
+			aria-live="polite"
+		>
+			{notice?.text ?? ''}
+		</p>
 
-	{#if presetStore.index.length === 0}
-		<p class="text-sm text-base-content/70">{m.presets_empty()}</p>
-	{:else}
-		<ul class="flex flex-col divide-y divide-base-content/10" aria-label={m.presets_list_label()}>
-			{#each presetStore.index as entry (entry.id)}
-				<li class="flex flex-wrap items-center gap-2 py-2">
-					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm font-medium">{entry.name}</p>
-						<p class="text-xs text-base-content/60">{dateOf(entry.updatedAt)}</p>
-					</div>
-					<div class="flex shrink-0 gap-1">
-						<Button
-							title={m.presets_apply_title({ name: entry.name })}
-							size="sm"
-							onclick={() => apply(entry.id)}
-						>
-							{m.presets_apply()}
-						</Button>
-						<Button
-							title={m.presets_export_json_title({ name: entry.name })}
-							size="sm"
-							variant="ghost"
-							onclick={() => exportAs(entry.id, 'json')}
-						>
-							JSON
-						</Button>
-						<Button
-							title={m.presets_export_apo_title({ name: entry.name })}
-							size="sm"
-							variant="ghost"
-							onclick={() => exportAs(entry.id, 'apo')}
-						>
-							APO
-						</Button>
-						<Button
-							title={confirmingDelete === entry.id
-								? m.presets_delete_confirm_title({ name: entry.name })
-								: m.presets_delete_title({ name: entry.name })}
-							size="sm"
-							variant={confirmingDelete === entry.id ? 'destructive' : 'ghost'}
-							onclick={() => remove(entry.id, entry.name)}
-						>
-							{confirmingDelete === entry.id ? m.presets_delete_confirm() : m.presets_delete()}
-						</Button>
-					</div>
-				</li>
-			{/each}
-		</ul>
-	{/if}
-</section>
+		{#if presetStore.index.length === 0}
+			<p class="text-sm text-base-content/70">{m.presets_empty()}</p>
+		{:else if shown.length === 0}
+			<p class="text-sm text-base-content/70">{m.presets_no_match()}</p>
+		{:else}
+			<ul class="flex flex-col divide-y divide-base-content/10" aria-label={m.presets_list_label()}>
+				{#each shown as entry (entry.id)}
+					{@const fit = fits[entry.id]}
+					<li class="flex flex-wrap items-center gap-2 py-2">
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-sm font-medium">{entry.name}</p>
+							<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/60">
+								<span>{dateOf(entry.updatedAt)}</span>
+								{#each entry.tags as tag (tag)}
+									<span class="rounded bg-base-300 px-1.5 py-0.5 text-[11px] text-base-content/80"
+										>{tag}</span
+									>
+								{/each}
+								{#if fit}
+									{@const badge = fitBadge(fit)}
+									<span class="rounded-full px-2 py-0.5 text-[11px] {FIT_TONE_CLASS[badge.tone]}">
+										{badge.text}
+									</span>
+								{/if}
+							</p>
+						</div>
+						<div class="flex shrink-0 items-center gap-1">
+							{#if confirmingDelete === entry.id}
+								<Button
+									title={m.presets_delete_confirm_title({ name: entry.name })}
+									size="sm"
+									variant="destructive"
+									onclick={() => remove(entry)}
+								>
+									{m.presets_delete_confirm()}
+								</Button>
+								<Button
+									title={m.device_peq_push_cancel()}
+									size="sm"
+									variant="ghost"
+									onclick={() => (confirmingDelete = null)}
+								>
+									{m.device_peq_push_cancel()}
+								</Button>
+							{:else}
+								<Button
+									title={m.presets_apply_title({ name: entry.name })}
+									size="sm"
+									onclick={() => apply(entry.id)}
+								>
+									{m.presets_apply()}
+								</Button>
+								<DropdownMenu.Root>
+									<DropdownMenu.Trigger>
+										{#snippet child({ props })}
+											<Button
+												{...props}
+												title={m.presets_more({ name: entry.name })}
+												size="icon-sm"
+												variant="ghost"
+											>
+												<EllipsisVertical class="size-4" aria-hidden="true" />
+											</Button>
+										{/snippet}
+									</DropdownMenu.Trigger>
+									<DropdownMenu.Portal>
+										<DropdownMenu.Content
+											align="end"
+											sideOffset={4}
+											class="z-50 min-w-44 rounded-lg border border-base-content/15 bg-base-200 p-1 shadow-xl"
+										>
+											<DropdownMenu.Item class={menuItem} onSelect={() => (editing = entry)}>
+												{m.presets_edit()}
+											</DropdownMenu.Item>
+											<DropdownMenu.Item class={menuItem} onSelect={() => duplicate(entry)}>
+												{m.presets_duplicate()}
+											</DropdownMenu.Item>
+											<DropdownMenu.Item
+												class={menuItem}
+												onSelect={() => exportAs(entry.id, 'json')}
+											>
+												{m.presets_export_json()}
+											</DropdownMenu.Item>
+											<DropdownMenu.Item
+												class={menuItem}
+												onSelect={() => exportAs(entry.id, 'apo')}
+											>
+												{m.presets_export_apo()}
+											</DropdownMenu.Item>
+											<DropdownMenu.Separator class="my-1 h-px bg-base-content/10" />
+											<DropdownMenu.Item
+												class="{menuItem} text-error"
+												onSelect={() => (confirmingDelete = entry.id)}
+											>
+												{m.presets_delete()}
+											</DropdownMenu.Item>
+										</DropdownMenu.Content>
+									</DropdownMenu.Portal>
+								</DropdownMenu.Root>
+							{/if}
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+</div>
+
+<EditPresetDialog entry={editing} onSave={saveEdit} onClose={() => (editing = null)} />

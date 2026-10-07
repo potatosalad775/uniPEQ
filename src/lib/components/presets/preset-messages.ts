@@ -1,0 +1,39 @@
+import type { PresetFit } from '$lib/device-peq/preset-fit';
+import { PresetError } from '$lib/eq/preset-file';
+import * as m from '$lib/paraglide/messages';
+
+/** Each warning a load or import came with, after its own message. */
+export function withWarnings(text: string, w: { disabled: number; skipped?: number }): string {
+	const parts = [text];
+	if (w.disabled > 0) parts.push(m.presets_disabled_bands({ count: w.disabled }));
+	if (w.skipped) parts.push(m.presets_skipped_lines({ count: w.skipped }));
+	return parts.join(' ');
+}
+
+export function describePresetError(e: unknown): string {
+	if (e instanceof PresetError) {
+		if (e.code === 'not-a-preset') return m.presets_error_not_a_preset();
+		if (e.code === 'version') return m.presets_error_version();
+		if (e.code === 'empty') return m.presets_error_empty();
+		return m.presets_error_invalid({ detail: e.message });
+	}
+	return m.presets_error_generic();
+}
+
+/** A preset's fit to the connected device, as a badge. */
+export function fitBadge(fit: PresetFit): { text: string; tone: 'success' | 'warning' | 'error' } {
+	if (fit.kind === 'exact') return { text: m.presets_fit_exact(), tone: 'success' };
+	if (fit.kind === 'adjusted') {
+		return { text: m.presets_fit_adjusted({ count: fit.changes }), tone: 'warning' };
+	}
+	return {
+		text: fit.dropped > 0 ? m.presets_fit_dropped({ count: fit.dropped }) : m.presets_fit_rules(),
+		tone: 'error'
+	};
+}
+
+export const FIT_TONE_CLASS = {
+	success: 'bg-success/15 text-success',
+	warning: 'bg-warning/15 text-warning',
+	error: 'bg-error/15 text-error'
+} as const;
