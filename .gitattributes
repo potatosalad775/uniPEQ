@@ -1,0 +1,18 @@
+# Line endings: LF in the repository and in every working tree, whatever a machine's
+# core.autocrlf says. Prettier (`endOfLine: "lf"`) and .editorconfig expect LF, and a CRLF checkout
+# made `npm run lint` flag files nobody had touched, and broke `android/gradlew` outside Windows.
+* text=auto eol=lf
+
+# Windows batch files keep CRLF: cmd.exe misreads labels and GOTOs in LF batch files.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.jar binary
+*.keystore binary
+*.jks binary
