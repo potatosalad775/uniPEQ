@@ -7,15 +7,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { EllipsisVertical, FileUp, Search } from '@lucide/svelte';
-	import { DropdownMenu } from 'bits-ui';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Input from '$lib/components/atoms/Input.svelte';
+	import Menu from '$lib/components/atoms/Menu.svelte';
+	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
+	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
 	import type { PresetFit } from '$lib/device-peq/preset-fit';
 	import * as m from '$lib/paraglide/messages';
 	import { saveTextFile } from '$lib/platform/save-file';
 	import type { PresetIndexEntry } from '$lib/services/preset-storage';
 	import { logger } from '$lib/services/logger';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 	import { searchPresets } from '$lib/services/preset-storage';
 	import { presetStore } from '$lib/stores/preset-store.svelte';
@@ -120,9 +123,6 @@
 	}
 
 	const dateOf = (iso: string) => new Date(iso).toLocaleDateString();
-
-	const menuItem =
-		'flex cursor-pointer items-center rounded px-2 py-1.5 text-sm outline-none select-none data-highlighted:bg-base-content/10';
 </script>
 
 <div class="flex flex-col gap-4">
@@ -236,59 +236,39 @@
 								</Button>
 							{:else}
 								<Button
-									title={m.presets_apply_title({ name: entry.name })}
+									title={eqConstraintStore.hasDevice
+										? m.presets_apply_title({ name: entry.name })
+										: m.presets_apply_needs_device()}
 									size="sm"
+									disabled={!eqConstraintStore.hasDevice}
 									onclick={() => apply(entry.id)}
 								>
 									{m.presets_apply()}
 								</Button>
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										{#snippet child({ props })}
-											<Button
-												{...props}
-												title={m.presets_more({ name: entry.name })}
-												size="icon-sm"
-												variant="ghost"
-											>
-												<EllipsisVertical class="size-4" aria-hidden="true" />
-											</Button>
-										{/snippet}
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Portal>
-										<DropdownMenu.Content
-											align="end"
-											sideOffset={4}
-											class="z-50 min-w-44 rounded-lg border border-base-content/15 bg-base-200 p-1 shadow-xl"
+								<Menu class="min-w-44">
+									{#snippet trigger(props)}
+										<Button
+											{...props}
+											title={m.presets_more({ name: entry.name })}
+											size="icon-sm"
+											variant="ghost"
 										>
-											<DropdownMenu.Item class={menuItem} onSelect={() => (editing = entry)}>
-												{m.presets_edit()}
-											</DropdownMenu.Item>
-											<DropdownMenu.Item class={menuItem} onSelect={() => duplicate(entry)}>
-												{m.presets_duplicate()}
-											</DropdownMenu.Item>
-											<DropdownMenu.Item
-												class={menuItem}
-												onSelect={() => exportAs(entry.id, 'json')}
-											>
-												{m.presets_export_json()}
-											</DropdownMenu.Item>
-											<DropdownMenu.Item
-												class={menuItem}
-												onSelect={() => exportAs(entry.id, 'apo')}
-											>
-												{m.presets_export_apo()}
-											</DropdownMenu.Item>
-											<DropdownMenu.Separator class="my-1 h-px bg-base-content/10" />
-											<DropdownMenu.Item
-												class="{menuItem} text-error"
-												onSelect={() => (confirmingDelete = entry.id)}
-											>
-												{m.presets_delete()}
-											</DropdownMenu.Item>
-										</DropdownMenu.Content>
-									</DropdownMenu.Portal>
-								</DropdownMenu.Root>
+											<EllipsisVertical class="size-4" aria-hidden="true" />
+										</Button>
+									{/snippet}
+									<MenuItem onSelect={() => (editing = entry)}>{m.presets_edit()}</MenuItem>
+									<MenuItem onSelect={() => duplicate(entry)}>{m.presets_duplicate()}</MenuItem>
+									<MenuItem onSelect={() => exportAs(entry.id, 'json')}>
+										{m.presets_export_json()}
+									</MenuItem>
+									<MenuItem onSelect={() => exportAs(entry.id, 'apo')}>
+										{m.presets_export_apo()}
+									</MenuItem>
+									<MenuSeparator />
+									<MenuItem destructive onSelect={() => (confirmingDelete = entry.id)}>
+										{m.presets_delete()}
+									</MenuItem>
+								</Menu>
 							{/if}
 						</div>
 					</li>

@@ -23,10 +23,18 @@ describe('PresetsPanel', () => {
 
 	afterEach(() => {
 		clearPresets();
-		devicePeqStore.setDisconnected();
+		devicePeqStore.forget();
+	});
+
+	it('loads a preset only once a device is known', async () => {
+		await presetStore.saveCurrent('Bright');
+		render(PresetsPanel);
+		const load = page.getByRole('button', { name: 'Connect a device to load a preset' });
+		await expect.element(load).toBeDisabled();
 	});
 
 	it('saves the EQ, then loads it back after it changed', async () => {
+		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 1 })), null);
 		render(PresetsPanel);
 		await page.getByRole('textbox', { name: 'Save the current EQ as' }).fill('Bright');
 		await page.getByRole('button', { name: 'Save the current EQ as a preset' }).click();
@@ -58,6 +66,7 @@ describe('PresetsPanel', () => {
 		);
 		localStorage.setItem('unipeq.preset.bad', JSON.stringify({ schemaVersion: 7 }));
 		await presetStore.refresh();
+		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 1 })), null);
 		render(PresetsPanel);
 
 		await page.getByRole('button', { name: 'Load Broken into the EQ' }).click();

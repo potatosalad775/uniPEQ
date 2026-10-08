@@ -93,4 +93,13 @@ describe('devicePeqStore', () => {
 		expect(devicePeqStore.isConnected).toBe(false);
 		expect(devicePeqStore.experimental).toBe(false);
 	});
+
+	it('keeps the device the EQ is for after a disconnect, until forgotten', () => {
+		devicePeqStore.setConnected(connection(), null);
+		devicePeqStore.setDisconnected();
+		expect(devicePeqStore.knownDevice?.name).toBe(connection().name);
+		expect(devicePeqStore.knownDevice?.profile).toEqual(connection().profile);
+		devicePeqStore.forget();
+		expect(devicePeqStore.knownDevice).toBeNull();
+	});
 });

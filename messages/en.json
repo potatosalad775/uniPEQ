@@ -157,6 +157,7 @@
 	"eq_misfits": "{count} band(s) don't fit {device}. Fit adjusts them to what it takes.",
 	"eq_preamp": "Preamp",
 	"eq_preamp_auto": "Auto",
+	"eq_preamp_auto_hint": "Follow the bands: cut by the largest boost.",
 	"eq_preamp_clips": "The bands boost more than this preamp leaves room for, so it may clip. {needed} dB would be enough.",
 	"eq_preamp_none_boost": "This device has no preamp, and the EQ boosts by up to {boost} dB: turn the volume down or cut instead of boosting to avoid clipping.",
 	"eq_preamp_unknown": "The device's preamp range isn't known yet, so a write may adjust it.",
@@ -224,5 +225,15 @@
 	"eq_field_step_up": "Raise {field}",
 	"sync_read": "Read",
 	"sync_not_read": "The device's EQ hasn't been read yet.",
-	"sync_auto_on": "Auto-write is on: your next edit goes to the device."
+	"sync_auto_on": "Auto-write is on: your next edit goes to the device.",
+	"eq_band_reset": "Reset band {band} to flat",
+	"eq_band_reset_short": "Reset",
+	"eq_short": "The list has {count} band(s) fewer than {device}. Fit fills them in flat.",
+	"eq_empty_fixed": "No bands yet. Read them from {device}, or start from {count} flat bands.",
+	"eq_start_flat": "Start flat",
+	"eq_empty_title": "Connect your device",
+	"eq_empty_body": "uniPEQ edits the EQ inside your DAC, amp or headphones. Connect one to start: its bands and limits come with it.",
+	"sync_disconnected": "{device} is disconnected. Your edits are kept.",
+	"sync_connect": "Connect",
+	"presets_apply_needs_device": "Connect a device to load a preset"
 }

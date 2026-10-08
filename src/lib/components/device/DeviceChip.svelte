@@ -1,6 +1,7 @@
 <!--
 	The device in the EQ tab's app bar (decision 22): its name and a dot for whether it has the EQ
-	on screen (the sync bar's state), or "Connect device" with none. Opens the device sheet.
+	on screen (the sync bar's state; a disconnected device's is the warning tone), or "Connect
+	device" before any. Opens the device sheet.
 -->
 <script lang="ts">
 	import { ChevronDown, Usb } from '@lucide/svelte';
@@ -10,7 +11,8 @@
 
 	let { onclick }: { onclick: () => void } = $props();
 
-	const name = $derived(devicePeqStore.deviceName);
+	/** The connected device, or the one the EQ is still for after a disconnect. */
+	const name = $derived(devicePeqStore.knownDevice?.name ?? null);
 	const tone = $derived(devicePeqService.sync?.tone ?? 'muted');
 
 	const dotClass = {

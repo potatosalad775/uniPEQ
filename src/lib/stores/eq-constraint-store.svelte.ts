@@ -1,6 +1,7 @@
 /**
- * The EQ checked against what it will be written to: the connected device's profile, or
- * `UNCONSTRAINED` with none. Derived only; there is no constraint picker (the connected profile is
+ * The EQ checked against what it will be written to: the known device's profile (the connected
+ * one, or the last one after a disconnect), or `UNCONSTRAINED` before any; the EQ tab shows no
+ * editor then (decision 23). Derived only; there is no constraint picker (the connected profile is
  * the constraint, rebuild decision 20). Everything the band editor and the graph bound or flag
  * comes from here.
  */
@@ -18,10 +19,23 @@ import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 
 class EqConstraintStore {
-	profile = $derived(devicePeqStore.profile ?? UNCONSTRAINED);
+	/** A device has been connected, so there is a profile to edit for. */
+	hasDevice = $derived(devicePeqStore.knownDevice !== null);
+	profile = $derived(devicePeqStore.knownDevice?.profile ?? UNCONSTRAINED);
 	isGraphic = $derived(isGraphicProfile(this.profile));
 	/** Band cap; 0 = unlimited. */
 	maxBands = $derived(maxBandsOf(this.profile));
+	/**
+	 * The device has a set number of bands (decision 23): the list is that many rows, so bands are
+	 * reset rather than added or removed. Only rows past the count can go.
+	 */
+	fixedBands = $derived(this.profile.bandCount !== null);
+	/** How many bands short of the device's count the list is (what Fit fills in flat). */
+	missing = $derived(
+		this.profile.kind === 'hardware' && !this.isGraphic && this.maxBands > 0
+			? Math.max(0, this.maxBands - eqStore.filters.length)
+			: 0
+	);
 	/** The slot each band sits in. */
 	slots = $derived(assignSlots(eqStore.filters, this.profile));
 	/** Per band, which fields the profile doesn't take (eqcaps `validateList`). */
@@ -31,10 +45,13 @@ class EqConstraintStore {
 		this.violations.filter((v) => v.type || v.freq || v.q || v.gain).length +
 			(this.maxBands > 0 ? Math.max(0, eqStore.filters.length - this.maxBands) : 0)
 	);
-	canAdd = $derived(
-		!this.isGraphic && (this.maxBands === 0 || eqStore.filters.length < this.maxBands)
-	);
+	canAdd = $derived(!this.fixedBands);
 	preamp = $derived(preampControl(this.profile, devicePeqStore.capabilities?.writesPreamp ?? null));
+	/** Whether band `i` may be removed, not only reset: always without a set count, else past it. */
+	canRemove(i: number): boolean {
+		return !this.fixedBands || i >= this.maxBands;
+	}
+
 	/** What Fit would make of the list, or null when it would change nothing. */
 	fitted = $derived.by(() => {
 		const next = fitFilters(eqStore.filters, this.profile);

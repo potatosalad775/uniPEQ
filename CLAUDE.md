@@ -4,7 +4,7 @@ Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being 
 Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
 `devices/`, the registry, handlers, web transports and the adaptation engine).
 **Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4
-done, Phase 4.5 mobile UX pass in progress, Phase 5 next); what to copy from
+done, Phases 4.5–4.6 mobile UX and hardware-first passes code done, Phase 5 next); what to copy from
 `../modernGraphTool`:
 [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
 [ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.

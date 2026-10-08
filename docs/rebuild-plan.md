@@ -10,8 +10,8 @@ Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 
 Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked devices; the hardware
 check is open, see Phase 3). **Phase 4 code done 2026-10-07** (demo device, web at desktop and phone
 widths; the user found every feature working on a real Samsung phone, see Phase 4). **Phase 4.5
-(mobile UX pass) started 2026-10-07**, decision 22. Tick tasks as they land; record deviations in
-the Decisions section.
+(mobile UX pass) started 2026-10-07**, decision 22; **Phase 4.6 (hardware-first refinements) code
+done 2026-10-08**, decision 23. Tick tasks as they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -281,6 +281,33 @@ New:
       never rounded to kHz, with no thousands separator so they match the number box. Graph axis
       ticks keep `1k` / `10k`.
 
+23. **Hardware-first refinements (Phase 4.6, 2026-10-08).** More feedback from the phone: the app
+    is a companion to one device at a time, so it should take that device's shape.
+    - **A device's bands are a set number.** With a profile `bandCount`, the list is that many rows:
+      no Add band (row or graph double-click), and a band is **reset** to flat (0 dB PK, Q 1, on its
+      frequency) rather than removed, by the editor's Reset or the graph's Delete key. Only a row
+      past the count can still be removed. Loading a shorter preset pads it with flat bands; Fit
+      pads a short list and the band list's banner offers it. Add and remove stay for a profile with
+      no band count.
+    - **No editing before a device.** The only software profile the app ever used was its own
+      `UNCONSTRAINED` fallback (`connect.ts` matches hardware profiles only). Before the first
+      connection the EQ tab is a prompt to connect (and the demo device), Load preset is off, and
+      `UNCONSTRAINED` stays only as the store's placeholder and the specs' profile.
+    - **A disconnect keeps the device.** `devicePeqStore.knownDevice` (name and profile) is set on
+      connect and kept on disconnect, so the list stays editable against the last profile; the sync
+      bar says the device is disconnected and offers Connect (the device sheet), the chip's dot is
+      amber. `forget()` goes back to before any device (specs).
+    - **Preamp as one row.** The preamp is a row shaped like a band row (level in the gain column,
+      Auto in the Q column, the clip flag); it opens `PreampEditor` in a sheet on a phone and under
+      the row on `wide:`.
+    - **One menu.** `Menu` / `MenuItem` / `MenuSeparator` on bits-ui DropdownMenu, for the EQ
+      overflow and a preset's ⋮ (which had drifted apart), and `SelectMenu` (radio items, a check
+      on the current one) for Theme, Language and Device EQ. A menu anchored to its row replaces
+      the radio dialog (which stacked a dialog on the device sheet); `RadioDialog` is gone.
+      Supersedes "choices in radio dialogs" in decision 22.
+    - **The graph is chrome on a phone:** edge to edge under the app bar with a hairline under it,
+      not a card. `wide:` keeps the card.
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -444,6 +471,22 @@ Decision 22. Order: atoms first, then the screens that use them.
   emulation (coarse pointer) and at 1280 px with a mouse, demo device. Open, for the user: the
   whole pass on a real phone (sheets, Android back on the sheets and the menu, haptics, the
   countdown ring), and with hardware.*
+
+### Phase 4.6: Hardware-first refinements · 1 day
+
+Decision 23.
+
+- [x] **Graph** edge to edge on a phone.
+- [x] **Menus:** `Menu`, `MenuItem`, `MenuSeparator`, `SelectMenu`; the EQ overflow and the preset
+      ⋮ on them; Theme, Language and Device EQ as select menus; `RadioDialog` removed.
+- [x] **Preamp** as one band-style row, `PreampEditor` in a sheet (phone) or inline (wide).
+- [x] **Fixed bands:** no Add with a band count, Reset instead of Remove (Remove only past the
+      count), Delete on a graph node resets, presets padded on load, Fit offered for a short list.
+- [x] **No device:** the EQ tab's connect prompt, Load preset off; **disconnect** keeps
+      `knownDevice`, the sync bar's Disconnected + Connect.
+- **Exit:** build, check, lint and tests green (258). *Code done 2026-10-08, checked with
+  Playwright's Pixel 7 emulation and at 1280 px, demo device. Open, for the user: a real phone
+  (menus with Android back, the preamp sheet) and a real cable pull.*
 
 ### Phase 5: Serial and Bluetooth in the browser · 1 day
 

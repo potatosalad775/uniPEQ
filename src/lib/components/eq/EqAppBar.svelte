@@ -6,14 +6,14 @@
 -->
 <script lang="ts">
 	import { EllipsisVertical, FolderOpen, Redo2, Save, Undo2, Wand2 } from '@lucide/svelte';
-	import { DropdownMenu } from 'bits-ui';
 	import Button from '$lib/components/atoms/Button.svelte';
+	import Menu from '$lib/components/atoms/Menu.svelte';
+	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
+	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
 	import DeviceChip from '$lib/components/device/DeviceChip.svelte';
 	import PresetPickerDialog from '$lib/components/presets/PresetPickerDialog.svelte';
 	import SavePresetDialog from '$lib/components/presets/SavePresetDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { onBack } from '$lib/platform/back-button';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 
@@ -21,15 +21,6 @@
 
 	let pickerOpen = $state(false);
 	let saveOpen = $state(false);
-	let menuOpen = $state(false);
-
-	$effect(() => {
-		if (!menuOpen) return;
-		return onBack(() => {
-			menuOpen = false;
-			return true;
-		});
-	});
 
 	function fit() {
 		const next = eqConstraintStore.fitted;
@@ -46,9 +37,6 @@
 		else return;
 		e.preventDefault();
 	}
-
-	const item =
-		'flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-sm outline-none select-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-base-content/10 touch:min-h-12 touch:text-base';
 </script>
 
 <svelte:window {onkeydown} />
@@ -77,45 +65,28 @@
 	>
 		<Redo2 class="size-4" aria-hidden="true" />
 	</Button>
-	<DropdownMenu.Root bind:open={menuOpen}>
-		<DropdownMenu.Trigger>
-			{#snippet child({ props })}
-				<Button {...props} title={m.eq_more()} size="icon" variant="ghost">
-					<EllipsisVertical class="size-4" aria-hidden="true" />
-				</Button>
-			{/snippet}
-		</DropdownMenu.Trigger>
-		<DropdownMenu.Portal>
-			<DropdownMenu.Content
-				align="end"
-				sideOffset={4}
-				class="z-50 min-w-52 rounded-xl border border-base-content/10 bg-base-100 p-1 shadow-xl"
-			>
-				<DropdownMenu.Item class={item} onSelect={() => (pickerOpen = true)}>
-					<FolderOpen class="size-4" aria-hidden="true" />
-					{m.eq_load_preset()}
-				</DropdownMenu.Item>
-				<DropdownMenu.Item
-					class={item}
-					disabled={eqStore.filters.length === 0}
-					onSelect={() => (saveOpen = true)}
-				>
-					<Save class="size-4" aria-hidden="true" />
-					{m.eq_save_preset()}
-				</DropdownMenu.Item>
-				{#if devicePeqStore.isConnected}
-					<DropdownMenu.Separator class="my-1 h-px bg-base-content/10" />
-					<DropdownMenu.Item class={item} disabled={!eqConstraintStore.fitted} onSelect={fit}>
-						<Wand2 class="size-4" aria-hidden="true" />
-						<span class="flex flex-col">
-							{m.eq_fit()}
-							<span class="text-xs text-base-content/60">{m.eq_fit_title()}</span>
-						</span>
-					</DropdownMenu.Item>
-				{/if}
-			</DropdownMenu.Content>
-		</DropdownMenu.Portal>
-	</DropdownMenu.Root>
+	<Menu>
+		{#snippet trigger(props)}
+			<Button {...props} title={m.eq_more()} size="icon" variant="ghost">
+				<EllipsisVertical class="size-4" aria-hidden="true" />
+			</Button>
+		{/snippet}
+		<MenuItem disabled={!eqConstraintStore.hasDevice} onSelect={() => (pickerOpen = true)}>
+			{#snippet icon()}<FolderOpen class="size-4" aria-hidden="true" />{/snippet}
+			{m.eq_load_preset()}
+		</MenuItem>
+		<MenuItem disabled={eqStore.filters.length === 0} onSelect={() => (saveOpen = true)}>
+			{#snippet icon()}<Save class="size-4" aria-hidden="true" />{/snippet}
+			{m.eq_save_preset()}
+		</MenuItem>
+		{#if eqConstraintStore.hasDevice}
+			<MenuSeparator />
+			<MenuItem disabled={!eqConstraintStore.fitted} description={m.eq_fit_title()} onSelect={fit}>
+				{#snippet icon()}<Wand2 class="size-4" aria-hidden="true" />{/snippet}
+				{m.eq_fit()}
+			</MenuItem>
+		{/if}
+	</Menu>
 </header>
 
 <PresetPickerDialog bind:open={pickerOpen} />

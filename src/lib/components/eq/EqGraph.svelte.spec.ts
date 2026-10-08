@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { graphicProfile } from '$lib/eq/__fixtures__/profiles';
+import { graphicProfile, hardwareProfile } from '$lib/eq/__fixtures__/profiles';
 import type { EqFilter } from '$lib/eq/model';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
@@ -46,7 +46,7 @@ describe('EqGraph', () => {
 		eqStore.history.clear();
 	});
 
-	afterEach(() => devicePeqStore.setDisconnected());
+	afterEach(() => devicePeqStore.forget());
 
 	it('draws a node per band, named for screen readers', async () => {
 		render(EqGraph);
@@ -72,6 +72,15 @@ describe('EqGraph', () => {
 		expect(eqStore.filters[1].q).toBe(1.06);
 		await userEvent.keyboard('{Delete}');
 		expect(eqStore.filters).toHaveLength(1);
+	});
+
+	it("resets a device's band with Delete instead of removing it", async () => {
+		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 2 })), null);
+		render(EqGraph);
+		await page.getByRole('button', { name: /^Band 1/ }).click();
+		await userEvent.keyboard('{Delete}');
+		expect(eqStore.filters).toHaveLength(2);
+		expect(eqStore.filters[0]).toEqual({ type: 'PK', freq: 100, q: 1, gain: 0 });
 	});
 
 	it('drags a node across and up as one undo step', async () => {

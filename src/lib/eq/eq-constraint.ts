@@ -217,6 +217,17 @@ export function newBand(filters: EqFilter[], profile: Profile): EqFilter {
 	return projectFilter({ type, freq, q: 1, gain: 0 }, profile, slot);
 }
 
+/**
+ * `filter` made flat where it sits (decision 23: a device's bands are reset, not removed): a 0 dB
+ * peak at Q 1 on the same frequency, as Fit's padding bands are, or the slot's first type where it
+ * takes no peak. Projected onto the slot.
+ */
+export function flatBand(filter: EqFilter, profile: Profile, slot: number): EqFilter {
+	const types = appTypesOf(slotOf(profile, slot).types);
+	const type = types.includes('PK') ? 'PK' : (types[0] ?? filter.type);
+	return projectFilter({ type, freq: filter.freq, q: 1, gain: 0 }, profile, slot);
+}
+
 /** Whether two lists hold the same bands, in order. */
 export function sameFilters(a: EqFilter[], b: EqFilter[]): boolean {
 	return a.length === b.length && a.every((f, i) => eqFiltersEqual(f, b[i]));

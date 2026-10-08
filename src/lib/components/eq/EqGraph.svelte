@@ -6,14 +6,15 @@
 	- tap a node: select it (the band editor follows); tap the background: deselect;
 	- pinch (two fingers, anywhere) or the wheel: Q of the selected band (the wheel: of the node
 	  under the pointer first);
-	- double-click the background: add a band there;
-	- keys on a focused node: arrows move it, Page Up/Down change Q, Delete removes it.
+	- double-click the background: add a band there (only without a device band count);
+	- keys on a focused node: arrows move it, Page Up/Down change Q, Delete removes it (or, for a
+	  device's set bands, resets it to flat: decision 23).
 	A drag is one undo step, and moves less than 3 px are a tap, not a drag.
 -->
 <script lang="ts">
 	import { usesGain } from '@potatosalad775/eqcaps-core';
 	import { combinedResponseDb, logFreqGrid } from '$lib/eq/biquad';
-	import { editFilter, newBand, slotOf } from '$lib/eq/eq-constraint';
+	import { editFilter, flatBand, newBand, slotOf } from '$lib/eq/eq-constraint';
 	import {
 		dbAt,
 		dbRange,
@@ -282,8 +283,8 @@
 				break;
 			case 'Delete':
 			case 'Backspace':
-				if (eqConstraintStore.isGraphic) return;
-				eqStore.remove(i);
+				if (eqConstraintStore.canRemove(i)) eqStore.remove(i);
+				else eqStore.update(i, flatBand(filters[i], profile, eqConstraintStore.slots[i] ?? i));
 				break;
 			case 'Enter':
 			case ' ':
@@ -300,7 +301,7 @@
 </script>
 
 <div
-	class="relative h-full overflow-hidden rounded-xl bg-base-100"
+	class="relative h-full overflow-hidden bg-base-100 wide:rounded-xl"
 	style:min-height="12rem"
 	bind:clientWidth={width}
 	bind:clientHeight={height}

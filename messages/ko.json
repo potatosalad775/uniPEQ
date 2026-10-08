@@ -156,6 +156,7 @@
 	"eq_misfits": "밴드 {count}개가 {device}에 맞지 않습니다. 맞추기를 누르면 기기가 받을 수 있는 값으로 조정합니다.",
 	"eq_preamp": "프리앰프",
 	"eq_preamp_auto": "자동",
+	"eq_preamp_auto_hint": "밴드에 맞춤: 가장 큰 부스트만큼 줄입니다.",
 	"eq_preamp_clips": "밴드의 부스트에 비해 프리앰프 여유가 부족해 클리핑이 생길 수 있습니다. {needed} dB면 충분합니다.",
 	"eq_preamp_none_boost": "이 기기에는 프리앰프가 없는데 EQ가 최대 {boost} dB 부스트합니다. 클리핑을 피하려면 볼륨을 낮추거나 부스트 대신 컷을 사용하세요.",
 	"eq_preamp_unknown": "이 기기의 프리앰프 범위가 아직 알려지지 않아 기록할 때 조정될 수 있습니다.",
@@ -223,5 +224,15 @@
 	"eq_field_step_up": "{field} 높이기",
 	"sync_read": "읽기",
 	"sync_not_read": "아직 기기의 EQ를 읽지 않았습니다.",
-	"sync_auto_on": "자동 쓰기 켜짐: 다음 편집부터 기기에 씁니다."
+	"sync_auto_on": "자동 쓰기 켜짐: 다음 편집부터 기기에 씁니다.",
+	"eq_band_reset": "밴드 {band}을(를) 평탄하게 초기화",
+	"eq_band_reset_short": "초기화",
+	"eq_short": "목록의 밴드가 {device}보다 {count}개 적습니다. 맞추기를 누르면 평탄한 밴드로 채웁니다.",
+	"eq_empty_fixed": "아직 밴드가 없습니다. {device}에서 읽어오거나 평탄한 밴드 {count}개로 시작하세요.",
+	"eq_start_flat": "평탄하게 시작",
+	"eq_empty_title": "기기를 연결하세요",
+	"eq_empty_body": "uniPEQ는 DAC, 앰프, 헤드폰 안의 EQ를 편집합니다. 기기를 연결하면 밴드 수와 제한도 함께 불러옵니다.",
+	"sync_disconnected": "{device} 연결이 끊어졌습니다. 편집한 내용은 유지됩니다.",
+	"sync_connect": "연결",
+	"presets_apply_needs_device": "프리셋을 불러오려면 기기를 연결하세요"
 }

@@ -14,7 +14,7 @@ describe('BandEditor', () => {
 		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], 0);
 	});
 
-	afterEach(() => devicePeqStore.setDisconnected());
+	afterEach(() => devicePeqStore.forget());
 
 	it("offers the slot's types and switches the band's", async () => {
 		render(BandEditor, { index: 0 });
@@ -69,6 +69,27 @@ describe('BandEditor', () => {
 		expect(eqStore.filters[0].gain).toBe(15);
 	});
 
+	it("resets a device's band to flat rather than removing it", async () => {
+		render(BandEditor, { index: 0 });
+		await expect.element(page.getByRole('button', { name: /Remove band/ })).not.toBeInTheDocument();
+		await page.getByRole('button', { name: 'Reset band 1 to flat' }).click();
+		expect(eqStore.filters).toEqual([{ type: 'PK', freq: 1000, q: 1, gain: 0 }]);
+		await expect.element(page.getByRole('button', { name: 'Reset band 1 to flat' })).toBeDisabled();
+	});
+
+	it("removes a band past the device's count", async () => {
+		const bands = [1, 2, 3, 4, 5].map((i) => ({
+			type: 'PK' as const,
+			freq: i * 1000,
+			q: 1,
+			gain: 1
+		}));
+		eqStore.replace(bands, 0);
+		render(BandEditor, { index: 4 });
+		await page.getByRole('button', { name: 'Remove band 5' }).click();
+		expect(eqStore.filters).toHaveLength(4);
+	});
+
 	it("shows a graphic EQ's fixed frequency read-only, with no type choice and no Remove", async () => {
 		const profile = graphicProfile('geq', [
 			{ freq: 125, q: 1.41 },
@@ -93,7 +114,7 @@ describe('BandEditor', () => {
 	});
 
 	it('hides gain for a type that has none', async () => {
-		devicePeqStore.setDisconnected();
+		devicePeqStore.forget();
 		eqStore.replace([{ type: 'HPQ', freq: 80, q: 0.7, gain: 0 }], 0);
 		render(BandEditor, { index: 0 });
 		await expect.element(page.getByText('This filter type has no gain.')).toBeVisible();

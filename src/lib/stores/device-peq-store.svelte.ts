@@ -29,6 +29,12 @@ export interface DeviceSnapshot {
 
 class DevicePeqStore {
 	connection = $state.raw<DeviceConnection | null>(null);
+	/**
+	 * The device the EQ is edited for (decision 23): the connected one, or after a disconnect the
+	 * last one, so a dropped cable doesn't take the editor with it. Null until a first connection:
+	 * the EQ tab then asks for a device.
+	 */
+	knownDevice = $state.raw<{ name: string; profile: Profile } | null>(null);
 	isConnecting = $state(false);
 	isReading = $state(false);
 	isWriting = $state(false);
@@ -165,6 +171,7 @@ class DevicePeqStore {
 
 	setConnected(connection: DeviceConnection, currentSlot: number | null): void {
 		this.connection = connection;
+		this.knownDevice = { name: connection.name, profile: connection.profile };
 		this.isConnecting = false;
 		this.needsReconnect = false;
 		const bypass = connection.device.capabilities.slots.find((s) => s.bypass);
@@ -212,6 +219,7 @@ class DevicePeqStore {
 		this.setStatus(null);
 	}
 
+	/** The connection is gone; `knownDevice` stays, and the EQ is still edited for it. */
 	setDisconnected(): void {
 		this.connection = null;
 		this.isConnecting = false;
@@ -229,6 +237,12 @@ class DevicePeqStore {
 		this.statusMessage = null;
 		this.statusIsError = false;
 		this.needsReconnect = false;
+	}
+
+	/** Back to before any device: disconnected, and no device to edit for. */
+	forget(): void {
+		this.setDisconnected();
+		this.knownDevice = null;
 	}
 
 	setStatus(message: string | null, isError = false): void {

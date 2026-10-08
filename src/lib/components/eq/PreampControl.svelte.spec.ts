@@ -13,32 +13,49 @@ describe('PreampControl', () => {
 		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 6 }], -6);
 	});
 
-	afterEach(() => devicePeqStore.setDisconnected());
+	afterEach(() => devicePeqStore.forget());
 
-	it("is a slider over a manual preamp's range, with Auto", async () => {
+	it("is a row that opens a slider over a manual preamp's range, with Auto", async () => {
 		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
 		render(PreampControl);
-		const slider = page.getByRole('slider', { name: 'Preamp' });
-		await expect.element(slider).toHaveAttribute('min', '-12');
-		await expect.element(slider).toHaveAttribute('max', '0');
+		const row = page.getByRole('button', { name: /^Preamp/ });
+		await expect.poll(() => row.element().textContent).toContain('-6 dB');
+		await row.click();
 
-		await page.getByRole('switch', { name: 'Auto' }).click();
+		const sheet = page.getByRole('dialog', { name: 'Preamp' });
+		const slider = sheet.getByRole('slider', { name: 'Preamp' });
+		await expect.element(slider).toBeVisible();
+		await sheet.getByRole('button', { name: 'Raise Preamp' }).click();
+		// One step of the device's 0.5 dB grid.
+		expect(eqStore.preamp).toBe(-5.5);
+
+		await sheet.getByRole('switch').click();
 		expect(eqStore.autoPreamp).toBe(true);
 		// Auto follows the bands: the slider steps aside until Auto is off again.
 		await expect.element(slider).not.toBeInTheDocument();
+		await expect.poll(() => row.element().textContent).toContain('Auto');
+	});
+
+	it('opens under its row with inlineEditor', async () => {
+		render(PreampControl, { inlineEditor: true });
+		const row = page.getByRole('button', { name: /^Preamp/ });
+		await row.click();
+		await expect.element(row).toHaveAttribute('aria-expanded', 'true');
+		await expect.element(page.getByRole('slider', { name: 'Preamp' })).toBeVisible();
+		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
 	});
 
 	it('warns when the preamp leaves too little room for the boost', async () => {
 		eqStore.setPreamp(-2);
 		render(PreampControl);
-		await expect.element(page.getByText(/it may clip/)).toBeVisible();
+		await expect.element(page.getByRole('img', { name: /it may clip/ })).toBeVisible();
 	});
 
 	it('shows nothing where the device sets its own preamp', async () => {
 		const profile = hardwareProfile('dac', { bandCount: 4, preamp: { mode: 'auto' } });
 		devicePeqStore.setConnected(fakeConnection(profile), null);
 		render(PreampControl);
-		await expect.element(page.getByRole('slider', { name: 'Preamp' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: /^Preamp/ })).not.toBeInTheDocument();
 		await expect.element(page.getByText(/no preamp/)).not.toBeInTheDocument();
 	});
 

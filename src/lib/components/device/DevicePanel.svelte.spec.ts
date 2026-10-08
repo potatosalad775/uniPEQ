@@ -79,7 +79,7 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 }
 
 describe('DevicePanel', () => {
-	afterEach(() => devicePeqStore.setDisconnected());
+	afterEach(() => devicePeqStore.forget());
 
 	it('offers to connect a USB device when nothing is connected', async () => {
 		renderPanel();
@@ -110,7 +110,7 @@ describe('DevicePanel', () => {
 		renderPanel();
 
 		await page.getByRole('button', { name: /^Device EQ/ }).click();
-		await page.getByRole('dialog').getByRole('radio', { name: 'Off (EQ bypassed)' }).click();
+		await page.getByRole('menuitemradio', { name: 'Off (EQ bypassed)' }).click();
 		await vi.waitFor(() => expect(conn.device.setEnabled).toHaveBeenCalledWith(false));
 		expect(devicePeqStore.selection).toBe('off');
 	});
@@ -158,7 +158,7 @@ describe('DevicePanel writing', () => {
 	});
 
 	afterEach(() => {
-		devicePeqStore.setDisconnected();
+		devicePeqStore.forget();
 		settingsStore.autoPushEnabled = true;
 	});
 

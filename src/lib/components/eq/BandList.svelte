@@ -4,7 +4,8 @@
 	layout) opens the selected band's editor under its row; on a phone the editor is a sheet.
 	Layout after modernGraphTool's EqFilterList, rewritten lighter (no channels, no AutoEQ).
 	Phase 4.5 (decision 22): touch-height rows, no per-band switch, Add band as the last row, and
-	no card of its own: it sits in the EQ tab's band card under the preamp.
+	no card of its own: it sits in the EQ tab's band card under the preamp. Decision 23: a device
+	with a set band count has no Add row; Fit pads a short list.
 -->
 <script lang="ts">
 	import { Plus, TriangleAlert } from '@lucide/svelte';
@@ -32,6 +33,20 @@
 		if (next) eqStore.replace(next);
 	}
 
+	/**
+	 * Why Fit is offered, once a device is known: no bands yet (start from its count, flat), bands
+	 * it won't take, or fewer bands than it has.
+	 */
+	const fitNote = $derived.by(() => {
+		const device = devicePeqStore.knownDevice?.name ?? '';
+		if (!eqConstraintStore.hasDevice || !eqConstraintStore.fitted) return null;
+		if (eqStore.filters.length === 0) return m.eq_empty_fixed({ device, count: maxBands });
+		const { misfits, missing } = eqConstraintStore;
+		if (misfits > 0) return m.eq_misfits({ count: misfits, device });
+		if (missing > 0) return m.eq_short({ count: missing, device });
+		return null;
+	});
+
 	function flagged(i: number): boolean {
 		const v = eqConstraintStore.violations[i];
 		return (!!v && (v.type || v.freq || v.q || v.gain)) || isPastMaxBands(i, profile);
@@ -51,22 +66,19 @@
 	</div>
 
 	<!-- Connecting never edits the list: it only says what doesn't fit, and Fit is the user's call. -->
-	{#if devicePeqStore.isConnected && eqConstraintStore.misfits > 0 && eqConstraintStore.fitted}
+	{#if fitNote}
 		<div class="mx-4 my-1 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
-			<p class="min-w-0 flex-1 text-xs touch:text-sm">
-				{m.eq_misfits({
-					count: eqConstraintStore.misfits,
-					device: devicePeqStore.deviceName ?? ''
-				})}
-			</p>
+			<p class="min-w-0 flex-1 text-xs touch:text-sm">{fitNote}</p>
 			<Button title={m.eq_fit_title()} size="sm" variant="outline" class="shrink-0" onclick={fit}>
-				{m.eq_fit()}
+				{eqStore.filters.length === 0 ? m.eq_start_flat() : m.eq_fit()}
 			</Button>
 		</div>
 	{/if}
 
 	{#if eqStore.filters.length === 0}
-		<p class="px-4 py-3 text-sm text-base-content/70">{m.bands_empty()}</p>
+		{#if !fitNote}
+			<p class="px-4 py-3 text-sm text-base-content/70">{m.bands_empty()}</p>
+		{/if}
 	{:else}
 		<ul class="flex flex-col" aria-label={m.bands_label()}>
 			{#each eqStore.filters as filter, i (i)}
@@ -115,11 +127,10 @@
 		</ul>
 	{/if}
 
-	{#if !eqConstraintStore.isGraphic}
+	{#if eqConstraintStore.canAdd}
 		<button
 			type="button"
 			title={m.eq_add_band_title()}
-			disabled={!eqConstraintStore.canAdd}
 			class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm font-medium text-primary hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:cursor-not-allowed disabled:opacity-50 touch:min-h-14 touch:text-base"
 			onclick={add}
 		>

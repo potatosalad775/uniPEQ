@@ -3,16 +3,17 @@
 	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
 	Phase 4 added the profile's status and experimental badges, and links to the profile in the
 	eqcaps inspector and to its wrong-constraint form. Phase 4.5 (decision 22): list rows with the
-	switch trailing and hints as supporting text, Device EQ in a radio dialog, the connection facts
-	inline rather than in a popover, and the status line moved to the EQ tab's sync bar (with the
-	review dialog, now `devicePeqService.review`). On a phone this is the device sheet's body.
+	switch trailing and hints as supporting text, Device EQ in a radio dialog (a menu since decision
+	23), the connection facts inline rather than in a popover, and the status line moved to the EQ
+	tab's sync bar (with the review dialog, now `devicePeqService.review`). On a phone this is the
+	device sheet's body.
 -->
 <script lang="ts">
-	import { ChevronRight, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
+	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import ListRow from '$lib/components/atoms/ListRow.svelte';
-	import RadioDialog from '$lib/components/atoms/RadioDialog.svelte';
+	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { isNative } from '$lib/platform/native';
@@ -131,12 +132,11 @@
 	/** Auto-write needs a device that can be written without restarting after each save. */
 	const canAutoWrite = $derived(!!caps?.canWrite && !caps.disconnectOnSave);
 
-	/** Device EQ's choices for the radio dialog: the listed presets, and off where it can be. */
+	/** Device EQ's choices for its menu: the listed presets, and off where it can be. */
 	const eqChoices = $derived(
 		eqOptions.flatMap((o) => (o.disabled ? [] : [{ value: o.value, label: o.label }]))
 	);
 	const eqCurrentLabel = $derived(eqOptions.find((o) => o.value === eqValue)?.label ?? '');
-	let eqDialogOpen = $state(false);
 </script>
 
 {#snippet link(href: string, text: string)}
@@ -335,17 +335,26 @@
 		{:else}
 			<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
 				{#if hasPresets}
-					<ListRow
+					<SelectMenu
 						label={eqLabel}
-						description={caps?.canEnable ? m.device_peq_eq_hint() : m.device_peq_preset_hint()}
-						disabled={devicePeqStore.isBusy}
-						onclick={() => (eqDialogOpen = true)}
+						value={eqValue}
+						options={eqChoices}
+						onValueChange={(next) => void devicePeqService.switchTo(next)}
 					>
-						{#snippet trailing()}
-							<span class="max-w-32 truncate">{eqCurrentLabel}</span>
-							<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+						{#snippet trigger(props)}
+							<ListRow
+								label={eqLabel}
+								description={caps?.canEnable ? m.device_peq_eq_hint() : m.device_peq_preset_hint()}
+								disabled={devicePeqStore.isBusy}
+								buttonProps={props}
+							>
+								{#snippet trailing()}
+									<span class="max-w-32 truncate">{eqCurrentLabel}</span>
+									<ChevronDown class="ml-1 size-4" aria-hidden="true" />
+								{/snippet}
+							</ListRow>
 						{/snippet}
-					</ListRow>
+					</SelectMenu>
 				{:else if hasOnOff}
 					<ListRow label={m.device_peq_eq_label()} for="device-eq-on">
 						{#snippet trailing()}
@@ -408,11 +417,3 @@
 		{/if}
 	{/if}
 </section>
-
-<RadioDialog
-	bind:open={eqDialogOpen}
-	title={eqLabel}
-	value={eqValue}
-	options={eqChoices}
-	onValueChange={(next) => void devicePeqService.switchTo(next)}
-/>

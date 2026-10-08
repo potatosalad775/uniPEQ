@@ -5,14 +5,22 @@
 	bounds, steps, value lists, locked fields read-only; flags from `validateList`. Edits are
 	projected onto the slot as they are made; other fields are left alone (Fit folds those in).
 	Phase 4.5 (decision 22): types as chips, no on/off, and the header only inline (the phone's
-	sheet has its own, with previous / next).
+	sheet has its own, with previous / next). Decision 23: a device's bands are reset to flat, not
+	removed; only a band past its count (or any, with no device count) has Remove.
 -->
 <script lang="ts">
-	import { Trash2 } from '@lucide/svelte';
+	import { RotateCcw, Trash2 } from '@lucide/svelte';
 	import { usesGain } from '@potatosalad775/eqcaps-core';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import ChipGroup from '$lib/components/atoms/ChipGroup.svelte';
-	import { appTypesOf, editFilter, isPastMaxBands, slotOf } from '$lib/eq/eq-constraint';
+	import {
+		appTypesOf,
+		editFilter,
+		flatBand,
+		isPastMaxBands,
+		sameFilters,
+		slotOf
+	} from '$lib/eq/eq-constraint';
 	import type { EqFilter, FilterType } from '$lib/eq/model';
 	import * as m from '$lib/paraglide/messages';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
@@ -42,6 +50,10 @@
 		return allowed.includes(filter.type) ? allowed : [...allowed, filter.type];
 	});
 	const typeOptions = $derived(types.map((t) => ({ value: t, label: t, title: TYPE_LABEL[t]() })));
+
+	/** Where Reset takes the band (a device's bands are reset, not removed: decision 23). */
+	const flat = $derived(filter ? flatBand(filter, profile, slotIndex) : null);
+	const isFlat = $derived(!!filter && !!flat && sameFilters([filter], [flat]));
 
 	function set(patch: Partial<EqFilter>, history: boolean | string = true) {
 		if (!filter) return;
@@ -124,8 +136,8 @@
 			onChange={(q, history) => set({ q }, keyed(history))}
 		/>
 
-		{#if !eqConstraintStore.isGraphic}
-			<div class="flex justify-end">
+		<div class="flex justify-end">
+			{#if eqConstraintStore.canRemove(index)}
 				<Button
 					title={m.eq_band_remove({ band: index + 1 })}
 					size="sm"
@@ -136,7 +148,19 @@
 					<Trash2 class="size-4" aria-hidden="true" />
 					{m.eq_band_remove_short()}
 				</Button>
-			</div>
-		{/if}
+			{:else}
+				<Button
+					title={m.eq_band_reset({ band: index + 1 })}
+					size="sm"
+					variant="ghost"
+					class="gap-1.5"
+					disabled={isFlat}
+					onclick={() => flat && eqStore.update(index, flat)}
+				>
+					<RotateCcw class="size-4" aria-hidden="true" />
+					{m.eq_band_reset_short()}
+				</Button>
+			{/if}
+		</div>
 	</div>
 {/if}

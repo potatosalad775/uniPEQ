@@ -1,7 +1,8 @@
 <!--
 	The EQ tab's sync bar (decision 22): whether the device has the EQ on screen, always in view at
 	the bottom, and the one action that would change that (Write, Review, Reconnect). An auto-write
-	waiting to fire shows a ring that runs out with the delay. Hidden with no device. It is the
+	waiting to fire shows a ring that runs out with the delay. Hidden before any device; after a
+	disconnect it says so and offers Connect (decision 23). It is the
 	device's one status line (device-peq invariant 6): the live region screen readers hear.
 -->
 <script lang="ts">
@@ -13,9 +14,19 @@
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { settingsStore } from '$lib/stores/settings-store.svelte';
 
-	let { class: className = '' }: { class?: string } = $props();
+	let {
+		onConnect,
+		class: className = ''
+	}: {
+		/** Open the device sheet (phone). Without it, Connect isn't offered: the panel is in view. */
+		onConnect?: () => void;
+		class?: string;
+	} = $props();
 
 	const status = $derived(devicePeqService.sync);
+	const actions = $derived(
+		(status?.actions ?? []).filter((a) => a !== 'connect' || onConnect !== undefined)
+	);
 
 	const toneClass = {
 		muted: 'text-base-content/70',
@@ -30,11 +41,13 @@
 		read: m.sync_read,
 		write: m.sync_write,
 		review: m.device_peq_auto_review,
-		reconnect: m.device_peq_reconnect
+		reconnect: m.device_peq_reconnect,
+		connect: m.sync_connect
 	} as const;
 
 	function act(action: SyncAction) {
-		if (action === 'reconnect') void devicePeqService.reconnect();
+		if (action === 'connect') onConnect?.();
+		else if (action === 'reconnect') void devicePeqService.reconnect();
 		else if (action === 'read') void devicePeqService.read();
 		else void devicePeqService.requestWrite();
 	}
@@ -92,8 +105,8 @@
 	>
 		{status?.text ?? ''}
 	</p>
-	{#each status?.actions ?? [] as action, i (action)}
-		{@const main = i === (status?.actions?.length ?? 0) - 1}
+	{#each actions as action, i (action)}
+		{@const main = i === actions.length - 1}
 		<Button
 			title={ACTION_LABEL[action]()}
 			size="sm"

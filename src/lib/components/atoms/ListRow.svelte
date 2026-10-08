@@ -2,6 +2,7 @@
 	One row of a settings-style list (decision 22): a label, optional supporting text under it, and
 	a trailing control or value. The whole row is the target:
 	- `onclick`: the row is a button (a row that opens a dialog or a sheet);
+	- `buttonProps`: the row is a button carrying these props (a `Menu`'s trigger props);
 	- `href`: the row is a link, opened outside the app;
 	- `for`: the row is the label of the control with that id (a switch), so tapping anywhere
 	  toggles it;
@@ -16,6 +17,7 @@
 		description,
 		for: htmlFor,
 		onclick,
+		buttonProps,
 		href,
 		disabled = false,
 		leading,
@@ -28,6 +30,8 @@
 		/** The id of the control this row labels. */
 		for?: string;
 		onclick?: () => void;
+		/** Spread on the row's button: what a `Menu` or `SelectMenu` hands its trigger. */
+		buttonProps?: Record<string, unknown>;
 		/** An external page. */
 		href?: string;
 		disabled?: boolean;
@@ -57,8 +61,8 @@
 {/snippet}
 
 <div class={className}>
-	{#if onclick}
-		<button type="button" class="{base} {interactive}" {disabled} {onclick}>
+	{#if onclick || buttonProps}
+		<button type="button" {onclick} {...buttonProps} class="{base} {interactive}" {disabled}>
 			{@render body()}
 			{#if trailing}
 				<span class="flex shrink-0 items-center text-sm text-base-content/70">

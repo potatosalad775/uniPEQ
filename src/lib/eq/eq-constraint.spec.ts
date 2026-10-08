@@ -8,6 +8,7 @@ import {
 	editFilter,
 	filterViolations,
 	fitFilters,
+	flatBand,
 	graphicBandsOf,
 	isGraphicProfile,
 	isPastMaxBands,
@@ -254,6 +255,22 @@ describe('newBand', () => {
 	it("takes the slot's own type where it has no peak", () => {
 		const p = softwareProfile('s', { types: ['LSC', 'HSC'] });
 		expect(newBand([], p).type).toBe('LSC');
+	});
+});
+
+describe('flatBand', () => {
+	it('makes a 0 dB peak at Q 1 where the band sits', () => {
+		const p = hardwareProfile('h', { bandCount: 2 });
+		const shelf: EqFilter = { type: 'LSC', freq: 105, q: 0.7, gain: 6 };
+		expect(flatBand(shelf, p, 0)).toEqual({ type: 'PK', freq: 105, q: 1, gain: 0 });
+	});
+
+	it("takes the slot's own type where it has no peak", () => {
+		const p = softwareProfile('s', { types: ['LSC', 'HSC'] });
+		expect(flatBand({ type: 'HSC', freq: 8000, q: 0.7, gain: -3 }, p, 0)).toMatchObject({
+			type: 'LSC',
+			gain: 0
+		});
 	});
 });
 

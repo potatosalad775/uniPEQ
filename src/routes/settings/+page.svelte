@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ChevronRight, ExternalLink } from '@lucide/svelte';
+	import { ChevronDown, ChevronRight, ExternalLink } from '@lucide/svelte';
 	import ListRow from '$lib/components/atoms/ListRow.svelte';
 	import ListSection from '$lib/components/atoms/ListSection.svelte';
-	import RadioDialog from '$lib/components/atoms/RadioDialog.svelte';
+	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Slider from '$lib/components/atoms/Slider.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
@@ -29,8 +29,6 @@
 	const locale = getLocale();
 
 	let logOpen = $state(false);
-	let themeOpen = $state(false);
-	let languageOpen = $state(false);
 	const themeLabel = $derived(themeOptions.find((o) => o.value === settingsStore.theme)?.label);
 	const languageLabel = languageOptions.find((o) => o.value === locale)?.label;
 	/** The device database the app holds: its data version and how many profiles. */
@@ -52,21 +50,39 @@
 </script>
 
 <PageHeader title={m.nav_settings()} />
-<!-- Android-style lists (decision 22): rows with the control trailing, choices in radio dialogs. -->
+<!-- Android-style lists (decisions 22, 23): rows with the control trailing, choices in menus. -->
 <div class="flex flex-col gap-5 px-4 pb-6 wide:max-w-2xl">
 	<ListSection title={m.settings_display()}>
-		<ListRow label={m.settings_theme()} onclick={() => (themeOpen = true)}>
-			{#snippet trailing()}
-				{themeLabel}
-				<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+		<SelectMenu
+			label={m.settings_theme()}
+			value={settingsStore.theme}
+			options={themeOptions}
+			onValueChange={(next) => (settingsStore.theme = next)}
+		>
+			{#snippet trigger(props)}
+				<ListRow label={m.settings_theme()} buttonProps={props}>
+					{#snippet trailing()}
+						{themeLabel}
+						<ChevronDown class="ml-1 size-4" aria-hidden="true" />
+					{/snippet}
+				</ListRow>
 			{/snippet}
-		</ListRow>
-		<ListRow label={m.settings_language()} onclick={() => (languageOpen = true)}>
-			{#snippet trailing()}
-				{languageLabel}
-				<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+		</SelectMenu>
+		<SelectMenu
+			label={m.settings_language()}
+			value={locale}
+			options={languageOptions}
+			onValueChange={(next) => setLocale(next)}
+		>
+			{#snippet trigger(props)}
+				<ListRow label={m.settings_language()} buttonProps={props}>
+					{#snippet trailing()}
+						{languageLabel}
+						<ChevronDown class="ml-1 size-4" aria-hidden="true" />
+					{/snippet}
+				</ListRow>
 			{/snippet}
-		</ListRow>
+		</SelectMenu>
 	</ListSection>
 
 	<ListSection title={m.settings_device()}>
@@ -140,18 +156,4 @@
 	</ListSection>
 </div>
 
-<RadioDialog
-	bind:open={themeOpen}
-	title={m.settings_theme()}
-	value={settingsStore.theme}
-	options={themeOptions}
-	onValueChange={(next) => (settingsStore.theme = next)}
-/>
-<RadioDialog
-	bind:open={languageOpen}
-	title={m.settings_language()}
-	value={locale}
-	options={languageOptions}
-	onValueChange={(next) => setLocale(next)}
-/>
 <LogDialog bind:open={logOpen} />

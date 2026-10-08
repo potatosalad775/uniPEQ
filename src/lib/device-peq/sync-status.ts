@@ -12,7 +12,7 @@ import { panelStatus, type PanelStatusInput } from './panel-status';
 /** `busy`: a read or write is under way; `pending`: an auto-write is waiting to fire. */
 export type SyncTone = 'muted' | 'success' | 'warning' | 'error' | 'busy' | 'pending';
 
-export type SyncAction = 'read' | 'write' | 'review' | 'reconnect';
+export type SyncAction = 'read' | 'write' | 'review' | 'reconnect' | 'connect';
 
 export interface SyncStatus {
 	tone: SyncTone;
@@ -25,6 +25,8 @@ export interface SyncStatus {
 
 export interface SyncInput extends PanelStatusInput {
 	connected: boolean;
+	/** The device the EQ is edited for, still named after it disconnected; null before any. */
+	knownDevice: string | null;
 	reading: boolean;
 	writing: boolean;
 	needsReconnect: boolean;
@@ -36,9 +38,16 @@ export interface SyncInput extends PanelStatusInput {
 	canRead: boolean;
 }
 
-/** Null with no device: the bar hides, and the chip offers to connect. */
+/**
+ * Null before any device: the bar hides, and the chip offers to connect. After a disconnect the
+ * EQ is still edited for that device (decision 23), so the bar says so and offers to connect.
+ */
 export function syncStatus(s: SyncInput): SyncStatus | null {
-	if (!s.connected) return null;
+	if (!s.connected) {
+		if (s.knownDevice === null) return null;
+		const text = m.sync_disconnected({ device: s.knownDevice });
+		return { tone: 'warning', text, actions: ['connect'] };
+	}
 	if (s.needsReconnect) {
 		// The write's own message says why ("Saved. The device restarts…"), or what broke.
 		const text = s.message ?? m.device_peq_reconnect_prompt();

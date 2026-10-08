@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
+import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
 import { parseApo } from '$lib/eq/eq-apo';
 import { LocalPresetStorage } from '$lib/services/preset-storage';
+import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 import { PresetStore } from './preset-store.svelte';
 
@@ -44,6 +47,8 @@ describe('PresetStore', () => {
 		eqStore.replace([], 0);
 	});
 
+	afterEach(() => devicePeqStore.forget());
+
 	it('saves the EQ as it is, preamp mode included, and lists it', async () => {
 		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 3 }], 'auto');
 		const saved = await store.saveCurrent('Mine');
@@ -60,6 +65,15 @@ describe('PresetStore', () => {
 		// `pregain: 'auto'` follows the bands: -6 dB for a +6 dB shelf.
 		expect(eqStore.autoPreamp).toBe(true);
 		expect(eqStore.preamp).toBe(-6);
+	});
+
+	it("pads a shorter preset with flat bands to the device's count", async () => {
+		storage.setItem('unipeq.preset.proto', JSON.stringify(V1_PRESET));
+		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
+		await store.apply('proto');
+		expect(eqStore.filters).toHaveLength(4);
+		expect(eqStore.filters[0]).toMatchObject({ type: 'LSC', gain: 6 });
+		expect(eqStore.filters.slice(1).every((f) => f.gain === 0)).toBe(true);
 	});
 
 	it('imports a file under a fresh id and stores it as v2', async () => {

@@ -6,6 +6,7 @@
 import { presetFit, type PresetFit } from '$lib/device-peq/preset-fit';
 import type { PeqCapabilities } from '$lib/device-peq/types';
 import { formatApo } from '$lib/eq/eq-apo';
+import { padToBandCount } from '$lib/eq/eq-constraint';
 import { derivePreamp } from '$lib/eq/eq-preamp';
 import type { PeqPreset } from '$lib/eq/model';
 import {
@@ -60,7 +61,11 @@ export class PresetStore {
 	 */
 	async apply(id: string): Promise<ParsedPreset> {
 		const parsed = await this.load(id);
-		eqStore.replace(parsed.preset.filters, parsed.preset.pregain);
+		// A device's bands are a set number (decision 23): a shorter preset is padded with flat
+		// bands, which sound the same. What doesn't fit is still only flagged; Fit is the user's.
+		const profile = devicePeqStore.knownDevice?.profile;
+		const filters = parsed.preset.filters;
+		eqStore.replace(profile ? padToBandCount(filters, profile) : filters, parsed.preset.pregain);
 		return parsed;
 	}
 

@@ -70,7 +70,7 @@ class DevicePeqService {
 		return this.autoWriteOn && !!caps?.canWrite && !caps.disconnectOnSave;
 	}
 
-	/** What the sync bar and the device chip show (decision 22); null with no device. */
+	/** What the sync bar and the device chip show (decision 22); null before any device. */
 	get sync(): SyncStatus | null {
 		const store = devicePeqStore;
 		const caps = store.connection?.device.capabilities;
@@ -78,6 +78,7 @@ class DevicePeqService {
 		const builtIn = !!caps?.canWrite && !store.targetWritable;
 		return syncStatus({
 			connected: !!store.connection,
+			knownDevice: store.knownDevice?.name ?? null,
 			reading: store.isReading,
 			writing: store.isWriting,
 			needsReconnect: store.needsReconnect,

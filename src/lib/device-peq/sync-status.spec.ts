@@ -3,6 +3,7 @@ import { syncStatus, type SyncInput } from './sync-status';
 
 const BASE: SyncInput = {
 	connected: true,
+	knownDevice: 'KA17',
 	reading: false,
 	writing: false,
 	needsReconnect: false,
@@ -22,8 +23,16 @@ const BASE: SyncInput = {
 const status = (patch: Partial<SyncInput>) => syncStatus({ ...BASE, ...patch });
 
 describe('syncStatus', () => {
-	it('hides with no device', () => {
-		expect(status({ connected: false })).toBeNull();
+	it('hides before any device', () => {
+		expect(status({ connected: false, knownDevice: null })).toBeNull();
+	});
+
+	it('says a known device is disconnected, and offers to connect', () => {
+		expect(status({ connected: false })).toEqual({
+			tone: 'warning',
+			text: 'KA17 is disconnected. Your edits are kept.',
+			actions: ['connect']
+		});
 	});
 
 	it('offers Read, and Write in manual mode, before anything was read or written', () => {
