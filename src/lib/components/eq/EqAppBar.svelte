@@ -46,15 +46,15 @@
 <svelte:window {onkeydown} />
 
 <header
-	class="flex min-h-14 items-center gap-1 pr-3.5 pl-2"
+	class="flex min-h-14 items-center gap-1 px-4 wide:max-w-6xl"
 	role="toolbar"
 	aria-label={m.eq_toolbar()}
 >
-	<h1 class="sr-only">{m.nav_main()}</h1>
-	<div class="min-w-0 flex-1 wide:hidden">
+	<h1 class="sr-only">UniPEQ</h1>
+	<div class="min-w-0 flex-1 wide:hidden -ml-2">
 		<DeviceChip onclick={onDevice} />
 	</div>
-	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">{m.nav_main()}</p>
+	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">UniPEQ</p>
 	<BuildBadge />
 	<Button
 		title={m.eq_undo()}

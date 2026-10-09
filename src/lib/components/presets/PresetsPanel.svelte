@@ -125,8 +125,8 @@
 	const dateOf = (iso: string) => new Date(iso).toLocaleDateString();
 </script>
 
-<div class="flex flex-col gap-4">
-	<section aria-labelledby="save-heading" class="rounded-xl bg-base-100 p-4">
+<div class="flex flex-col gap-4 wide:flex-row">
+	<section aria-labelledby="save-heading" class="wide:flex-1 h-fit rounded-xl bg-base-100 p-4">
 		<h2 id="save-heading" class="sr-only">{m.presets_save_title()}</h2>
 		<!-- One line: name and Save. Tags are set in Edit, or in the EQ tab's save dialog. -->
 		<form
@@ -153,7 +153,7 @@
 		</form>
 	</section>
 
-	<section aria-labelledby="presets-heading" class="flex flex-col gap-3 rounded-xl bg-base-100 p-4">
+	<section aria-labelledby="presets-heading" class="flex flex-col wide:flex-2 gap-3 rounded-xl bg-base-100 p-4">
 		<div class="flex items-center gap-2">
 			<h2 id="presets-heading" class="sr-only">{m.presets_list_label()}</h2>
 			<Input

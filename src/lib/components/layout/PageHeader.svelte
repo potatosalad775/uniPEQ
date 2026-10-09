@@ -5,7 +5,7 @@
 	let { title, actions }: { title: string; actions?: Snippet } = $props();
 </script>
 
-<header class="flex min-h-14 items-center gap-2 px-4">
+<header class="flex min-h-14 items-center gap-2 px-4 wide:max-w-6xl">
 	<h1 class="flex-1 truncate text-lg font-semibold">{title}</h1>
 	<BuildBadge />
 	{@render actions?.()}

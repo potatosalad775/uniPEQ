@@ -5,6 +5,6 @@
 </script>
 
 <PageHeader title={m.nav_presets()} />
-<div class="px-4 pb-4">
+<div class="px-4 pb-4 wide:max-w-6xl">
 	<PresetsPanel />
 </div>

@@ -9,7 +9,7 @@
 	- none, or a protocol that can't send one: no row, and a warning while the EQ boosts.
 -->
 <script lang="ts">
-	import { TriangleAlert, Volume2 } from '@lucide/svelte';
+	import { ChevronDown, TriangleAlert, Volume2 } from '@lucide/svelte';
 	import Sheet from '$lib/components/atoms/Sheet.svelte';
 	import { derivePreamp } from '$lib/eq/eq-preamp';
 	import * as m from '$lib/paraglide/messages';
@@ -41,7 +41,7 @@
 </script>
 
 {#if control.kind === 'slider'}
-	<div class={open && inlineEditor ? 'bg-primary/8' : ''}>
+	<div class={open && inlineEditor ? 'rounded-t-xl bg-primary/8' : ''}>
 		<button
 			type="button"
 			aria-expanded={inlineEditor ? open : undefined}
@@ -57,17 +57,30 @@
 				<Volume2 class="size-3.5" />
 			</span>
 			<span class="min-w-0 flex-1 truncate">{m.eq_preamp()}</span>
-			<span class="w-14 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
-			<span class="w-14 shrink-0 text-right text-base-content/60">
-				{eqStore.autoPreamp ? m.eq_preamp_auto() : ''}
-			</span>
-			{#if clips}
-				<TriangleAlert
-					class="size-4 shrink-0 text-warning"
-					aria-label={m.eq_preamp_clips({ needed })}
-					role="img"
-				/>
+			{#if eqStore.autoPreamp}
+				<span
+					class="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-primary"
+					title={m.eq_preamp_auto()}
+				>
+					{m.eq_preamp_auto()}
+				</span>
 			{/if}
+			<span class="w-14 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
+			<span class="flex w-14 shrink-0 justify-end">
+				{#if clips}
+					<TriangleAlert
+						class="size-4 shrink-0 text-warning"
+						aria-label={m.eq_preamp_clips({ needed })}
+						role="img"
+					/>
+				{/if}
+				{#if inlineEditor}
+					<ChevronDown
+						class="size-4 shrink-0 text-base-content/60 {open ? 'rotate-180' : ''}"
+						aria-hidden="true"
+					/>
+				{/if}
+			</span>
 		</button>
 		{#if inlineEditor && open}
 			<div class="border-t border-base-content/10 px-4 pt-1 pb-3">
