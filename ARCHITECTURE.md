@@ -161,7 +161,9 @@ handler drives it; the bridge's `openDevice` opens it. The result:
 **Web:** the browser's chooser, filtered to the database's devices plus the vendors the bridge can
 guess. **Android:** no chooser; `connectNativeHid` lists attached USB HID devices, keeps the
 drivable ones, opens a single one after the system permission prompt, and asks when there are
-several. A live candidate list driven by attach/detach events is Phase 6.
+several. The service follows the plugin's USB events (`watchUsb`): plugging in a drivable device
+while nothing is connected and the app is in view connects it; unplugging the connected one
+(matched by `DeviceConnection.usbDeviceName`) disconnects it at once, keeping the known device.
 
 The connect flow lives in `device-peq-service.svelte.ts`, not in a screen, so a connection outlives
 tab switches. Before a connection, the phone's device chip connects straight away; the device sheet
@@ -312,8 +314,7 @@ in `src/lib/transports/native/`. It moves bytes and knows no protocol.
 Bytes cross the bridge as base64; failures reject with code `transport`. Android may give a USB
 audio device's HID interface to the system, so the plugin claims with `force = true`.
 
-**Planned (Phase 6, postponed until serial and Bluetooth are decided):** a live candidate list from
-the attach/detach events; then `StreamTransport` modules for USB serial (CDC-ACM or
+**Planned (Phase 6, postponed until serial and Bluetooth are decided):** `StreamTransport` modules for USB serial (CDC-ACM or
 `usb-serial-for-android`), BLE GATT (`BluetoothGatt`, MTU, notifications) and Classic SPP
 (`BluetoothSocket` RFCOMM to bonded devices), with `BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT`
 (`neverForLocation`) on API 31+.
@@ -342,7 +343,8 @@ the attach/detach events; then `StreamTransport` modules for USB serial (CDC-ACM
 Phases and their checklists: [docs/rebuild-plan.md](docs/rebuild-plan.md). Open after the cutover:
 
 - **Phase 5:** Serial and Bluetooth in the browser (postponed).
-- **Phase 6:** the full Android plugin: HID discovery UX first; serial, BLE and SPP postponed.
+- **Phase 6:** the full Android plugin: serial, BLE and SPP postponed; launch-on-attach (a
+  `device_filter.xml` from eqcaps vendor ids) not now.
 - **eqcaps E1:** a `writable` flag on presets, then delete `device-peq/writable.ts`.
 - **Network devices** (decision 6): modernGraphTool's `device-peq/network.ts` is the starting point.
 - **Release:** icons and splash, Play Store internal track, a static web deploy (HTTPS, for the

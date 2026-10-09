@@ -28,6 +28,11 @@ import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
 import { noticeStore } from '$lib/stores/notice-store.svelte';
 import { settingsStore } from '$lib/stores/settings-store.svelte';
+import {
+	DeviceIo,
+	type DeviceIoPlugin,
+	type NativeUsbDevice
+} from '$lib/transports/native/device-io';
 import type { Filter } from '@potatosalad775/eqcaps-core';
 import { logger } from './logger';
 
@@ -54,6 +59,7 @@ class DevicePeqService {
 
 	#choice: Choice | null = null;
 	#installed = false;
+	#watchingUsb = false;
 	#timer: ReturnType<typeof setTimeout> | undefined;
 	#running = false;
 	#again = false;
@@ -189,6 +195,41 @@ class DevicePeqService {
 		} finally {
 			devicePeqStore.isConnecting = false;
 		}
+	}
+
+	// ── Android USB attach and detach ─────────────────────────────────────────
+
+	/** Android: follow the plugin's USB attach and detach events. Once, from the root layout. */
+	async watchUsb(plugin: DeviceIoPlugin = DeviceIo): Promise<void> {
+		if (this.#watchingUsb) return;
+		this.#watchingUsb = true;
+		await plugin.addListener(
+			'deviceDetached',
+			({ deviceName }) => void this.usbDetached(deviceName)
+		);
+		await plugin.addListener('deviceAttached', ({ device }) => void this.usbAttached(device));
+	}
+
+	/** The connected device was unplugged: disconnected now, not at the next failed write. */
+	async usbDetached(deviceName: string): Promise<void> {
+		const conn = devicePeqStore.connection;
+		if (!conn || conn.usbDeviceName !== deviceName) return;
+		logger.info(`${conn.name} unplugged`);
+		await this.disconnect();
+	}
+
+	/**
+	 * A device was plugged in. With nothing connected or connecting and the app in view, connect,
+	 * as the device chip would; a device the database can't drive (a keyboard) is left alone.
+	 */
+	async usbAttached(device: NativeUsbDevice): Promise<void> {
+		const busy = () => !!devicePeqStore.connection || devicePeqStore.isConnecting || !!this.choice;
+		if (busy()) return;
+		if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+		const mod = await loadConnect();
+		if (!(await mod.drivableNative(device)) || busy()) return;
+		logger.info(`${device.productName || device.deviceName} plugged in`);
+		await this.connect('hid');
 	}
 
 	async disconnect(): Promise<void> {

@@ -77,6 +77,8 @@ export interface DeviceConnection {
 	identity: DeviceIdentity;
 	/** Re-open the same device without a chooser, after it dropped (USB HID only). */
 	reopen?: () => Promise<DeviceConnection | null>;
+	/** Android: the plugin's path for the device (changes on every replug), to tell its detach. */
+	usbDeviceName?: string;
 }
 
 /**

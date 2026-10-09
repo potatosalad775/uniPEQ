@@ -320,6 +320,8 @@ New:
       `npm run android` and `android:sync:debug` build with `--mode debug`; `npm run build` and
       `android:sync` are release builds. The APK's own build type doesn't decide it: debug and
       release APKs package the same `dist/`. Supersedes decision 20's "on every platform" for the demo.
+    - **USB plug and unplug** (Phase 6, HID): a drivable device plugged in while idle connects;
+      the connected one unplugged disconnects. No launch-on-attach for now.
     - **The device chip connects.** Before a connection, the chip (and Connect in the empty state
       and the sync bar) starts a USB connect directly instead of opening the device sheet, which
       would hold only that button. The sheet opens when the attempt needs a pick, finds nothing to
@@ -515,7 +517,16 @@ Decision 23.
 
 - [ ] Grow the Phase 0 spike into the plugin: USB HID (attach/detach broadcasts, permission flow),
       then `StreamTransport` for USB serial and BLE, then Classic SPP. No protocol code in the plugin.
-- [ ] Android discovery UX: live candidate list without a picker.
+- [x] Android discovery UX: live candidate list without a picker. *HID, 2026-10-09
+      (decision 24): no list to pick from; the app follows the plugin's USB events instead.
+      Plugging in a drivable device while nothing is connected and the app is in view connects it
+      (the chip's path: permission prompt, a pick if several); anything else attached is ignored.
+      Unplugging the connected device disconnects it at once (`usbDeviceName` on native
+      connections), keeping the known device, so a replug reconnects. Open, for the user: on a
+      real phone, that `USB_DEVICE_ATTACHED` reaches the plugin's runtime receiver (Android also
+      sends it to activities; only `DETACHED` has been seen so far), plug and unplug with the app
+      open, and a plug-in while the app is in the background (should do nothing).
+      Launch-on-attach (manifest `device_filter.xml`): not now.*
 
 ### Phase 7: Cutover · ½ day
 

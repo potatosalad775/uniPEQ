@@ -350,7 +350,7 @@ const nativeIdentity = (d: NativeUsbDevice): DeviceIdentity => ({
 });
 
 /** Whether an attached device is one the database matches or the bridge can guess. */
-async function drivableNative(d: NativeUsbDevice): Promise<boolean> {
+export async function drivableNative(d: NativeUsbDevice): Promise<boolean> {
 	if (d.hidInterfaces.length === 0) return false;
 	if (guessProtocol(d.vendorId)) return true;
 	const { matches } = await eqcapsClient().matchDevice(nativeIdentity(d));
@@ -370,7 +370,7 @@ async function openNative(
 	}
 	const transport = await openNativeHid({ ...device, hasPermission: true }, plugin);
 	const identity = identityOf(transport);
-	return identify({
+	const result = await identify({
 		kind: 'hid',
 		identity,
 		fallbackName: device.productName.trim() || 'USB device',
@@ -386,9 +386,23 @@ async function openNative(
 					d.productName === device.productName
 			);
 			if (!again?.hasPermission) return null;
-			return connection('hid', await openNativeHid(again, plugin), r);
+			const conn = connection('hid', await openNativeHid(again, plugin), r);
+			return { ...conn, usbDeviceName: again.deviceName };
 		}
 	});
+	return withDeviceName(result, device.deviceName);
+}
+
+/** Tags the connection a result comes to, now or after a pick, with the plugin's device path. */
+function withDeviceName(result: ConnectResult, usbDeviceName: string): ConnectResult {
+	if (result.kind === 'connected') {
+		return { ...result, connection: { ...result.connection, usbDeviceName } };
+	}
+	if (result.kind === 'choose') {
+		const { finish } = result;
+		return { ...result, finish: async (id) => withDeviceName(await finish(id), usbDeviceName) };
+	}
+	return result;
 }
 
 /**

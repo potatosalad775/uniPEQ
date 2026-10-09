@@ -315,6 +315,7 @@ describe('connectNativeHid', () => {
 		if (result.kind !== 'connected') return;
 		expect(result.connection.profileId).toBe('crinear-protocol-micro');
 		expect(result.connection.connectionType).toBe('hid');
+		expect(result.connection.usbDeviceName).toBe('/dev/bus/usb/001/002');
 		expect(client.matchDevice).toHaveBeenLastCalledWith({
 			usb: { vendorId: '0x3302', productId: '0xc20f', productName: 'Protocol Micro' }
 		});
@@ -342,6 +343,7 @@ describe('connectNativeHid', () => {
 		]);
 		const done = await result.finish('/dev/bus/usb/001/002');
 		expect(done.kind === 'connected' && done.connection.profileSource).toBe('guess');
+		expect(done.kind === 'connected' && done.connection.usbDeviceName).toBe('/dev/bus/usb/001/002');
 		expect(p.requestPermission).not.toHaveBeenCalled();
 	});
 });

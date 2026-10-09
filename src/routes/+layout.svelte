@@ -2,7 +2,7 @@
 	import './layout.css';
 	import { onMount } from 'svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
-	import { installNative, setSystemBarsDark } from '$lib/platform/native';
+	import { installNative, isNative, setSystemBarsDark } from '$lib/platform/native';
 	import { settingsStore } from '$lib/stores/settings-store.svelte';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 
@@ -15,6 +15,12 @@
 		installNative();
 		// Revalidate the eqcaps index in the background (decision 3), so a connect finds it ready.
 		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());
+		// Android: plugging a device in connects it, unplugging it disconnects (Phase 6).
+		if (isNative) {
+			void import('$lib/services/device-peq-service.svelte').then((mod) =>
+				mod.devicePeqService.watchUsb()
+			);
+		}
 	});
 
 	let firstTheme = true;
