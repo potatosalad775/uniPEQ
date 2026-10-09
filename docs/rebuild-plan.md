@@ -297,7 +297,8 @@ New:
     - **A disconnect keeps the device.** `devicePeqStore.knownDevice` (name and profile) is set on
       connect and kept on disconnect, so the list stays editable against the last profile; the sync
       bar says the device is disconnected and offers Connect (the device sheet), the chip's dot is
-      amber. `forget()` goes back to before any device (specs).
+      amber. `forget()` goes back to before any device (specs). *Editable no longer: read-only
+      while disconnected since decision 25.*
     - **Preamp as one row.** The preamp is a row shaped like a band row (level in the gain column,
       Auto in the Q column, the clip flag); it opens `PreampEditor` in a sheet on a phone and under
       the row on `wide:`.
@@ -326,6 +327,27 @@ New:
       and the sync bar) starts a USB connect directly instead of opening the device sheet, which
       would hold only that button. The sheet opens when the attempt needs a pick, finds nothing to
       drive, or fails before the sync bar exists; once connected the chip opens it as before.
+
+25. **The device's EQ is the document (2026-10-09).** The app is a companion to one device
+    (decision 23), so what the list edits is what the device holds.
+    - **Read on connect, and on a preset switch.** Connecting reads the target preset into the list;
+      so does picking another preset in Device EQ. The read is a fresh start (`eqStore.open`: no
+      undo back past it, which would hand the device another device's or preset's bands); the Read
+      button's read stays an undo step. Replaces device-peq invariant 3 ("connecting never edits
+      the filters") as far as reading goes; nothing still refits the list on its own.
+    - **Except over unwritten changes.** `devicePeqStore.hasUnwritten` compares the list with the
+      last read or write (or, before either, with the list when the device's content stopped being
+      known); a disconnect or a preset change records it as `unwritten`. Reconnecting the same
+      device (same name and profile) with unwritten changes doesn't read: the sync bar says
+      "Earlier changes aren't on the device yet" and offers Read and Write, in manual and
+      auto-write mode alike (connecting never writes). Another device is read regardless.
+    - **No editing while disconnected.** `devicePeqStore.canEdit` (connected, not waiting to
+      reconnect) → `eqConstraintStore.editable` gates the graph (no gestures or keys, dimmed nodes),
+      band and preamp rows (disabled) and editors (a disabled `fieldset`), Add, Fit, undo/redo and
+      Load preset (EQ tab and Presets tab). The list stays visible and can be saved as a preset; a
+      disconnect drops the band selection. Supersedes decision 23's "the list stays editable
+      against the last profile". Changes left unwritten at a disconnect are now only those made
+      while connected: a pending or failed auto-write, or manual mode before Write.
 
 ## Phases
 

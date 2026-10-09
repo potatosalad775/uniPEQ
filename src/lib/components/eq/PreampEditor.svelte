@@ -30,7 +30,7 @@
 </script>
 
 {#if control.kind === 'slider'}
-	<div class="flex flex-col gap-2">
+	<fieldset disabled={!eqConstraintStore.editable} class="flex min-w-0 flex-col gap-2">
 		<ListRow
 			label={m.eq_preamp_auto()}
 			description={m.eq_preamp_auto_hint()}
@@ -69,5 +69,5 @@
 				{m.eq_preamp_clips({ needed })}
 			</p>
 		{/if}
-	</div>
+	</fieldset>
 {/if}

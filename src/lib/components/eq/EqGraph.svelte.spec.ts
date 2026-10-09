@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
 import { graphicProfile, hardwareProfile } from '$lib/eq/__fixtures__/profiles';
+import { UNCONSTRAINED } from '$lib/eq/eq-constraint';
 import type { EqFilter } from '$lib/eq/model';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
@@ -41,6 +42,8 @@ function pointer(type: string, target: Element, x: number, y: number) {
 
 describe('EqGraph', () => {
 	beforeEach(() => {
+		// Editing needs a connected device (decision 25); this one takes anything.
+		devicePeqStore.setConnected(fakeConnection(UNCONSTRAINED), null);
 		eqStore.reset();
 		eqStore.replace([pk(100, 3), pk(1000, -2)], -3);
 		eqStore.history.clear();
@@ -81,6 +84,21 @@ describe('EqGraph', () => {
 		await userEvent.keyboard('{Delete}');
 		expect(eqStore.filters).toHaveLength(2);
 		expect(eqStore.filters[0]).toEqual({ type: 'PK', freq: 100, q: 1, gain: 0 });
+	});
+
+	it('is read-only while the device is disconnected', async () => {
+		devicePeqStore.setDisconnected();
+		render(EqGraph);
+		const node = page.getByRole('button', { name: /^Band 1/ });
+		await expect.element(node).toHaveAttribute('aria-disabled', 'true');
+		const before = eqStore.filters;
+		const { x, y, el } = dotOf(0);
+		pointer('pointerdown', el, x, y);
+		pointer('pointermove', el, x + 60, y - 40);
+		pointer('pointerup', el, x + 60, y - 40);
+		await new Promise((r) => requestAnimationFrame(r));
+		expect(eqStore.filters).toBe(before);
+		expect(eqStore.selected).toBeNull();
 	});
 
 	it('drags a node across and up as one undo step', async () => {

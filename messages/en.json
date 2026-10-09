@@ -218,6 +218,7 @@
 	"settings_auto_write_hint": "Write EQ edits to the device after a short pause.",
 	"sync_pending": "Writing to the device shortly…",
 	"sync_unwritten": "Changes not written to the device yet.",
+	"sync_unwritten_kept": "Earlier changes aren't on the device yet.",
 	"sync_write": "Write",
 	"device_chip_connect": "Connect device",
 	"device_chip_title": "{device}: device settings",
@@ -234,7 +235,7 @@
 	"eq_start_flat": "Start flat",
 	"eq_empty_title": "Connect your device",
 	"eq_empty_body": "uniPEQ edits the EQ inside your DAC, amp or headphones. Connect one to start: its bands and limits come with it.",
-	"sync_disconnected": "{device} is disconnected. Your edits are kept.",
+	"sync_disconnected": "{device} is disconnected. Connect it to edit.",
 	"sync_connect": "Connect",
 	"presets_apply_needs_device": "Connect a device to load a preset"
 }

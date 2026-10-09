@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Profile } from '@potatosalad775/eqcaps-core';
 import type { DeviceConnection, PeqCapabilities } from '$lib/device-peq/types';
 import { devicePeqStore } from './device-peq-store.svelte';
+import { eqStore } from './eq-store.svelte';
 
 const KA17_SLOTS = [
 	{ id: 0, name: 'Jazz' },
@@ -101,5 +102,76 @@ describe('devicePeqStore', () => {
 		expect(devicePeqStore.knownDevice?.profile).toEqual(connection().profile);
 		devicePeqStore.forget();
 		expect(devicePeqStore.knownDevice).toBeNull();
+	});
+
+	describe('unwritten changes and editing (decision 25)', () => {
+		const band = (gain: number) => ({ type: 'PK' as const, freq: 1000, gain, q: 1 });
+
+		function connectedAndRead() {
+			devicePeqStore.forget();
+			eqStore.reset();
+			devicePeqStore.setConnected(connection(), 4);
+			eqStore.replace([band(3)]);
+			devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
+		}
+
+		it('edits only while connected and reachable', () => {
+			connectedAndRead();
+			expect(devicePeqStore.canEdit).toBe(true);
+			devicePeqStore.needsReconnect = true;
+			expect(devicePeqStore.canEdit).toBe(false);
+			devicePeqStore.setDisconnected();
+			expect(devicePeqStore.canEdit).toBe(false);
+		});
+
+		it('carries changes the device never got across a disconnect, to the same device only', () => {
+			connectedAndRead();
+			eqStore.update(0, { gain: 5 });
+			expect(devicePeqStore.hasUnwritten).toBe(true);
+			devicePeqStore.setDisconnected();
+			expect(devicePeqStore.unwritten).toBe(true);
+
+			devicePeqStore.setConnected(connection(), 4);
+			expect(devicePeqStore.unwritten).toBe(true);
+			expect(devicePeqStore.hasUnwritten).toBe(true);
+
+			devicePeqStore.setDisconnected();
+			devicePeqStore.setConnected({ ...connection(), name: 'FiiO KA15' }, 4);
+			expect(devicePeqStore.hasUnwritten).toBe(false);
+		});
+
+		it('carries nothing when the list was as the device had it', () => {
+			connectedAndRead();
+			devicePeqStore.setDisconnected();
+			devicePeqStore.setConnected(connection(), 4);
+			expect(devicePeqStore.hasUnwritten).toBe(false);
+		});
+
+		it('counts an edit made before any read or write', () => {
+			devicePeqStore.forget();
+			eqStore.reset();
+			devicePeqStore.setConnected(connection(), 4);
+			expect(devicePeqStore.hasUnwritten).toBe(false);
+			eqStore.add(band(2));
+			expect(devicePeqStore.hasUnwritten).toBe(true);
+		});
+
+		it('keeps changes made for one preset unwritten after switching to another', () => {
+			connectedAndRead();
+			eqStore.update(0, { gain: 6 });
+			devicePeqStore.target(8);
+			expect(devicePeqStore.hasUnwritten).toBe(true);
+
+			connectedAndRead();
+			devicePeqStore.target(8);
+			expect(devicePeqStore.hasUnwritten).toBe(false);
+		});
+
+		it('drops the band selection on a disconnect', () => {
+			connectedAndRead();
+			eqStore.select(0);
+			devicePeqStore.setDisconnected();
+			expect(eqStore.selected).toBeNull();
+		});
 	});
 });

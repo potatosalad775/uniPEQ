@@ -18,7 +18,9 @@
 	/** The `wide:` breakpoint (layout.css): the band editor opens in the list, not in a sheet. */
 	const wide = new MediaQuery('min-width: 56.25rem');
 	const hasDevice = $derived(eqConstraintStore.hasDevice);
-	const sheetOpen = $derived(hasDevice && !wide.current && eqStore.selected !== null);
+	const sheetOpen = $derived(
+		eqConstraintStore.editable && !wide.current && eqStore.selected !== null
+	);
 
 	let deviceOpen = $state(false);
 

@@ -9,7 +9,8 @@
 	- double-click the background: add a band there (only without a device band count);
 	- keys on a focused node: arrows move it, Page Up/Down change Q, Delete removes it (or, for a
 	  device's set bands, resets it to flat: decision 23).
-	A drag is one undo step, and moves less than 3 px are a tap, not a drag.
+	A drag is one undo step, and moves less than 3 px are a tap, not a drag. While the device is away
+	the graph is read-only (decision 25): no gestures or keys, dimmed nodes.
 -->
 <script lang="ts">
 	import { usesGain } from '@potatosalad775/eqcaps-core';
@@ -51,6 +52,7 @@
 
 	const filters = $derived(eqStore.filters);
 	const profile = $derived(eqConstraintStore.profile);
+	const editable = $derived(eqConstraintStore.editable);
 	const response = $derived(combinedResponseDb(filters, FREQS));
 	const liveDb = $derived(dbRange(profile, filters, response));
 	const plot: Plot = $derived({ width, height, db: heldDb ?? liveDb });
@@ -150,7 +152,7 @@
 	}
 
 	function onpointerdown(e: PointerEvent): void {
-		if (e.button !== 0 && e.pointerType === 'mouse') return;
+		if (!editable || (e.button !== 0 && e.pointerType === 'mouse')) return;
 		const p = local(e);
 		pointers.set(e.pointerId, p);
 		try {
@@ -239,6 +241,7 @@
 		const el = svg;
 		if (!el) return;
 		const onwheel = (e: WheelEvent) => {
+			if (!eqConstraintStore.editable) return;
 			const index = hovered ?? eqStore.selected;
 			const f = index === null ? undefined : filters[index];
 			if (index === null || !f || locked(index).q) return;
@@ -255,7 +258,7 @@
 
 	function onkeydown(e: KeyboardEvent, i: number): void {
 		const f = filters[i];
-		if (!f) return;
+		if (!f || !editable) return;
 		const slot = slotOf(profile, slotIndex(i), f);
 		const step = (field: 'freq' | 'q' | 'gain', dir: 1 | -1) => {
 			if (slot.locked[field] || (field === 'gain' && !usesGain(f.type))) return;
@@ -371,10 +374,13 @@
 				<g
 					data-band={i}
 					role="button"
-					tabindex="0"
+					tabindex={editable ? 0 : -1}
 					aria-label={bandLabel(f, i)}
 					aria-pressed={isSelected}
-					class="cursor-grab outline-none active:cursor-grabbing"
+					aria-disabled={!editable}
+					class="outline-none {editable
+						? 'cursor-grab active:cursor-grabbing'
+						: 'pointer-events-none opacity-50'}"
 					onkeydown={(e) => onkeydown(e, i)}
 					onfocus={() => (focused = i)}
 					onblur={() => (focused = focused === i ? null : focused)}

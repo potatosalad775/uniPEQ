@@ -66,7 +66,12 @@
 </script>
 
 {#if filter && slot}
-	<div class="flex flex-col gap-3" aria-label={m.eq_band_number({ band: index + 1 })} role="group">
+	<!-- Read-only while the device is away (decision 25): every control in it is off. -->
+	<fieldset
+		disabled={!eqConstraintStore.editable}
+		class="flex min-w-0 flex-col gap-3"
+		aria-label={m.eq_band_number({ band: index + 1 })}
+	>
 		{#if header}
 			<h3 class="truncate text-sm font-semibold">
 				{m.eq_band_number({ band: index + 1 })} · {TYPE_LABEL[filter.type]()}
@@ -162,5 +167,5 @@
 				</Button>
 			{/if}
 		</div>
-	</div>
+	</fieldset>
 {/if}

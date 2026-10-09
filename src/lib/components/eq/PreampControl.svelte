@@ -28,6 +28,10 @@
 	const clips = $derived(control.kind === 'slider' && eqStore.preamp > needed + 0.05);
 
 	let open = $state(false);
+	// Read-only while the device is away (decision 25): its editor closes.
+	$effect(() => {
+		if (!eqConstraintStore.editable) open = false;
+	});
 
 	function toggle() {
 		// One editor at a time: the band sheet would sit over this one.
@@ -42,7 +46,8 @@
 			type="button"
 			aria-expanded={inlineEditor ? open : undefined}
 			aria-haspopup={inlineEditor ? undefined : 'dialog'}
-			class="flex min-h-12 w-full items-center gap-3 rounded-t-xl px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base"
+			disabled={!eqConstraintStore.editable}
+			class="flex min-h-12 w-full items-center gap-3 rounded-t-xl px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:text-base"
 			onclick={toggle}
 		>
 			<span

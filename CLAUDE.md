@@ -57,8 +57,9 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
   status line.
 - Devices: protocols, limits and device data are eqcaps' job (`../eqcaps`); a protocol bug or a
   missing device is fixed there. `src/lib/device-peq/` follows modernGraphTool's
-  `device-peq/AGENTS.md` invariants (fit before every write, never retarget, connect never edits
-  the filters, one status line). `connect.ts`, the bridge, the client and the snapshot stay behind
+  `device-peq/AGENTS.md` invariants (fit before every write, never retarget, one status line;
+  decision 25 replaced "connect never edits": connecting reads the device unless the list has
+  unwritten changes, and the list is read-only while disconnected, `eqConstraintStore.editable`). `connect.ts`, the bridge, the client and the snapshot stay behind
   dynamic `import()`; only `eqcaps-core` may be in the boot bundle. State in
   `stores/device-peq-store.svelte.ts`, actions in `services/device-peq-service.svelte.ts`.
 - EQ edits go through `eqStore` methods, never by assigning `filters`: each is an undo step, or

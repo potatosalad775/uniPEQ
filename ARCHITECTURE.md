@@ -186,14 +186,19 @@ opens only when the attempt needs a pick or has something to say.
 
 ## 5. Reading and Writing
 
-`src/lib/device-peq/` follows modernGraphTool's `device-peq/AGENTS.md` invariants:
+`src/lib/device-peq/` follows modernGraphTool's `device-peq/AGENTS.md` invariants, with the third
+changed by decision 25:
 
 1. **Fit before every write.** The bridge never clamps or pads. `push-plan.ts` runs eqcaps `fit`
    and `complete` and reports what changed; a write whose values had to change waits for review.
 2. **Never retarget.** Read and write only a reachable preset: on a built-in preset Write is off,
    it is never redirected to another slot.
-3. **Connecting never edits the filters.** A list that doesn't fit is flagged; **Fit** (`fitFilters`)
-   is the user's action.
+3. **The device's EQ is what the list edits.** Connecting, and picking another preset in Device
+   EQ, read it into the list as a fresh start (no undo back past it, `eqStore.open`), unless the
+   list holds changes the device never got (`devicePeqStore.unwritten` / `hasUnwritten`); then the
+   sync bar offers Write and Read. The Read button's read stays an undo step. Nothing ever refits
+   the list on its own: a list that doesn't fit is flagged, and **Fit** (`fitFilters`) is the
+   user's action.
 4. **One status line**: the EQ tab's sync bar (`device-peq/sync-status.ts`, ranked over
    `panel-status.ts`), also the live region screen readers hear. The device chip's dot repeats it.
 
@@ -205,8 +210,11 @@ Writing:
   Reconnect.
 - **Review** is `devicePeqService.review`, shown by `ReviewDialog`; the sync bar's Write and the
   device panel share it.
-- A disconnect keeps `devicePeqStore.knownDevice`, so the list stays editable against the last
-  profile and the sync bar offers Connect.
+- **No editing while disconnected** (decision 25): `devicePeqStore.canEdit` (connected and not
+  waiting to reconnect), surfaced as `eqConstraintStore.editable`, gates the graph, band and preamp
+  rows and editors, Add, Fit, undo/redo and Load preset. A disconnect keeps
+  `devicePeqStore.knownDevice`, so the list stays on screen read-only (it can still be saved as a
+  preset) and the sync bar offers Connect.
 
 ---
 
@@ -261,6 +269,7 @@ push-path sources: [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGr
   selected band's editor and the preamp editor are sheets.
 - **Wide:** graph on the left; device panel and the band card on the right, the selected row opening
   its editor in place.
+- **Disconnected:** the graph and the rows stay, dimmed and read-only, until the device is back.
 - **No device:** a prompt to connect (and, in dev and debug builds, the demo device); nothing to
   edit until a profile says what the device accepts.
 

@@ -94,6 +94,7 @@ class DevicePeqService {
 			autoDueAt: store.autoDueAt,
 			canWrite: !!caps?.canWrite && !!store.writeTarget,
 			canRead: !!caps?.canRead && !!store.readTarget,
+			unwritten: store.unwritten,
 			message: store.statusMessage,
 			messageIsError: store.statusIsError,
 			autoWriting: this.autoWriting,
@@ -171,11 +172,16 @@ class DevicePeqService {
 		this.choice = choice ? { candidates: choice.candidates } : null;
 	}
 
+	/**
+	 * Decision 25: the device's EQ is what the list edits, so a connection starts by reading it,
+	 * unless the list holds changes this device never got (the sync bar then offers Write and Read).
+	 */
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const slot = await conn.device.currentSlot().catch(() => null);
 		devicePeqStore.setConnected(conn, slot);
 		this.install();
 		logger.info(`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}`);
+		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
 	/** After the device dropped (or restarted to save): find it again without a chooser. */
@@ -243,7 +249,11 @@ class DevicePeqService {
 	// ── Reading and writing ───────────────────────────────────────────────────
 
 	/** Replace the band list with what Device EQ shows. */
-	async read(): Promise<void> {
+	/**
+	 * Read the preset Device EQ shows into the list. The Read button's read is an undo step; an
+	 * automatic one (`fresh`, on connecting or switching presets) starts a new history instead.
+	 */
+	async read(fresh = false): Promise<void> {
 		const conn = devicePeqStore.connection;
 		const request = devicePeqStore.readTarget;
 		if (!conn || !request) return;
@@ -252,7 +262,8 @@ class DevicePeqService {
 			const result = await conn.device.pull(request);
 			const bands = result.filters.filter((f) => f !== null);
 			const filters = bands.map(fromCapsFilter).filter((f) => f !== null);
-			eqStore.replace(filters, result.preamp);
+			if (fresh) eqStore.open(filters, result.preamp);
+			else eqStore.replace(filters, result.preamp);
 			devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
 			const skipped = bands.length - filters.length;
 			devicePeqStore.setStatus(
@@ -369,7 +380,10 @@ class DevicePeqService {
 		}
 	}
 
-	/** Switch the device to what Device EQ picked: `p<id>` for a preset, `on`, or `off`. */
+	/**
+	 * Switch the device to what Device EQ picked: `p<id>` for a preset, `on`, or `off`. A preset
+	 * picked is then read (decision 25), unless the list holds changes not written yet.
+	 */
 	async switchTo(value: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn) return;
@@ -382,10 +396,13 @@ class DevicePeqService {
 				: undefined;
 		if (!conn.device.capabilities.canEnable) {
 			// Nothing to switch: the control only picks what Read and Write reach.
-			if (slot !== undefined) devicePeqStore.target(slot);
+			if (slot === undefined) return;
+			devicePeqStore.target(slot);
+			if (!devicePeqStore.hasUnwritten) await this.read(true);
 			return;
 		}
 		devicePeqStore.isSwitching = true;
+		let switched = false;
 		try {
 			if (value === 'off') {
 				await conn.device.setEnabled(false);
@@ -393,12 +410,14 @@ class DevicePeqService {
 			} else {
 				await conn.device.setEnabled(true, slot);
 				devicePeqStore.played(slot);
+				switched = true;
 			}
 		} catch (e) {
 			this.fail(e, 'switch');
 		} finally {
 			devicePeqStore.isSwitching = false;
 		}
+		if (switched && !devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
 	// ── Auto-write ────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
 import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
+import { UNCONSTRAINED } from '$lib/eq/eq-constraint';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
 import PreampControl from './PreampControl.svelte';
@@ -37,12 +38,20 @@ describe('PreampControl', () => {
 	});
 
 	it('opens under its row with inlineEditor', async () => {
+		devicePeqStore.setConnected(fakeConnection(UNCONSTRAINED), null);
 		render(PreampControl, { inlineEditor: true });
 		const row = page.getByRole('button', { name: /^Preamp/ });
 		await row.click();
 		await expect.element(row).toHaveAttribute('aria-expanded', 'true');
 		await expect.element(page.getByRole('slider', { name: 'Preamp' })).toBeVisible();
 		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+	});
+
+	it('is read-only while the device is disconnected', async () => {
+		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
+		devicePeqStore.setDisconnected();
+		render(PreampControl);
+		await expect.element(page.getByRole('button', { name: /^Preamp/ })).toBeDisabled();
 	});
 
 	it('warns when the preamp leaves too little room for the boost', async () => {

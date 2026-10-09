@@ -5,7 +5,8 @@
 	Layout after modernGraphTool's EqFilterList, rewritten lighter (no channels, no AutoEQ).
 	Phase 4.5 (decision 22): touch-height rows, no per-band switch, Add band as the last row, and
 	no card of its own: it sits in the EQ tab's band card under the preamp. Decision 23: a device
-	with a set band count has no Add row; Fit pads a short list.
+	with a set band count has no Add row; Fit pads a short list. Decision 25: rows, Add and Fit are
+	off while the device is disconnected.
 -->
 <script lang="ts">
 	import { Plus, TriangleAlert } from '@lucide/svelte';
@@ -39,7 +40,7 @@
 	 */
 	const fitNote = $derived.by(() => {
 		const device = devicePeqStore.knownDevice?.name ?? '';
-		if (!eqConstraintStore.hasDevice || !eqConstraintStore.fitted) return null;
+		if (!eqConstraintStore.editable || !eqConstraintStore.fitted) return null;
 		if (eqStore.filters.length === 0) return m.eq_empty_fixed({ device, count: maxBands });
 		const { misfits, missing } = eqConstraintStore;
 		if (misfits > 0) return m.eq_misfits({ count: misfits, device });
@@ -65,7 +66,7 @@
 		</h2>
 	</div>
 
-	<!-- Connecting never edits the list: it only says what doesn't fit, and Fit is the user's call. -->
+	<!-- Nothing refits the list on its own: it only says what doesn't fit, and Fit is the user's call. -->
 	{#if fitNote}
 		<div class="mx-3.5 mt-1 mb-4 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
 			<p class="min-w-0 flex-1 text-xs touch:text-sm">{fitNote}</p>
@@ -89,7 +90,8 @@
 						type="button"
 						aria-expanded={inlineEditor ? isSelected : undefined}
 						aria-pressed={inlineEditor ? undefined : isSelected}
-						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums group-last:rounded-b-xl hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base
+						disabled={!eqConstraintStore.editable}
+						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums group-last:rounded-b-xl hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:text-base
 							{off ? 'text-base-content/50' : ''}"
 						onclick={() => eqStore.select(isSelected && inlineEditor ? null : i)}
 					>

@@ -217,6 +217,7 @@
 	"settings_auto_write_hint": "편집이 잠시 멈추면 EQ를 기기에 씁니다.",
 	"sync_pending": "잠시 후 기기에 씁니다…",
 	"sync_unwritten": "아직 기기에 쓰지 않은 변경 사항이 있습니다.",
+	"sync_unwritten_kept": "이전 변경 사항이 아직 기기에 없습니다.",
 	"sync_write": "쓰기",
 	"device_chip_connect": "기기 연결",
 	"device_chip_title": "{device}: 기기 설정",
@@ -233,7 +234,7 @@
 	"eq_start_flat": "평탄하게 시작",
 	"eq_empty_title": "기기를 연결하세요",
 	"eq_empty_body": "uniPEQ는 DAC, 앰프, 헤드폰 안의 EQ를 편집합니다. 기기를 연결하면 밴드 수와 제한도 함께 불러옵니다.",
-	"sync_disconnected": "{device} 연결이 끊어졌습니다. 편집한 내용은 유지됩니다.",
+	"sync_disconnected": "{device} 연결이 끊어졌습니다. 편집하려면 다시 연결하세요.",
 	"sync_connect": "연결",
 	"presets_apply_needs_device": "프리셋을 불러오려면 기기를 연결하세요"
 }

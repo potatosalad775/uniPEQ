@@ -17,7 +17,8 @@ const BASE: SyncInput = {
 	autoClipRisk: false,
 	builtIn: false,
 	unreachable: false,
-	inSync: null
+	inSync: null,
+	unwritten: false
 };
 
 const status = (patch: Partial<SyncInput>) => syncStatus({ ...BASE, ...patch });
@@ -30,7 +31,7 @@ describe('syncStatus', () => {
 	it('says a known device is disconnected, and offers to connect', () => {
 		expect(status({ connected: false })).toEqual({
 			tone: 'warning',
-			text: 'KA17 is disconnected. Your edits are kept.',
+			text: 'KA17 is disconnected. Connect it to edit.',
 			actions: ['connect']
 		});
 	});
@@ -42,6 +43,18 @@ describe('syncStatus', () => {
 			text: 'Auto-write is on: your next edit goes to the device.',
 			actions: ['read']
 		});
+	});
+
+	it('offers Write and Read for changes kept from before, in either mode', () => {
+		for (const autoWriting of [false, true]) {
+			expect(status({ unwritten: true, autoWriting })).toEqual({
+				tone: 'warning',
+				text: "Earlier changes aren't on the device yet.",
+				actions: ['read', 'write']
+			});
+		}
+		// Once read or written, the list is compared with the device as usual.
+		expect(status({ unwritten: true, inSync: true })?.actions).toBeUndefined();
 	});
 
 	it('counts down a waiting auto-write, and shows a write under way', () => {

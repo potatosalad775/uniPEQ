@@ -21,6 +21,8 @@ import { eqStore } from './eq-store.svelte';
 class EqConstraintStore {
 	/** A device has been connected, so there is a profile to edit for. */
 	hasDevice = $derived(devicePeqStore.knownDevice !== null);
+	/** The list can be edited: its device is connected (decision 25). Read-only otherwise. */
+	editable = $derived(devicePeqStore.canEdit);
 	profile = $derived(devicePeqStore.knownDevice?.profile ?? UNCONSTRAINED);
 	isGraphic = $derived(isGraphicProfile(this.profile));
 	/** Band cap; 0 = unlimited. */
@@ -45,11 +47,11 @@ class EqConstraintStore {
 		this.violations.filter((v) => v.type || v.freq || v.q || v.gain).length +
 			(this.maxBands > 0 ? Math.max(0, eqStore.filters.length - this.maxBands) : 0)
 	);
-	canAdd = $derived(!this.fixedBands);
+	canAdd = $derived(this.editable && !this.fixedBands);
 	preamp = $derived(preampControl(this.profile, devicePeqStore.capabilities?.writesPreamp ?? null));
 	/** Whether band `i` may be removed, not only reset: always without a set count, else past it. */
 	canRemove(i: number): boolean {
-		return !this.fixedBands || i >= this.maxBands;
+		return this.editable && (!this.fixedBands || i >= this.maxBands);
 	}
 
 	/** What Fit would make of the list, or null when it would change nothing. */

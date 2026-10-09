@@ -3,9 +3,10 @@
 /**
  * The connected EQ device and what the app is doing with it.
  *
- * The connection's eqcaps profile is the active constraint while it lasts (`profile`). Connecting
- * never edits the filters: bands that don't fit are flagged, and the user fits them when they
- * choose to.
+ * The connection's eqcaps profile is the active constraint while it lasts (`profile`). The device's
+ * EQ is what the list edits (decision 25): it is read on connecting unless the list holds changes
+ * the device never got (`unwritten`), and it can't be edited while disconnected (`canEdit`). Bands
+ * that don't fit are flagged, never refitted: Fit is the user's call.
  */
 import { readRequest, writeRequest, type PresetRequest } from '$lib/device-peq/preset';
 import type { DeviceConnection, PeqCapabilities } from '$lib/device-peq/types';
@@ -52,6 +53,14 @@ class DevicePeqStore {
 	/** What the device held after the last read or write, to tell whether the list has moved on. */
 	synced = $state.raw<DeviceSnapshot | null>(null);
 	/**
+	 * The list holds changes the device never got, from before the device went away or the target
+	 * preset changed (`hasUnwritten` at that moment). Connecting again doesn't read over them: the
+	 * sync bar offers Write and Read instead.
+	 */
+	unwritten = $state(false);
+	/** The list when what the device holds stopped being known (connecting, a preset change). */
+	#baseline: DeviceSnapshot | null = null;
+	/**
 	 * The target preset's bands as read before a write, kept so later writes (auto-write above all)
 	 * don't read again. Null hints: the preset couldn't be read. Dropped on any preset change.
 	 */
@@ -82,6 +91,14 @@ class DevicePeqStore {
 
 	get isConnected(): boolean {
 		return this.connection !== null;
+	}
+
+	/**
+	 * The list can be edited: a device is connected and reachable (decision 25). Disconnected, the
+	 * list stays on screen read-only, to look at or save as a preset.
+	 */
+	get canEdit(): boolean {
+		return this.connection !== null && !this.needsReconnect;
 	}
 
 	get isBusy(): boolean {
@@ -151,14 +168,31 @@ class DevicePeqStore {
 
 	/** Whether the list still matches the last read or write; null before either. */
 	get inSync(): boolean | null {
-		const synced = this.synced;
-		if (!synced) return null;
+		return this.synced ? this.#holds(this.synced) : null;
+	}
+
+	/**
+	 * While connected: the list has changes the device doesn't have, as far as the app can tell.
+	 * Against the last read or write when there is one, else against the list as it was when the
+	 * device's content stopped being known, plus whatever was already unwritten then.
+	 */
+	get hasUnwritten(): boolean {
+		if (this.synced) return !this.#holds(this.synced);
+		return this.unwritten || (this.#baseline !== null && !this.#holds(this.#baseline));
+	}
+
+	/** The list and preamp equal `snapshot` (the preamp only where the device takes one). */
+	#holds(snapshot: DeviceSnapshot): boolean {
 		const preampMatters = this.connection?.device.capabilities.writesPreamp ?? false;
 		return (
-			synced.filters.length === eqStore.filters.length &&
-			synced.filters.every((f, i) => eqFiltersEqual(f, eqStore.filters[i])) &&
-			(!preampMatters || synced.preamp === eqStore.preamp)
+			snapshot.filters.length === eqStore.filters.length &&
+			snapshot.filters.every((f, i) => eqFiltersEqual(f, eqStore.filters[i])) &&
+			(!preampMatters || snapshot.preamp === eqStore.preamp)
 		);
+	}
+
+	#snapshot(): DeviceSnapshot {
+		return { filters: eqStore.filters, preamp: eqStore.preamp };
 	}
 
 	get selection(): DeviceEqSelection {
@@ -170,6 +204,11 @@ class DevicePeqStore {
 	}
 
 	setConnected(connection: DeviceConnection, currentSlot: number | null): void {
+		// Unwritten changes carry over only to the same device: another one's EQ is read regardless.
+		const known = this.knownDevice;
+		const same = known?.name === connection.name && known.profile.id === connection.profile.id;
+		const carried = this.connection ? this.hasUnwritten : this.unwritten;
+		this.unwritten = same && carried;
 		this.connection = connection;
 		this.knownDevice = { name: connection.name, profile: connection.profile };
 		this.isConnecting = false;
@@ -182,6 +221,7 @@ class DevicePeqStore {
 		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
 		this.eqEnabled = onBypass ? false : currentSlot !== null ? true : null;
 		this.synced = null;
+		this.#baseline = this.#snapshot();
 		this.layout = null;
 		this.autoPaused = false;
 		this.autoClipRisk = false;
@@ -212,6 +252,8 @@ class DevicePeqStore {
 	 */
 	target(slot: number): void {
 		if (this.activeSlot === slot) return;
+		this.unwritten = this.hasUnwritten;
+		this.#baseline = this.#snapshot();
 		this.activeSlot = slot;
 		this.synced = null;
 		this.layout = null;
@@ -219,8 +261,14 @@ class DevicePeqStore {
 		this.setStatus(null);
 	}
 
-	/** The connection is gone; `knownDevice` stays, and the EQ is still edited for it. */
+	/**
+	 * The connection is gone. `knownDevice` stays, with the list read-only until it is back, and
+	 * whether the list holds changes it never got.
+	 */
 	setDisconnected(): void {
+		if (this.connection) this.unwritten = this.hasUnwritten;
+		this.#baseline = null;
+		eqStore.select(null);
 		this.connection = null;
 		this.isConnecting = false;
 		this.isReading = false;
@@ -243,6 +291,7 @@ class DevicePeqStore {
 	forget(): void {
 		this.setDisconnected();
 		this.knownDevice = null;
+		this.unwritten = false;
 	}
 
 	setStatus(message: string | null, isError = false): void {

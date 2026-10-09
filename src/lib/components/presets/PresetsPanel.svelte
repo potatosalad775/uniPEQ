@@ -241,11 +241,11 @@
 								</Button>
 							{:else}
 								<Button
-									title={eqConstraintStore.hasDevice
+									title={eqConstraintStore.editable
 										? m.presets_apply_title({ name: entry.name })
 										: m.presets_apply_needs_device()}
 									size="sm"
-									disabled={!eqConstraintStore.hasDevice}
+									disabled={!eqConstraintStore.editable}
 									onclick={() => apply(entry.id)}
 								>
 									{m.presets_apply()}

@@ -32,7 +32,7 @@
 	}
 
 	function onkeydown(e: KeyboardEvent) {
-		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+		if (!(e.ctrlKey || e.metaKey) || e.altKey || !eqConstraintStore.editable) return;
 		const target = e.target as HTMLElement | null;
 		if (target?.closest('input, textarea, select, [contenteditable]')) return;
 		const key = e.key.toLowerCase();
@@ -60,7 +60,7 @@
 		title={m.eq_undo()}
 		size="icon"
 		variant="ghost"
-		disabled={!eqStore.canUndo}
+		disabled={!eqConstraintStore.editable || !eqStore.canUndo}
 		onclick={() => eqStore.undo()}
 	>
 		<Undo2 class="size-4" aria-hidden="true" />
@@ -69,7 +69,7 @@
 		title={m.eq_redo()}
 		size="icon"
 		variant="ghost"
-		disabled={!eqStore.canRedo}
+		disabled={!eqConstraintStore.editable || !eqStore.canRedo}
 		onclick={() => eqStore.redo()}
 	>
 		<Redo2 class="size-4" aria-hidden="true" />
@@ -80,7 +80,7 @@
 				<EllipsisVertical class="size-4" aria-hidden="true" />
 			</Button>
 		{/snippet}
-		<MenuItem disabled={!eqConstraintStore.hasDevice} onSelect={() => (pickerOpen = true)}>
+		<MenuItem disabled={!eqConstraintStore.editable} onSelect={() => (pickerOpen = true)}>
 			{#snippet icon()}<FolderOpen class="size-4" aria-hidden="true" />{/snippet}
 			{m.eq_load_preset()}
 		</MenuItem>
@@ -88,7 +88,7 @@
 			{#snippet icon()}<Save class="size-4" aria-hidden="true" />{/snippet}
 			{m.eq_save_preset()}
 		</MenuItem>
-		{#if eqConstraintStore.hasDevice}
+		{#if eqConstraintStore.editable}
 			<MenuSeparator />
 			<MenuItem disabled={!eqConstraintStore.fitted} description={m.eq_fit_title()} onSelect={fit}>
 				{#snippet icon()}<WandSparkles class="size-4" aria-hidden="true" />{/snippet}
