@@ -23,7 +23,7 @@
 	} = $props();
 </script>
 
-<label class="flex w-full gap-1 text-sm font-medium text-base-content {className}">
+<label class="flex w-full gap-2 text-sm font-medium text-base-content {className}">
 	{#if label}
 		<span>{label}</span>
 	{/if}

@@ -13,7 +13,7 @@ const LOG_SPAN = Math.log(F_MAX / F_MIN);
 export const GRID_FREQS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
 
 /** Room around the plot for the axis labels, px. */
-export const PAD = { top: 8, right: 8, bottom: 20, left: 30 };
+export const PAD = { top: 8, right: 12, bottom: 18, left: 24 };
 
 export interface Plot {
 	width: number;

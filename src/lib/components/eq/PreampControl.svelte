@@ -42,7 +42,7 @@
 			type="button"
 			aria-expanded={inlineEditor ? open : undefined}
 			aria-haspopup={inlineEditor ? undefined : 'dialog'}
-			class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base"
+			class="flex min-h-12 w-full items-center gap-3 rounded-t-xl px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base"
 			onclick={toggle}
 		>
 			<span
@@ -52,7 +52,7 @@
 				<Volume2 class="size-3.5" />
 			</span>
 			<span class="min-w-0 flex-1 truncate">{m.eq_preamp()}</span>
-			<span class="w-16 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
+			<span class="w-14 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
 			<span class="w-14 shrink-0 text-right text-base-content/60">
 				{eqStore.autoPreamp ? m.eq_preamp_auto() : ''}
 			</span>

@@ -45,20 +45,37 @@
 
 <ModalDialog bind:open title={m.settings_log_title({ count })} class="max-w-2xl">
 	<pre
-		class="min-h-32 flex-1 overflow-auto rounded-md bg-base-100 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-base-content/80 select-text">{text ||
-			m.settings_log_empty()}</pre>
-	{#snippet footer()}
-		<Button title={m.settings_log_clear()} variant="ghost" size="sm" onclick={clear}>
+		class="mt-1 min-h-32 flex-1 overflow-auto rounded-md bg-base-100 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-base-content/80 select-text">
+			{text || m.settings_log_empty()}
+	</pre>
+	<div class="mb-1 flex flex-row gap-2">
+		<Button
+			title={m.settings_log_clear()}
+			variant="outline"
+			size="md"
+			class="flex-1"
+			onclick={clear}
+		>
 			{m.settings_log_clear()}
 		</Button>
-		<Button title={m.settings_log_refresh()} variant="ghost" size="sm" onclick={refresh}>
+		<Button
+			title={m.settings_log_refresh()}
+			variant="outline"
+			size="md"
+			class="flex-1"
+			onclick={refresh}
+		>
 			{m.settings_log_refresh()}
 		</Button>
-		<Button title={m.settings_log_export_title()} variant="outline" size="sm" onclick={exportLog}>
-			{m.settings_log_export()}
-		</Button>
-		<Button title={m.dialog_close()} size="sm" onclick={() => (open = false)}>
-			{m.dialog_close()}
-		</Button>
+	</div>
+	{#snippet footer()}
+		<div class="flex flex-1 flex-row justify-between">
+			<Button title={m.settings_log_export_title()} variant="accent" size="md" onclick={exportLog}>
+				{m.settings_log_export()}
+			</Button>
+			<Button title={m.dialog_close()} size="md" onclick={() => (open = false)}>
+				{m.dialog_close()}
+			</Button>
+		</div>
 	{/snippet}
 </ModalDialog>

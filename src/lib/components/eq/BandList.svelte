@@ -67,7 +67,7 @@
 
 	<!-- Connecting never edits the list: it only says what doesn't fit, and Fit is the user's call. -->
 	{#if fitNote}
-		<div class="mx-4 my-1 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
+		<div class="mx-3.5 mt-1 mb-4 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
 			<p class="min-w-0 flex-1 text-xs touch:text-sm">{fitNote}</p>
 			<Button title={m.eq_fit_title()} size="sm" variant="outline" class="shrink-0" onclick={fit}>
 				{eqStore.filters.length === 0 ? m.eq_start_flat() : m.eq_fit()}
@@ -84,12 +84,12 @@
 			{#each eqStore.filters as filter, i (i)}
 				{@const isSelected = eqStore.selected === i}
 				{@const off = isPastMaxBands(i, profile)}
-				<li class={isSelected ? 'bg-primary/8' : ''}>
+				<li class="group {isSelected ? 'bg-primary/8' : ''}">
 					<button
 						type="button"
 						aria-expanded={inlineEditor ? isSelected : undefined}
 						aria-pressed={inlineEditor ? undefined : isSelected}
-						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base
+						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums group-last:rounded-b-xl hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 touch:min-h-14 touch:text-base
 							{off ? 'text-base-content/50' : ''}"
 						onclick={() => eqStore.select(isSelected && inlineEditor ? null : i)}
 					>
@@ -105,7 +105,7 @@
 							{filter.type}
 						</span>
 						<span class="min-w-0 flex-1 truncate">{formatHz(filter.freq)}</span>
-						<span class="w-16 shrink-0 text-right">
+						<span class="w-14 shrink-0 text-right">
 							{usesGain(filter.type) ? formatDb(filter.gain) : '—'}
 						</span>
 						<span class="w-14 shrink-0 text-right text-base-content/60">Q {formatQ(filter.q)}</span>

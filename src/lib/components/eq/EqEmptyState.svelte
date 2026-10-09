@@ -1,20 +1,22 @@
 <!--
 	The EQ tab before any device (decision 23): uniPEQ edits a device's EQ, so there is nothing to
-	edit until one is connected; its profile brings the band count and limits. Connect opens the
-	device sheet (phone; on `wide:` the device panel is beside this, so it isn't offered), and the
-	demo device is one press away for trying the app without hardware.
+	edit until one is connected; its profile brings the band count and limits. Connect does what the
+	device chip does (phone; on `wide:` the device panel is beside this, so it isn't offered), and
+	in a dev or debug build the demo device is one press away for trying the app without hardware.
 -->
 <script lang="ts">
 	import { FlaskConical, Usb } from '@lucide/svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { isDebugBuild } from '$lib/platform/build';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 
 	let {
 		onConnect
-	}: { /** Open the device sheet; omitted where the panel is in view. */ onConnect?: () => void } =
-		$props();
+	}: {
+		/** The device chip's press; omitted where the panel is in view. */ onConnect?: () => void;
+	} = $props();
 </script>
 
 <section
@@ -37,21 +39,24 @@
 				title={m.device_chip_connect()}
 				class="gap-2"
 				onpointerenter={() => devicePeqService.warmUp()}
+				disabled={devicePeqStore.isConnecting}
 				onclick={onConnect}
 			>
 				<Usb class="size-4" aria-hidden="true" />
-				{m.device_chip_connect()}
+				{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_chip_connect()}
 			</Button>
 		{/if}
-		<Button
-			title={m.device_peq_connect_demo_title()}
-			variant="ghost"
-			class="gap-2"
-			disabled={devicePeqStore.isConnecting}
-			onclick={() => devicePeqService.connect('demo')}
-		>
-			<FlaskConical class="size-4" aria-hidden="true" />
-			{m.device_peq_connect_demo()}
-		</Button>
+		{#if isDebugBuild}
+			<Button
+				title={m.device_peq_connect_demo_title()}
+				variant="ghost"
+				class="gap-2"
+				disabled={devicePeqStore.isConnecting}
+				onclick={() => devicePeqService.connect('demo')}
+			>
+				<FlaskConical class="size-4" aria-hidden="true" />
+				{m.device_peq_connect_demo()}
+			</Button>
+		{/if}
 	</div>
 </section>

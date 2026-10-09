@@ -10,6 +10,7 @@
 	import LogDialog from '$lib/components/settings/LogDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime';
+	import { buildLabel } from '$lib/platform/build';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { settingsStore, type ThemeSetting } from '$lib/stores/settings-store.svelte';
 
@@ -133,8 +134,16 @@
 		</ListRow>
 	</ListSection>
 
-	<ListSection title={m.settings_about()}>
-		<ListRow label={m.app_name()} description={m.settings_version({ version: __APP_VERSION__ })} />
+	<ListSection title={m.settings_about_database()}>
+		<ListRow
+			label="eqcaps"
+			description={m.settings_source_hint()}
+			href="https://potatosalad775.github.io/eqcaps/"
+		>
+			{#snippet trailing()}
+				<ExternalLink class="size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
 		{#if database}
 			<ListRow
 				label={m.settings_database_label()}
@@ -144,10 +153,15 @@
 				})}
 			/>
 		{/if}
+	</ListSection>
+
+	<ListSection title={m.settings_about()}>
 		<ListRow
-			label="eqcaps"
-			description={m.settings_source_hint()}
-			href="https://potatosalad775.github.io/eqcaps/"
+			label={m.app_name()}
+			description={m.settings_version({
+				version: buildLabel ? `${__APP_VERSION__} (${buildLabel})` : __APP_VERSION__
+			})}
+			href="https://github.com/potatosalad775/uniPEQ"
 		>
 			{#snippet trailing()}
 				<ExternalLink class="size-4" aria-hidden="true" />

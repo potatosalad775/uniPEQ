@@ -45,7 +45,7 @@
 			{/if}
 			{@render children?.()}
 			{#if footer}
-				<div class="flex justify-end gap-2">{@render footer()}</div>
+				<div class="-mb-2 flex justify-end gap-2">{@render footer()}</div>
 			{/if}
 		</Dialog.Content>
 	</Dialog.Portal>

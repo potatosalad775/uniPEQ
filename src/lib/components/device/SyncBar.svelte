@@ -18,7 +18,7 @@
 		onConnect,
 		class: className = ''
 	}: {
-		/** Open the device sheet (phone). Without it, Connect isn't offered: the panel is in view. */
+		/** The device chip's press (phone). Without it, Connect isn't offered: the panel is in view. */
 		onConnect?: () => void;
 		class?: string;
 	} = $props();

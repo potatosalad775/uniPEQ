@@ -38,7 +38,7 @@
 </script>
 
 <ModalDialog bind:open title={m.presets_save_title()}>
-	<form id="save-preset-form" class="flex flex-col gap-3" onsubmit={save}>
+	<form id="save-preset-form" class="mb-1 flex flex-col gap-3" onsubmit={save}>
 		<Input
 			bind:value={name}
 			label={m.presets_name_label()}
@@ -56,14 +56,14 @@
 		<Button
 			title={m.device_peq_push_cancel()}
 			variant="ghost"
-			size="sm"
+			size="md"
 			onclick={() => (open = false)}
 		>
 			{m.device_peq_push_cancel()}
 		</Button>
 		<Button
 			title={m.presets_save_title()}
-			size="sm"
+			size="md"
 			type="submit"
 			form="save-preset-form"
 			disabled={!name.trim()}

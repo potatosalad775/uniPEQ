@@ -10,6 +10,7 @@
 	"settings_theme_light": "Light",
 	"settings_theme_dark": "Dark",
 	"settings_language": "Language",
+	"settings_about_database": "About database",
 	"settings_about": "About",
 	"settings_version": "Version {version}",
 	"info_popover_about": "About {topic}",

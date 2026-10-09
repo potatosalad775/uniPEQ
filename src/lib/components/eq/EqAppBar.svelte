@@ -5,19 +5,23 @@
 	and Fit.
 -->
 <script lang="ts">
-	import { EllipsisVertical, FolderOpen, Redo2, Save, Undo2, Wand2 } from '@lucide/svelte';
+	import { EllipsisVertical, FolderOpen, Redo2, Save, Undo2, WandSparkles } from '@lucide/svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Menu from '$lib/components/atoms/Menu.svelte';
 	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
 	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
 	import DeviceChip from '$lib/components/device/DeviceChip.svelte';
+	import BuildBadge from '$lib/components/layout/BuildBadge.svelte';
 	import PresetPickerDialog from '$lib/components/presets/PresetPickerDialog.svelte';
 	import SavePresetDialog from '$lib/components/presets/SavePresetDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 
-	let { onDevice }: { /** Open the device sheet (phone). */ onDevice: () => void } = $props();
+	let {
+		onDevice
+	}: { /** The chip's press: connect, or open the device sheet (phone). */ onDevice: () => void } =
+		$props();
 
 	let pickerOpen = $state(false);
 	let saveOpen = $state(false);
@@ -41,12 +45,17 @@
 
 <svelte:window {onkeydown} />
 
-<header class="flex min-h-14 items-center gap-1 px-4" role="toolbar" aria-label={m.eq_toolbar()}>
+<header
+	class="flex min-h-14 items-center gap-1 pr-3.5 pl-2"
+	role="toolbar"
+	aria-label={m.eq_toolbar()}
+>
 	<h1 class="sr-only">{m.nav_main()}</h1>
 	<div class="min-w-0 flex-1 wide:hidden">
 		<DeviceChip onclick={onDevice} />
 	</div>
 	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">{m.nav_main()}</p>
+	<BuildBadge />
 	<Button
 		title={m.eq_undo()}
 		size="icon"
@@ -82,7 +91,7 @@
 		{#if eqConstraintStore.hasDevice}
 			<MenuSeparator />
 			<MenuItem disabled={!eqConstraintStore.fitted} description={m.eq_fit_title()} onSelect={fit}>
-				{#snippet icon()}<Wand2 class="size-4" aria-hidden="true" />{/snippet}
+				{#snippet icon()}<WandSparkles class="size-4" aria-hidden="true" />{/snippet}
 				{m.eq_fit()}
 			</MenuItem>
 		{/if}

@@ -14,7 +14,12 @@ import {
 	type Plot
 } from './graph-scale';
 
-const plot: Plot = { width: 538, height: 228, db: 12 };
+// A 500 × 200 px plot inside the axis padding.
+const plot: Plot = {
+	width: 500 + PAD.left + PAD.right,
+	height: 200 + PAD.top + PAD.bottom,
+	db: 12
+};
 
 describe('graph scales', () => {
 	it('maps frequency logarithmically, and back', () => {

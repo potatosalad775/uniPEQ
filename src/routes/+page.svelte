@@ -10,6 +10,8 @@
 	import EqEmptyState from '$lib/components/eq/EqEmptyState.svelte';
 	import EqGraph from '$lib/components/eq/EqGraph.svelte';
 	import PreampControl from '$lib/components/eq/PreampControl.svelte';
+	import { canConnectUsb, devicePeqService } from '$lib/services/device-peq-service.svelte';
+	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 
@@ -19,21 +21,38 @@
 	const sheetOpen = $derived(hasDevice && !wide.current && eqStore.selected !== null);
 
 	let deviceOpen = $state(false);
-	const openDevice = () => (deviceOpen = true);
+
+	/**
+	 * The device chip (and Connect in the empty state and the sync bar). Before a connection the
+	 * sheet would hold only the USB button, so this connects straight away; the sheet opens when the
+	 * attempt has something to ask or say (below). Once connected, the sheet holds the controls.
+	 */
+	function onDevice() {
+		if (devicePeqStore.connection || !canConnectUsb) deviceOpen = true;
+		else if (!devicePeqStore.isConnecting) void devicePeqService.connect('hid');
+	}
+
+	// A connect that needs a pick (several devices or profiles), found nothing to drive, or failed
+	// before the sync bar is there to say so: the sheet shows it.
+	$effect(() => {
+		if (wide.current || devicePeqStore.connection) return;
+		const error = devicePeqStore.statusIsError && devicePeqService.sync === null;
+		if (devicePeqService.choice || devicePeqService.notFound || error) deviceOpen = true;
+	});
 </script>
 
 <!--
 	Decision 22: the app bar, the graph and the sync bar hold still; only the bands scroll.
 	Phone: app bar (device chip), the graph edge to edge (pinned chrome, not a card), the band card
 	(preamp + bands) scrolling, sync bar; the device panel is a sheet from the chip, the selected
-	band's editor a sheet over the bottom.
+	band's editor a sheet over the bottom. Before a connection the chip connects directly.
 	Wide: the graph fills the left column; the device panel and the band card scroll on the right,
 	where the selected row opens the editor in place.
 	Decision 23: before any device there is nothing to edit, so the graph and the band card give way
 	to a prompt to connect one.
 -->
 <div class="flex h-full flex-col">
-	<EqAppBar onDevice={openDevice} />
+	<EqAppBar {onDevice} />
 	<div
 		class="flex min-h-0 flex-1 flex-col wide:grid wide:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]"
 	>
@@ -46,7 +65,7 @@
 		{:else}
 			<div class="min-h-0 flex-1 wide:px-4 wide:pb-4">
 				<div class="h-full overflow-y-auto wide:rounded-xl wide:bg-base-100">
-					<EqEmptyState onConnect={wide.current ? undefined : openDevice} />
+					<EqEmptyState onConnect={wide.current ? undefined : onDevice} />
 				</div>
 			</div>
 		{/if}
@@ -64,7 +83,7 @@
 			</div>
 		{/if}
 	</div>
-	<SyncBar onConnect={wide.current ? undefined : openDevice} />
+	<SyncBar onConnect={wide.current ? undefined : onDevice} />
 </div>
 
 {#if sheetOpen && eqStore.selected !== null}

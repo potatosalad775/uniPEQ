@@ -103,7 +103,8 @@ if (!serial) {
 }
 console.log(`Device: ${serial} (${adb('shell', 'getprop', 'ro.product.model')})`);
 
-if (!has('skip-web')) step('Web build', 'npm', ['run', 'build']);
+// Debug mode: the demo device and the DEBUG badge, as in `npm run dev` (src/lib/platform/build.ts).
+if (!has('skip-web')) step('Web build', 'npm', ['run', 'build', '--', '--mode', 'debug']);
 step('Capacitor sync', 'npx', ['cap', 'sync', 'android']);
 step('Gradle assembleDebug', windows ? 'gradlew.bat' : './gradlew', ['assembleDebug'], {
 	cwd: join(root, 'android')

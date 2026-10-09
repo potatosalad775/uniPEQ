@@ -101,7 +101,7 @@
 		</ul>
 	{/if}
 	{#snippet footer()}
-		<Button title={m.dialog_close()} variant="ghost" size="sm" onclick={() => (open = false)}>
+		<Button title={m.dialog_close()} variant="ghost" size="md" onclick={() => (open = false)}>
 			{m.dialog_close()}
 		</Button>
 	{/snippet}

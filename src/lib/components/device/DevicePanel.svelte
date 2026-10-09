@@ -16,8 +16,12 @@
 	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { isDebugBuild } from '$lib/platform/build';
 	import { isNative } from '$lib/platform/native';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
+	import {
+		canConnectUsb as canConnect,
+		devicePeqService
+	} from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 
 	let {
@@ -28,9 +32,6 @@
 	const INSPECTOR_URL = 'https://potatosalad775.github.io/eqcaps/connect';
 	const PROFILE_URL = 'https://potatosalad775.github.io/eqcaps/p/';
 	const ISSUES_URL = 'https://github.com/potatosalad775/eqcaps/issues/new';
-
-	/** USB HID: the DeviceIo plugin on Android, WebHID in Chrome and Edge. */
-	const canConnect = isNative || (typeof navigator !== 'undefined' && 'hid' in navigator);
 
 	const connection = $derived(devicePeqStore.connection);
 	const caps = $derived(connection?.device.capabilities);
@@ -214,16 +215,18 @@
 						{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_peq_connect_usb()}
 					</Button>
 				{/if}
-				<Button
-					title={m.device_peq_connect_demo_title()}
-					variant="outline"
-					class="gap-2"
-					disabled={devicePeqStore.isConnecting}
-					onclick={() => devicePeqService.connect('demo')}
-				>
-					<FlaskConical class="size-4" aria-hidden="true" />
-					{m.device_peq_connect_demo()}
-				</Button>
+				{#if isDebugBuild}
+					<Button
+						title={m.device_peq_connect_demo_title()}
+						variant="outline"
+						class="gap-2"
+						disabled={devicePeqStore.isConnecting}
+						onclick={() => devicePeqService.connect('demo')}
+					>
+						<FlaskConical class="size-4" aria-hidden="true" />
+						{m.device_peq_connect_demo()}
+					</Button>
+				{/if}
 			</div>
 		{/if}
 
@@ -272,8 +275,8 @@
 			<Button
 				title={m.device_peq_disconnect()}
 				size="sm"
-				variant="ghost"
-				class="shrink-0"
+				variant="destructive"
+				class="mt-1 shrink-0"
 				onclick={() => devicePeqService.disconnect()}
 			>
 				{m.device_peq_disconnect()}
@@ -283,7 +286,7 @@
 		<!-- What's worth knowing about the profile, as text rather than behind a popover. -->
 		{#if hasNotices}
 			<div
-				class="flex flex-col gap-1.5 rounded-lg px-3 py-2 text-xs touch:text-sm {noticesWarn
+				class="-mb-2 flex flex-row gap-2.5 rounded-lg px-3 py-2 text-xs touch:text-sm {noticesWarn
 					? 'bg-warning/10'
 					: 'bg-base-200'}"
 				aria-label={m.device_peq_facts()}
@@ -292,32 +295,37 @@
 				{#if noticesWarn}
 					<TriangleAlert class="size-4 text-warning" aria-hidden="true" />
 				{/if}
-				{#if connection.profileSource === 'guess'}
-					<p>
-						{m.device_peq_guess_notice()}
-						{@render link(INSPECTOR_URL, m.device_peq_help_add())}
-					</p>
-				{:else if connection.profileSource === 'group'}
-					<p>{m.device_peq_group_notice()}</p>
-				{/if}
-				{#if isDraft}
-					<p>
-						{m.device_peq_draft_notice()}
-						{#if reportUrl}{@render link(reportUrl, m.device_peq_report_limits())}{/if}
-					</p>
-				{/if}
-				{#if isExperimental}
-					<p>{m.device_peq_experimental()}</p>
-				{/if}
-				{#if isWriteOnly}
-					<p>{m.device_peq_write_only()}</p>
-				{/if}
-				{#if profileUrl}
-					<p class="flex flex-wrap gap-x-3">
-						{@render link(profileUrl, m.device_peq_view_profile())}
-						{#if reportUrl && !isDraft}{@render link(reportUrl, m.device_peq_report_limits())}{/if}
-					</p>
-				{/if}
+				<div class="flex flex-col gap-1">
+					{#if connection.profileSource === 'guess'}
+						<p>
+							{m.device_peq_guess_notice()}
+							{@render link(INSPECTOR_URL, m.device_peq_help_add())}
+						</p>
+					{:else if connection.profileSource === 'group'}
+						<p>{m.device_peq_group_notice()}</p>
+					{/if}
+					{#if isDraft}
+						<p>
+							{m.device_peq_draft_notice()}
+							{#if reportUrl}{@render link(reportUrl, m.device_peq_report_limits())}{/if}
+						</p>
+					{/if}
+					{#if isExperimental}
+						<p>{m.device_peq_experimental()}</p>
+					{/if}
+					{#if isWriteOnly}
+						<p>{m.device_peq_write_only()}</p>
+					{/if}
+					{#if profileUrl}
+						<p class="flex flex-wrap gap-x-3">
+							{@render link(profileUrl, m.device_peq_view_profile())}
+							{#if reportUrl && !isDraft}{@render link(
+									reportUrl,
+									m.device_peq_report_limits()
+								)}{/if}
+						</p>
+					{/if}
+				</div>
 			</div>
 		{/if}
 

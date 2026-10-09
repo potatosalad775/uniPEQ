@@ -50,7 +50,7 @@
 		class="mx-auto mb-1 h-1 w-10 shrink-0 rounded-full bg-base-content/20"
 		aria-hidden="true"
 	></div>
-	<div class="flex shrink-0 items-center gap-1 pb-2">
+	<div class="flex shrink-0 items-center gap-1 pb-4">
 		{#if Title}
 			<Title class="min-w-0 flex-1 truncate text-base font-semibold {hideTitle ? 'sr-only' : ''}">
 				{title}

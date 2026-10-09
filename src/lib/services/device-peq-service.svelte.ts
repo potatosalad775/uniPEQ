@@ -33,6 +33,9 @@ import { logger } from './logger';
 
 export type ConnectKind = 'hid' | 'serial' | 'ble' | 'demo';
 
+/** USB HID: the DeviceIo plugin on Android, WebHID in Chrome and Edge. */
+export const canConnectUsb = isNative || (typeof navigator !== 'undefined' && 'hid' in navigator);
+
 type Choice = Extract<ConnectResult, { kind: 'choose' }>;
 
 /** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */

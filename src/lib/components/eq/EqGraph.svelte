@@ -408,7 +408,7 @@
 
 	{#if filters.length === 0}
 		<p
-			class="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center text-sm text-base-content/60"
+			class="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 px-12 pt-16 text-center text-sm text-base-content/60"
 		>
 			{m.eq_graph_empty()}
 		</p>

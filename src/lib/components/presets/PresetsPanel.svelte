@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { EllipsisVertical, FileUp, Search } from '@lucide/svelte';
+	import { Copy, EllipsisVertical, FileUp, Search, SquarePen, Trash } from '@lucide/svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Input from '$lib/components/atoms/Input.svelte';
 	import Menu from '$lib/components/atoms/Menu.svelte';
@@ -182,23 +182,28 @@
 			/>
 		</div>
 
-		<p
-			class="text-sm {notice?.isError ? 'text-error' : 'text-base-content/70'}"
-			role="status"
-			aria-live="polite"
-		>
-			{notice?.text ?? ''}
-		</p>
+		{#if notice?.text != undefined && notice?.text.length > 0}
+			<p
+				class="text-sm {notice?.isError ? 'text-error' : 'text-base-content/70'}"
+				role="status"
+				aria-live="polite"
+			>
+				{notice?.text ?? ''}
+			</p>
+		{/if}
 
 		{#if presetStore.index.length === 0}
 			<p class="text-sm text-base-content/70">{m.presets_empty()}</p>
 		{:else if shown.length === 0}
 			<p class="text-sm text-base-content/70">{m.presets_no_match()}</p>
 		{:else}
-			<ul class="flex flex-col divide-y divide-base-content/10" aria-label={m.presets_list_label()}>
+			<ul
+				class="-mt-2 -mb-3 flex flex-col divide-y divide-base-content/10"
+				aria-label={m.presets_list_label()}
+			>
 				{#each shown as entry (entry.id)}
 					{@const fit = fits[entry.id]}
-					<li class="flex min-h-14 flex-wrap items-center gap-2 py-2 touch:min-h-16">
+					<li class="flex min-h-14 flex-wrap items-center gap-2 py-3 touch:min-h-16">
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-sm font-medium touch:text-base">{entry.name}</p>
 							<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/60">
@@ -216,7 +221,7 @@
 								{/if}
 							</p>
 						</div>
-						<div class="flex shrink-0 items-center gap-1">
+						<div class="-mr-2.5 flex shrink-0 items-center gap-1">
 							{#if confirmingDelete === entry.id}
 								<Button
 									title={m.presets_delete_confirm_title({ name: entry.name })}
@@ -256,8 +261,15 @@
 											<EllipsisVertical class="size-4" aria-hidden="true" />
 										</Button>
 									{/snippet}
-									<MenuItem onSelect={() => (editing = entry)}>{m.presets_edit()}</MenuItem>
-									<MenuItem onSelect={() => duplicate(entry)}>{m.presets_duplicate()}</MenuItem>
+									<MenuItem onSelect={() => (editing = entry)}>
+										{#snippet icon()}<SquarePen class="size-4" aria-hidden="true" />{/snippet}
+										{m.presets_edit()}
+									</MenuItem>
+									<MenuItem onSelect={() => duplicate(entry)}>
+										{#snippet icon()}<Copy class="size-4" aria-hidden="true" />{/snippet}
+										{m.presets_duplicate()}
+									</MenuItem>
+									<MenuSeparator />
 									<MenuItem onSelect={() => exportAs(entry.id, 'json')}>
 										{m.presets_export_json()}
 									</MenuItem>
@@ -266,6 +278,7 @@
 									</MenuItem>
 									<MenuSeparator />
 									<MenuItem destructive onSelect={() => (confirmingDelete = entry.id)}>
+										{#snippet icon()}<Trash class="size-4" aria-hidden="true" />{/snippet}
 										{m.presets_delete()}
 									</MenuItem>
 								</Menu>

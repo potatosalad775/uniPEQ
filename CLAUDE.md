@@ -20,11 +20,13 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   (`npm run test:unit` to watch)
 - `npm run check` — Paraglide compile + `svelte-kit sync` + `svelte-check`
 - `npm run lint` — Prettier check + ESLint; `npm run format` fixes formatting
-- `npm run build` — static SPA into `dist/` (Capacitor's `webDir`)
+- `npm run build` — static SPA into `dist/` (Capacitor's `webDir`), release. `-- --mode debug` keeps
+  the dev-only UI (demo device, DEV/DEBUG badge): `isDebugBuild` in `src/lib/platform/build.ts`
 - `npm run data:snapshot` — refresh the embedded eqcaps bundle (before a release, not per build)
 - Android: `npm run android [-- --serial <id> --skip-web --no-launch]` builds, installs and starts
   the debug app on the one connected adb device (`scripts/android-install.mjs`). By hand:
-  `npm run android:sync` (build + `cap sync android`), then `android/gradlew assembleDebug`
+  `npm run android:sync:debug` (debug-mode build + `cap sync android`; plain `android:sync` is the
+  release web build), then `android/gradlew assembleDebug`
   (`gradlew.bat` on Windows). The Gradle daemon JDK is pinned to Azul Zulu 21 by
   `android/gradle/gradle-daemon-jvm.properties` (+ foojay resolver in `settings.gradle`), so
   `JAVA_HOME` doesn't matter: Gradle uses an installed Zulu 21 or downloads one to `~/.gradle/jdks`.
@@ -35,7 +37,8 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   `./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=azul`. The SDK comes from `ANDROID_HOME` or
   `android/local.properties` (gitignored, `sdk.dir`).
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
-  (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull)
+  (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull; only
+  in a debug-mode web build)
 
 ## Rebuild conventions (src/)
 
