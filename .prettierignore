@@ -12,9 +12,6 @@ package-lock.json
 /android/
 /native/
 
-# The Vue/Ionic prototype, kept unbuilt until the Phase 7 cutover (docs/rebuild-plan.md).
-/legacy/
-
 # Prose. Prettier would realign every table; the docs are hand-formatted.
 *.md
 

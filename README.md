@@ -9,9 +9,9 @@ uniPEQ doesn't carry its own device list or protocol code. It runs on
 (bands, ranges, filter types, presets) plus the protocols that drive them. A device eqcaps knows
 works here; a missing one is added there.
 
-> **Status:** being rebuilt from an Ionic Vue prototype to SvelteKit on the `rebuild` branch.
-> Connecting, reading and switching presets work on the web and on Android; writing, presets and
-> the EQ graph come next. Plan and progress: [docs/rebuild-plan.md](docs/rebuild-plan.md).
+> **Status:** USB HID devices work end to end (connect, read, edit on the graph, write, presets) in
+> Chrome / Edge and in the Android app. Serial and Bluetooth devices are not wired up yet. Design:
+> [ARCHITECTURE.md](ARCHITECTURE.md); plan and progress: [docs/rebuild-plan.md](docs/rebuild-plan.md).
 
 ## Platforms
 
@@ -70,6 +70,7 @@ press **Connect USB device**; Android asks for permission the first time.
 | `npm run lint`              | Prettier and ESLint (`npm run format` fixes formatting)         |
 | `npm run android`           | Build, install and start the Android debug app                  |
 | `npm run android:sync`      | Web build + `cap sync android` only, for working in Android Studio |
+| `npm run android:sync:debug` | The same with the debug-only UI (demo device, DEBUG badge)     |
 | `npm run data:snapshot`     | Refresh the eqcaps data bundled for offline first launches      |
 | `npm run android:hid-spike` | Low-level USB HID check on a running debug app                  |
 
@@ -87,7 +88,7 @@ src/
     ├── eq/                 # filter model (eqcaps type codes) and biquad response math
     ├── services/           # eqcaps client, device service, presets, logger, undo/redo
     ├── stores/             # app state as Svelte 5 rune classes
-    ├── platform/           # Capacitor glue: back button, system bars
+    ├── platform/           # Capacitor glue: back button, system bars, haptics, file export
     ├── transports/native/  # TypeScript side of the Android USB plugin
     └── data/               # bundled eqcaps snapshot
 native/device-io/           # the Android plugin (Kotlin): USB permission, HID claim, reports

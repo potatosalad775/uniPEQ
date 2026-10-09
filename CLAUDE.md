@@ -1,19 +1,13 @@
 # uniPEQ — agent notes
 
-Parametric-EQ control app for USB/BT/network audio devices. Capacitor app being rebuilt from
-Ionic Vue 3 to SvelteKit + Svelte 5 + Tailwind 4 + bits-ui, on the eqcaps packages (which replace
-`devices/`, the registry, handlers, web transports and the adaptation engine).
-**Plan, decisions and checklist: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4
-done, Phases 4.5–4.6 mobile UX and hardware-first passes code done, Phase 5 next); what to copy from
-`../modernGraphTool`:
-[docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
-[ARCHITECTURE.md](ARCHITECTURE.md) still describes the prototype; it is rewritten at cutover.
+Parametric-EQ control app for USB/BT audio devices: SvelteKit + Svelte 5 + Tailwind 4 + bits-ui
+in Capacitor 8, on the eqcaps packages (device data, protocols, browser transports).
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the app as it is. **Plan, decisions and checklist:
+[docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4.6 and the Phase 7 cutover done;
+Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
+[docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md). Work happens on `main`.
 
-**Branches.** `main` holds the runnable Ionic Vue prototype (fixes only, don't extend its UI).
-`rebuild` holds the new app in `src/`; the prototype sits unbuilt in `legacy/` there as a porting
-reference (rebuild decision 15). The prototype sections further down describe `legacy/`.
-
-## Commands (rebuild branch)
+## Commands
 
 - `npm run dev` — vite dev server (http://localhost:5173)
 - `npm test` — vitest once: `*.spec.ts` in node, `*.svelte.spec.ts` in Chromium browser mode
@@ -40,7 +34,7 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull; only
   in a debug-mode web build)
 
-## Rebuild conventions (src/)
+## Conventions (src/)
 
 - Style, runes, tokens and atoms follow modernGraphTool (its root and `src/lib/components`
   `AGENTS.md`): tabs, single quotes, no trailing commas, 100 columns; Svelte 5 runes only, module
@@ -58,8 +52,8 @@ reference (rebuild decision 15). The prototype sections further down describe `l
   bars with `pt-(--inset-top)` etc. (from `layout.css`), never raw `env()`.
 - Touch sizing is the `touch:` variant (`pointer: coarse`), not a width: atoms grow to 48 px
   targets under it. On phones follow Android patterns (decision 22): `ListRow`/`ListSection` with
-  the control trailing, `RadioDialog` for one-of-N, `Sheet` for panels, supporting text not
-  popovers. The EQ tab's device status is the sync bar (`device-peq/sync-status.ts`), its one
+  the control trailing, `SelectMenu` for one-of-N, `Menu` for overflow actions, `Sheet` for
+  panels, supporting text not popovers. The EQ tab's device status is the sync bar (`device-peq/sync-status.ts`), its one
   status line.
 - Devices: protocols, limits and device data are eqcaps' job (`../eqcaps`); a protocol bug or a
   missing device is fixed there. `src/lib/device-peq/` follows modernGraphTool's
@@ -76,58 +70,15 @@ reference (rebuild decision 15). The prototype sections further down describe `l
 - Component specs load no Tailwind: don't assert layout or computed utility styles there.
 - `$app/paths` `resolve()` needs an empty params arg (`resolve('/presets', {})`) while no route
   has params — a SvelteKit typing quirk (see `components/layout/tabs.ts`).
-
-## Prototype status (`legacy/` on the rebuild branch; what exists vs ARCHITECTURE.md)
-
-Implemented: core types/math/codec, registry + merge/resolution, adaptation engine,
-`fiioUsbHid` handler (ported byte-exact), demo handler + virtual DemoTransport,
-WebHID transport + web discovery, HTTP transport (no network handlers yet),
-DeviceManager / AutoPushScheduler / UndoRedoStack / LocalPresetStorage services,
-4 Pinia stores, 3-tab UI (Main/Presets/Settings), preset import (JSON + AutoEq txt) / export.
-
-Not yet: all other handlers (walkplay/ktmicro/moondrop/serial/BLE/SPP/network), WebSerial/WebBLE
-transports, the full Android plugin (`native/device-io` is the Phase 0 USB HID spike only,
-wrapped by `src/transports/native/` as an eqcaps `HidTransport`), i18n (`vue-i18n` not installed;
-strings hardcoded en), JSON Schema files in `devices/_schema/`, zod (validation is hand-rolled in
-`src/core/registry/validate.ts`), migration script (`scripts/migrate-device-db.ts`).
-
-## Porting from devicePEQ
-
-- Source repo is a sibling checkout: `C:\Users\jwlee\project\devicePEQ` (handlers in `devicePEQ/`,
-  byte captures in `tests/captures/`). One-time port, no ongoing sync (ARCHITECTURE.md risk #7).
-- **Port byte logic verbatim.** Beware: devicePEQ helper variable names are swapped vs reality —
-  `fiioGainBytesFromValue` returns `[high, low]` but callers destructure it as `[gainLow, gainHigh]`;
-  `combineBytes(lowByte, highByte)` actually computes `(arg0 << 8) | arg1`. uniPEQ's
-  `src/core/codec/bytes.ts` uses corrected names; wire byte order is unchanged and locked in by
-  `tests/unit/fiioUsbHid.spec.ts` (exact-byte assertions).
-- Handler port recipe: convert to `ProtocolHandler` interface (`src/core/transport/index.ts`),
-  replace `device.oninputreport` with `transport.onData()` (always unsubscribe in `finally`),
-  `deviceDetails.modelConfig` → `ctx.profile.modelConfig`, constraints (`maxGain`/`maxFilters`)
-  come from `ctx.profile.constraints` NOT modelConfig, `console.log` → `ctx.log`.
-  Register in `src/core/handlers/index.ts`, add fixture test with `tests/unit/mockHidTransport.ts`
-  (responder keyed by command byte `data[4]`, mirroring devicePEQ "sequence mode" captures).
-
-## Device DB conventions
-
-- `devices/<brand>/<model>.json`, merge order: `_profiles/<constraintsRef>.json` →
-  `<brand>/_brand.json` defaults → device file → device `constraintsOverride`.
-- `availableSlots` may contain `"$setName"` string refs into the brand's `sharedSlotSets`.
-- Registry is compiled via `import.meta.glob('/devices/**/*.json', { eager: true })` — adding a
-  JSON file is enough, no imports. `tests/unit/registry.spec.ts` validates every file in CI
-  (cross-refs, duplicate productName matches, handlerId existence).
-- The demo device (`devices/demo/demo-dac.json`, `match: { demo: true }`) must stay: it's the
-  zero-hardware path used by the UI candidate list and the pipeline test.
+- Dev-only UI (the demo device, the DEV/DEBUG badge, the HID spike hook) checks `isDebugBuild`
+  from `$lib/platform/build` (Vite mode ≠ production), so a release build drops it.
 
 ## Gotchas
 
-- TS 5.9 strictness: passing `Uint8Array` where DOM wants `BufferSource`/`BodyInit` fails
-  (`ArrayBufferLike` vs `ArrayBuffer`); use `.slice()` at the DOM boundary (see webHidTransport).
-- WebHID typings are hand-declared in `src/transports/web/webhid.d.ts` (no @types package installed).
-- Dark mode is class-based (`ion-palette-dark` on `<html>`, set by `settingsStore.applyTheme`);
-  main.ts imports `dark.class.css`, not `dark.system.css`.
-- Undo/redo: snapshot BEFORE mutation. Sliders emit `gesture-start` (→ `eq.recordHistory()`) then
-  patch with `record=false` on release so drags coalesce to one history entry.
-- `eqStore.pushToDevice` silently retargets to the first writable slot when the current slot isn't
-  writable (writable set derived from `firstWritableEQSlot`/`maxWritableEQSlots`).
-- Handlers must never import from `src/transports/`, stores, or use `navigator.*` — core stays
-  platform-agnostic (dependency rule in ARCHITECTURE.md §3).
+- TS strictness: a `Uint8Array` where the DOM wants `BufferSource` / `BodyInit` fails
+  (`ArrayBufferLike` vs `ArrayBuffer`); `.slice()` at the DOM boundary.
+- The DeviceIo plugin (`native/device-io`, a `file:` dependency) stays protocol-free: device bytes
+  belong in eqcaps handlers. Its TS typings live in `src/lib/transports/native/device-io.ts`; keep
+  them in step with `DeviceIoPlugin.kt`.
+- `src/lib/data/eqcaps-bundle.json` is downloaded verbatim (`npm run data:snapshot`); don't edit or
+  format it.

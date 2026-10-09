@@ -24,7 +24,7 @@ module covers most of what the rebuild plan's data, connection and push-path pha
 | Types | `PK` `LSQ` `HSQ` only, mapped to eqcaps codes by `toCapsType` / `fromCapsType` | all eqcaps codes `PK LSC HSC LPQ HPQ BP NO AP` |
 | Fields | `freq` / `q` / `gain` nullable (an empty input box) | plain numbers |
 | Channels | optional `channel: 'L' \| 'R'` | none; the bridge doesn't send per-channel bands |
-| Response math | `Equalizer` class: peaking and shelves only | `src/core/math/biquad.ts` already covers LP/HP/BP/notch/AP |
+| Response math | `Equalizer` class: peaking and shelves only | `src/lib/eq/biquad.ts` (ported from the prototype) already covers LP/HP/BP/notch/AP |
 
 **Recommendation:** keep decision 5 (eqcaps codes in the app model), drop `channel`, and keep our
 `biquad.ts` for the response curve. Every copied file that touches `EQFilter` then needs a

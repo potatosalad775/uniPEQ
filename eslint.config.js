@@ -13,8 +13,8 @@ const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
 	{
-		// The Vue/Ionic prototype stays unbuilt until the Phase 7 cutover; native projects aren't JS.
-		ignores: ['legacy/**', 'android/**', 'native/**']
+		// Native projects aren't JS.
+		ignores: ['android/**', 'native/**']
 	},
 	js.configs.recommended,
 	ts.configs.recommended,

@@ -11,7 +11,8 @@ Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked dev
 check is open, see Phase 3). **Phase 4 code done 2026-10-07** (demo device, web at desktop and phone
 widths; the user found every feature working on a real Samsung phone, see Phase 4). **Phase 4.5
 (mobile UX pass) started 2026-10-07**, decision 22; **Phase 4.6 (hardware-first refinements) code
-done 2026-10-08**, decision 23. Tick tasks as they land; record deviations in the Decisions section.
+done 2026-10-08**, decision 23. **Phase 7 (cutover) done 2026-10-09**, ahead of Phases 5 and 6, which
+are postponed (decision 24). Tick tasks as they land; record deviations in the Decisions section.
 
 Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
 rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
@@ -308,6 +309,22 @@ New:
     - **The graph is chrome on a phone:** edge to edge under the app bar with a hairline under it,
       not a card. `wide:` keeps the card.
 
+24. **Cutover first; serial and Bluetooth wait (2026-10-09).**
+    - The rebuild landed on `main` (Phases 4.5–4.6 were committed there), so decision 11's branch
+      split is over: `main` is the app, the `rebuild` branch is stale.
+    - Phase 7 ran before Phases 5 and 6. Whether the app takes on USB serial and Bluetooth devices
+      at all is undecided, so Phase 5 and the serial / BLE / SPP half of Phase 6 are postponed;
+      the HID half of Phase 6 (attach/detach-driven discovery, the permission flow) can go ahead.
+    - **Dev-only UI.** The demo device, a DEV / DEBUG badge in each header and the HID spike hook
+      show only when the Vite mode isn't `production` (`isDebugBuild`, `src/lib/platform/build.ts`).
+      `npm run android` and `android:sync:debug` build with `--mode debug`; `npm run build` and
+      `android:sync` are release builds. The APK's own build type doesn't decide it: debug and
+      release APKs package the same `dist/`. Supersedes decision 20's "on every platform" for the demo.
+    - **The device chip connects.** Before a connection, the chip (and Connect in the empty state
+      and the sync bar) starts a USB connect directly instead of opening the device sheet, which
+      would hold only that button. The sheet opens when the attempt needs a pick, finds nothing to
+      drive, or fails before the sync bar exists; once connected the chip opens it as before.
+
 ## Phases
 
 ### Phase 0: Android on real hardware (go/no-go) · 1–2 days
@@ -488,13 +505,13 @@ Decision 23.
   Playwright's Pixel 7 emulation and at 1280 px, demo device. Open, for the user: a real phone
   (menus with Android back, the preamp sheet) and a real cable pull.*
 
-### Phase 5: Serial and Bluetooth in the browser · 1 day
+### Phase 5: Serial and Bluetooth in the browser · 1 day · postponed (decision 24)
 
 - [ ] Connect menu adds Serial (`requestSerialPort`) and Bluetooth (`requestBleDevice`). Both
       return an identity first and `open(protocol)` once matched. A Bluetooth serial port that
       several devices share asks the user which device it is.
 
-### Phase 6: Android native plugin, full · separate milestone
+### Phase 6: Android native plugin, full · separate milestone · serial and Bluetooth postponed (decision 24)
 
 - [ ] Grow the Phase 0 spike into the plugin: USB HID (attach/detach broadcasts, permission flow),
       then `StreamTransport` for USB serial and BLE, then Classic SPP. No protocol code in the plugin.
@@ -502,12 +519,15 @@ Decision 23.
 
 ### Phase 7: Cutover · ½ day
 
-- [ ] Delete the Vue/Ionic tree: `rm -r legacy` (decision 15; its dependencies already left in
+- [x] Delete the Vue/Ionic tree: `rm -r legacy` (decision 15; its dependencies already left in
       Phase 1), then drop the `legacy` ignore entries and the unused `@capacitor/status-bar`.
-- [ ] ARCHITECTURE.md: rewrite §3–§7, §9–§11 for the new tree; drop risk #7. CLAUDE.md: replace
-      the Ionic/Vue sections with the new conventions.
-- [ ] eqcaps DECISIONS D27: "Ionic + Capacitor prototype" → "SvelteKit + Capacitor".
-- **Exit:** build, lint and tests green; no reference to removed modules.
+      *Also deleted `docs/eqcaps-migration.md` (superseded; decisions 1–7 live here).*
+- [x] ARCHITECTURE.md: rewrite §3–§7, §9–§11 for the new tree; drop risk #7. CLAUDE.md: replace
+      the Ionic/Vue sections with the new conventions. *ARCHITECTURE.md rewritten whole: it now
+      describes the app as built (eqcaps, the push invariants, the EQ model, the plugin as it is);
+      the old milestones became a short roadmap pointing here.*
+- [x] eqcaps DECISIONS D27: "Ionic + Capacitor prototype" → "SvelteKit + Capacitor".
+- **Exit:** build, lint and tests green; no reference to removed modules. *Passed 2026-10-09.*
 
 ## eqcaps-side tasks
 
