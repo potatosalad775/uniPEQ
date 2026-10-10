@@ -37,7 +37,7 @@ describe('demo device', () => {
 	it('connects through openDevice as a FiiO-protocol device on its first user preset', async () => {
 		const conn = await connect();
 		expect(conn.name).toBe('uniPEQ Demo DAC');
-		expect(conn.profileSource).toBe('device');
+		expect(conn.profileSource).toBe('demo');
 		expect(conn.profileId).toBe('unipeq-demo-dac');
 		expect(conn.device.capabilities).toMatchObject({
 			canRead: true,

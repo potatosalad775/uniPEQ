@@ -310,8 +310,8 @@ New:
     - Phase 7 ran before Phases 5 and 6. Whether the app takes on USB serial and Bluetooth devices
       at all is undecided, so Phase 5 and the serial / BLE / SPP half of Phase 6 are postponed;
       the HID half of Phase 6 (attach/detach-driven discovery, the permission flow) can go ahead.
-    - **Dev-only UI.** The demo device, a DEV / DEBUG badge in each header and the HID spike hook
-      show only when the Vite mode isn't `production` (`isDebugBuild`, `src/lib/platform/build.ts`).
+    - **Dev-only UI.** The demo device (until decision 26), a DEV / DEBUG badge in each header and
+      the HID spike hook show only when the Vite mode isn't `production` (`isDebugBuild`, `src/lib/platform/build.ts`).
       `npm run android` and `android:sync:debug` build with `--mode debug`; `npm run build` and
       `android:sync` are release builds. The APK's own build type doesn't decide it: debug and
       release APKs package the same `dist/`. Supersedes decision 20's "on every platform" for the demo.
@@ -342,6 +342,14 @@ New:
       disconnect drops the band selection. Supersedes decision 23's "the list stays editable
       against the last profile". Changes left unwritten at a disconnect are now only those made
       while connected: a pending or failed auto-write, or manual mode before Write.
+26. **The demo device ships (2026-10-10).** Play's reviewers (and most people trying the app) have
+    no PEQ device, and without one the EQ tab has nothing to edit (decisions 23, 25). So the demo
+    device is offered in every build, release included: the empty state and the device panel's
+    Connect area, as before. Its connection's `profileSource` is `demo`; the device panel shows a
+    "Simulated device" badge and a note saying so, instead of the profile's eqcaps status, the
+    inspector link and the wrong-limits report (eqcaps doesn't list the profile). Supersedes
+    decision 24's dev-only demo; the badge and the HID spike hook stay dev-only. Play Console's App
+    access notes point reviewers at "Try the demo device".
 
 ## Phases
 

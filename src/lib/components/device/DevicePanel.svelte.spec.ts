@@ -247,6 +247,14 @@ describe('DevicePanel with the demo device', () => {
 		await page.getByRole('button', { name: /simulated DAC/ }).click();
 		await expect.element(page.getByText('uniPEQ Demo DAC')).toBeVisible();
 		await expect.element(page.getByRole('button', { name: /^Device EQ.*USER1$/ })).toBeVisible();
+		await expect.element(page.getByText('Simulated device')).toBeVisible();
+		await expect.element(page.getByText('Community verified')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'View in the eqcaps inspector' }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Report wrong limits' }))
+			.not.toBeInTheDocument();
 
 		await page.getByRole('button', { name: "Replace the band list with the device's EQ" }).click();
 		await expect.element(page.getByText('Read 10 band(s) from the device')).toBeVisible();

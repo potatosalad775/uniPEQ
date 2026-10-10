@@ -76,7 +76,7 @@ press **Connect USB device**; Android asks for permission the first time.
 | `npm run lint`              | Prettier and ESLint (`npm run format` fixes formatting)         |
 | `npm run android`           | Build, install and start the Android debug app                  |
 | `npm run android:sync`      | Web build + `cap sync android` only, for working in Android Studio |
-| `npm run android:sync:debug` | The same with the debug-only UI (demo device, DEBUG badge)     |
+| `npm run android:sync:debug` | The same with the debug-only UI (DEBUG badge, HID spike hook) |
 | `npm run data:snapshot`     | Refresh the eqcaps data bundled for offline first launches      |
 | `npm run android:hid-spike` | Low-level USB HID check on a running debug app                  |
 | `npm run release -- patch`  | Bump, tag and publish a GitHub release; CI builds web, Play and APK |

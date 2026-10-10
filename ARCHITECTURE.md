@@ -181,8 +181,9 @@ opens only when the attempt needs a pick or has something to say.
   a list mixes them with built-in curves; `devicePeqStore.writableSlots` takes the marked ones, or
   every preset but the bypass one when none is marked.
 - **Demo device** (decision 2): an app-local profile and a simulated `fiio-usb-hid` device that runs
-  the real bridge code. Offered only in dev and debug builds (`isDebugBuild`,
-  `platform/build.ts`).
+  the real bridge code. Offered in every build (decision 26), so the app can be tried, and
+  reviewed, without hardware. Its connection's `profileSource` is `demo`: the device panel shows a
+  "Simulated device" badge and a note, without an eqcaps status or links.
 
 ---
 
@@ -273,7 +274,7 @@ comment.
 - **Wide:** graph on the left; device panel and the band card on the right, the selected row opening
   its editor in place.
 - **Disconnected:** the graph and the rows stay, dimmed and read-only, until the device is back.
-- **No device:** a prompt to connect (and, in dev and debug builds, the demo device); nothing to
+- **No device:** a prompt to connect (and the demo device); nothing to
   edit until a profile says what the device accepts.
 
 ### 8.2 Presets tab
@@ -301,8 +302,8 @@ logging with a log viewer (clear, export), the eqcaps data version and profile c
   survives.
 - System bars through Capacitor core `SystemBars`; content pads with `--inset-*` from `layout.css`.
 - Haptics on native only (a tick per write, an error buzz on failure).
-- Dev and debug builds show a DEV / DEBUG badge in each header and the demo device; a release
-  (`vite build`, production mode) drops both.
+- Dev and debug builds show a DEV / DEBUG badge in each header; a release (`vite build`,
+  production mode) drops it.
 - The web build is an installable PWA: `static/manifest.webmanifest` (icons from
   `npm run icons`) and `src/service-worker.ts`, registered by `platform/pwa.ts` on the web only
   (not on native, not in `vite dev`). The worker precaches the shell, chunks and `static/` per

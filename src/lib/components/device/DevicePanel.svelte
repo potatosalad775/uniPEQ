@@ -6,7 +6,8 @@
 	switch trailing and hints as supporting text, Device EQ in a radio dialog (a menu since decision
 	23), the connection facts inline rather than in a popover, and the status line moved to the EQ
 	tab's sync bar (with the review dialog, now `devicePeqService.review`). On a phone this is the
-	device sheet's body.
+	device sheet's body. The demo device (offered in every build, decision 26) shows as simulated,
+	without a status or eqcaps links: eqcaps doesn't list its profile.
 -->
 <script lang="ts">
 	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
@@ -16,7 +17,6 @@
 	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { isDebugBuild } from '$lib/platform/build';
 	import { isNative } from '$lib/platform/native';
 	import {
 		canConnectUsb as canConnect,
@@ -81,6 +81,8 @@
 
 	// ── What's worth knowing about the profile: one popover in the device row ──
 
+	/** The simulated demo device: no eqcaps status or links, a "simulated" note instead. */
+	const isDemo = $derived(connection?.profileSource === 'demo');
 	const isDraft = $derived(
 		connection?.profileSource !== 'guess' && connection?.profile.meta.status === 'draft'
 	);
@@ -88,15 +90,16 @@
 	const isWriteOnly = $derived(!!caps && !caps.canRead);
 	const noticesWarn = $derived(connection?.profileSource === 'guess' || isDraft || isExperimental);
 	const profileUrl = $derived(
-		connection?.profileId ? PROFILE_URL + encodeURIComponent(connection.profileId) : null
+		connection?.profileId && !isDemo ? PROFILE_URL + encodeURIComponent(connection.profileId) : null
 	);
 	const hasNotices = $derived(
-		noticesWarn || connection?.profileSource === 'group' || isWriteOnly || !!profileUrl
+		isDemo || noticesWarn || connection?.profileSource === 'group' || isWriteOnly || !!profileUrl
 	);
 
 	/** How far the profile's limits are confirmed (eqcaps `meta.status`), as a badge. */
 	const statusBadge = $derived.by(() => {
 		if (!connection) return null;
+		if (isDemo) return { text: m.device_peq_status_simulated(), tone: 'info' as const };
 		if (connection.profileSource === 'guess') {
 			return { text: m.device_peq_status_guessed(), tone: 'warning' as const };
 		}
@@ -117,7 +120,7 @@
 		error: 'bg-error/15 text-error'
 	} as const;
 	const reportUrl = $derived.by(() => {
-		if (!connection?.profileId) return null;
+		if (!connection?.profileId || isDemo) return null;
 		const url = new URL(ISSUES_URL);
 		url.searchParams.set('template', 'wrong-constraint.yml');
 		url.searchParams.set('title', `Wrong constraint: ${connection.profileId}`);
@@ -215,18 +218,16 @@
 						{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_peq_connect_usb()}
 					</Button>
 				{/if}
-				{#if isDebugBuild}
-					<Button
-						title={m.device_peq_connect_demo_title()}
-						variant="outline"
-						class="gap-2"
-						disabled={devicePeqStore.isConnecting}
-						onclick={() => devicePeqService.connect('demo')}
-					>
-						<FlaskConical class="size-4" aria-hidden="true" />
-						{m.device_peq_connect_demo()}
-					</Button>
-				{/if}
+				<Button
+					title={m.device_peq_connect_demo_title()}
+					variant="outline"
+					class="gap-2"
+					disabled={devicePeqStore.isConnecting}
+					onclick={() => devicePeqService.connect('demo')}
+				>
+					<FlaskConical class="size-4" aria-hidden="true" />
+					{m.device_peq_connect_demo()}
+				</Button>
 			</div>
 		{/if}
 
@@ -296,7 +297,9 @@
 					<TriangleAlert class="size-4 text-warning" aria-hidden="true" />
 				{/if}
 				<div class="flex flex-col gap-1">
-					{#if connection.profileSource === 'guess'}
+					{#if isDemo}
+						<p>{m.device_peq_demo_notice()}</p>
+					{:else if connection.profileSource === 'guess'}
 						<p>
 							{m.device_peq_guess_notice()}
 							{@render link(INSPECTOR_URL, m.device_peq_help_add())}

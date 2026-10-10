@@ -14,7 +14,7 @@ done; Phases 5 and 6 postponed). Work happens on `main`.
 - `npm run check` — Paraglide compile + `svelte-kit sync` + `svelte-check`
 - `npm run lint` — Prettier check + ESLint; `npm run format` fixes formatting
 - `npm run build` — static SPA into `dist/` (Capacitor's `webDir`), release. `-- --mode debug` keeps
-  the dev-only UI (demo device, DEV/DEBUG badge): `isDebugBuild` in `src/lib/platform/build.ts`
+  the dev-only UI (DEV/DEBUG badge, HID spike hook): `isDebugBuild` in `src/lib/platform/build.ts`
 - `npm run data:snapshot` — refresh the embedded eqcaps bundle (before a release, not per build)
 - Android: `npm run android [-- --serial <id> --skip-web --no-launch]` builds, installs and starts
   the debug app on the one connected adb device (`scripts/android-install.mjs`). By hand:
@@ -98,7 +98,7 @@ done; Phases 5 and 6 postponed). Work happens on `main`.
 - Component specs load no Tailwind: don't assert layout or computed utility styles there.
 - `$app/paths` `resolve()` needs an empty params arg (`resolve('/presets', {})`) while no route
   has params — a SvelteKit typing quirk (see `components/layout/tabs.ts`).
-- Dev-only UI (the demo device, the DEV/DEBUG badge, the HID spike hook) checks `isDebugBuild`
+- Dev-only UI (the DEV/DEBUG badge, the HID spike hook) checks `isDebugBuild`
   from `$lib/platform/build` (Vite mode ≠ production), so a release build drops it.
 
 ## Gotchas

@@ -2,13 +2,13 @@
 	The EQ tab before any device (decision 23): uniPEQ edits a device's EQ, so there is nothing to
 	edit until one is connected; its profile brings the band count and limits. Connect does what the
 	device chip does (phone; on `wide:` the device panel is beside this, so it isn't offered), and
-	in a dev or debug build the demo device is one press away for trying the app without hardware.
+	the demo device is one press away for trying the app without hardware (in every build, decision
+	26: store reviewers have no PEQ device either).
 -->
 <script lang="ts">
 	import { FlaskConical, Usb } from '@lucide/svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { isDebugBuild } from '$lib/platform/build';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 
@@ -46,17 +46,15 @@
 				{devicePeqStore.isConnecting ? m.device_peq_connecting() : m.device_chip_connect()}
 			</Button>
 		{/if}
-		{#if isDebugBuild}
-			<Button
-				title={m.device_peq_connect_demo_title()}
-				variant="ghost"
-				class="gap-2"
-				disabled={devicePeqStore.isConnecting}
-				onclick={() => devicePeqService.connect('demo')}
-			>
-				<FlaskConical class="size-4" aria-hidden="true" />
-				{m.device_peq_connect_demo()}
-			</Button>
-		{/if}
+		<Button
+			title={m.device_peq_connect_demo_title()}
+			variant="ghost"
+			class="gap-2"
+			disabled={devicePeqStore.isConnecting}
+			onclick={() => devicePeqService.connect('demo')}
+		>
+			<FlaskConical class="size-4" aria-hidden="true" />
+			{m.device_peq_connect_demo()}
+		</Button>
 	</div>
 </section>

@@ -60,8 +60,9 @@ export interface PeqDevice {
  * - `group`: a profile for a family of devices its identity can't tell apart (a chipset scheme).
  * - `guess`: no profile; the vendor's usual protocol, with limits from what that protocol's write
  *   frames can carry. Experimental.
+ * - `demo`: the simulated demo device and its app-local profile, which eqcaps doesn't list.
  */
-export type ProfileSource = 'device' | 'group' | 'guess';
+export type ProfileSource = 'device' | 'group' | 'guess' | 'demo';
 
 export interface DeviceConnection {
 	device: PeqDevice;
@@ -71,7 +72,7 @@ export interface DeviceConnection {
 	/** What the device accepts. Always present: a guessed device gets one from its protocol. */
 	profile: Profile;
 	profileSource: ProfileSource;
-	/** The eqcaps id of `profile`, when it came from the database. */
+	/** The eqcaps id of `profile`, when it came from the database (or the demo's own id). */
 	profileId: string | null;
 	/** What the device reported about itself, for an issue report. */
 	identity: DeviceIdentity;

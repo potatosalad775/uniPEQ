@@ -5,7 +5,7 @@
  */
 const mode = import.meta.env.MODE;
 
-/** Not a release: the demo device and the build badge are offered. */
+/** Not a release: the build badge is shown. */
 export const isDebugBuild = mode !== 'production';
 
 /** The badge's text, or null in a release. */

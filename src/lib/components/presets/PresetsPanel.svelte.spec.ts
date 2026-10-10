@@ -121,7 +121,7 @@ describe('PresetsPanel', () => {
 		devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 4 })), null);
 		render(PresetsPanel);
 
-		await expect.element(page.getByText('Fits', { exact: true })).toBeVisible();
+		await expect.element(page.getByText('Compatible', { exact: true })).toBeVisible();
 		await expect.element(page.getByText('1 adjustment(s)')).toBeVisible();
 	});
 });

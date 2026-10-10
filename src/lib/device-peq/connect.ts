@@ -334,7 +334,7 @@ export async function connectDemo(): Promise<ConnectResult> {
 	const r: Resolved = {
 		protocol,
 		profile: DEMO_PROFILE,
-		profileSource: 'device',
+		profileSource: 'demo',
 		profileId: DEMO_PROFILE.id,
 		name: `${DEMO_PROFILE.device.brand} ${DEMO_PROFILE.device.model}`
 	};
