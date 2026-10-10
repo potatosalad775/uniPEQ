@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "uniPEQ device I/O Capacitor plugin: protocol-free USB HID transport for Android (ARCHITECTURE.md §9). The TS wrapper lives in src/lib/transports/native/.",
-  "license": "UNLICENSED",
+  "license": "GPL-3.0-or-later",
   "files": [
     "android/src/main/",
     "android/build.gradle"

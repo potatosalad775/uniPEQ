@@ -7,6 +7,7 @@
 	import Slider from '$lib/components/atoms/Slider.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
+	import LicensesSheet from '$lib/components/settings/LicensesSheet.svelte';
 	import LogDialog from '$lib/components/settings/LogDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime';
@@ -30,6 +31,7 @@
 	const locale = getLocale();
 
 	let logOpen = $state(false);
+	let licensesOpen = $state(false);
 	const themeLabel = $derived(themeOptions.find((o) => o.value === settingsStore.theme)?.label);
 	const languageLabel = languageOptions.find((o) => o.value === locale)?.label;
 	/** The device database the app holds: its data version and how many profiles. */
@@ -167,7 +169,17 @@
 				<ExternalLink class="size-4" aria-hidden="true" />
 			{/snippet}
 		</ListRow>
+		<ListRow
+			label={m.settings_licenses()}
+			description={m.settings_licenses_hint()}
+			onclick={() => (licensesOpen = true)}
+		>
+			{#snippet trailing()}
+				<ChevronRight class="size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
 	</ListSection>
 </div>
 
 <LogDialog bind:open={logOpen} />
+<LicensesSheet bind:open={licensesOpen} />

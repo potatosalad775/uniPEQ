@@ -5,6 +5,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import { thirdPartyLicenses } from './scripts/third-party-licenses.ts';
 
 const pkg = JSON.parse(
 	readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8')
@@ -17,6 +18,7 @@ export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
+		thirdPartyLicenses(),
 		// Keep these options in sync with the `i18n:compile` script in package.json, which compiles
 		// the same output for `npm run check`: svelte-check does not run Vite, so without it
 		// $lib/paraglide/* has no type declarations on a fresh clone.

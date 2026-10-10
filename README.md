@@ -120,3 +120,9 @@ Capacitor 8, Vitest.
   from [modernGraphTool](https://github.com/potatosalad775/modernGraphTool); copied files name
   their source in a header comment.
 - Before a pull request: `npm run check`, `npm run lint` and `npm test`.
+
+## License
+
+uniPEQ is free software under the [GNU General Public License v3.0 or later](LICENSE). The app lists
+the licenses of the software it ships under Settings → Open-source licenses. eqcaps, which carries
+the device data and protocols, is MIT (code) and CC0 (data).

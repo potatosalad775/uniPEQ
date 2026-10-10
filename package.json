@@ -2,6 +2,7 @@
 	"name": "unipeq",
 	"private": true,
 	"version": "0.0.1",
+	"license": "GPL-3.0-or-later",
 	"type": "module",
 	"description": "Parametric EQ control for USB, Bluetooth and network audio devices",
 	"scripts": {

@@ -283,7 +283,10 @@ badge against the connected device.
 
 ### 8.3 Settings tab
 Theme (system / light / dark), language (en / ko, Paraglide), auto-write switch and delay, verbose
-logging with a log viewer (clear, export), the eqcaps data version and profile count, version.
+logging with a log viewer (clear, export), the eqcaps data version and profile count, version,
+and Open-source licenses: the GPL notice and text, then the notices of what the build ships
+(`virtual:third-party-licenses`, from `scripts/third-party-licenses.ts`: npm packages read from the
+client bundle's module graph, Android libraries listed by hand and shown only in the app).
 
 ### 8.4 Stores
 - `device-peq-store` — connection, profile, presets (slots), selection, read / write targets, sync

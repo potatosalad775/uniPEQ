@@ -110,5 +110,9 @@ done; Phases 5 and 6 postponed). Work happens on `main`.
 - The DeviceIo plugin (`native/device-io`, a `file:` dependency) stays protocol-free: device bytes
   belong in eqcaps handlers. Its TS typings live in `src/lib/transports/native/device-io.ts`; keep
   them in step with `DeviceIoPlugin.kt`.
+- Settings → Open-source licenses reads `virtual:third-party-licenses` (`scripts/third-party-licenses.ts`):
+  npm notices come from the client bundle by themselves, but the Android libraries are a hand list
+  there. Recheck it against `android/gradlew -p android :app:dependencies --configuration
+  releaseRuntimeClasspath` when a native dependency changes. The app is GPL-3.0-or-later (`LICENSE`).
 - `src/lib/data/eqcaps-bundle.json` is downloaded verbatim (`npm run data:snapshot`); don't edit or
   format it.
