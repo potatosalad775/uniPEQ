@@ -4,7 +4,7 @@
 //
 //   npm run android:release -- [--apk] [--skip-web]
 //
-//   --apk       also build a signed APK (to sideload or attach to a GitHub release)
+//   --apk       also build a signed APK (upload key: for local testing, not to publish)
 //   --skip-web  reuse the last web build in dist/ (only native code changed). Make sure it was a
 //               release build: a debug-mode one ships the demo device and the DEBUG badge.
 //

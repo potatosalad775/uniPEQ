@@ -1,13 +1,30 @@
-name: Android release
+name: Release
 
-# Builds the signed Play bundle (.aab) and APK. A published GitHub release (tag vX.Y.Z, matching
-# package.json) gets both attached; a manual run keeps them as workflow artifacts.
+# A published GitHub release (tag vX.Y.Z, matching package.json) deploys the web app to GitHub Pages
+# and uploads the signed Play bundle (.aab) to a Play Console track (internal by default). Nothing
+# Android is attached to the GitHub release: APKs signed with the upload key trip Play Protect, so
+# APKs to share come from the Play Console, signed with Play's key.
+# A pre-release uploads the bundle but leaves the website alone. A manual run deploys the website
+# and keeps the bundle as a workflow artifact instead of uploading it (Play refuses a versionCode
+# twice, so only releases upload); so does a release while PLAY_SERVICE_ACCOUNT_JSON is unset.
+#
+# One-time setup:
+#   Settings → Pages → Source: "GitHub Actions" (this creates the github-pages environment), then
+#   Settings → Environments → github-pages → deployment branches and tags: add the tag rule `v*`.
+#   Play: a Google Cloud service account with the Android Publisher API enabled, invited in Play
+#   Console → Users and permissions with release rights for the app.
 #
 # Repository secrets:
 #   ANDROID_KEYSTORE_BASE64    base64 of the upload keystore (`base64 -i keystore.jks | pbcopy`)
 #   ANDROID_KEYSTORE_PASSWORD
 #   ANDROID_KEY_ALIAS
 #   ANDROID_KEY_PASSWORD
+#   PLAY_SERVICE_ACCOUNT_JSON  the service account's JSON key
+#
+# Repository variables (optional):
+#   PLAY_TRACK                 internal (default), alpha, beta or production
+#   PLAY_RELEASE_STATUS        completed (default) or draft. Play only takes drafts until the app's
+#                              first release has been reviewed.
 
 on:
   release:
@@ -15,11 +32,78 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  android:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the version, check the tag matches
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ -n "$TAG" ] && [ "$TAG" != "v$version" ]; then
+            echo "::error::Release tag $TAG doesn't match package.json (v$version)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  web:
+    needs: version
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/configure-pages@v6
+        id: pages
+
+      - run: npm ci
+
+      # BASE_PATH is the site's path (`/uniPEQ`, or empty on a custom domain); svelte.config.js
+      # reads it.
+      - run: npm run build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      # Pages answers unknown paths with 404.html: the SPA shell, so deep links like /uniPEQ/presets
+      # load and route client-side.
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - uses: actions/deploy-pages@v5
+        id: deploy
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      # Secrets can't be tested in `if:`. Only whether it's set, so the key itself reaches no step
+      # but the upload (not npm's install scripts).
+      HAS_PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -34,17 +118,6 @@ jobs:
           distribution: zulu
           java-version: 21
           cache: gradle
-
-      - name: Check the tag matches package.json
-        if: github.event_name == 'release'
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          version="v$(node -p "require('./package.json').version")"
-          if [ "$TAG" != "$version" ]; then
-            echo "::error::Release tag $TAG doesn't match package.json ($version)"
-            exit 1
-          fi
 
       - run: npm ci
 
@@ -63,23 +136,30 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > android/key.properties
 
-      - run: npm run android:release -- --apk
+      - run: npm run android:release
 
-      - name: Name the outputs after the version
+      - name: Name the bundle after the version
         run: |
-          version="$(node -p "require('./package.json').version")"
           mkdir out
-          cp android/app/build/outputs/bundle/release/app-release.aab "out/uniPEQ-$version.aab"
-          cp android/app/build/outputs/apk/release/app-release.apk "out/uniPEQ-$version.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab \
+            "out/uniPEQ-${{ needs.version.outputs.version }}.aab"
 
-      - uses: actions/upload-artifact@v7
+      - name: Upload to Play
+        if: github.event_name == 'release' && env.HAS_PLAY_KEY == 'true'
+        uses: r0adkll/upload-google-play@v1
         with:
-          name: uniPEQ-android
-          path: out/*
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: kr.potatosalad775.unipeq
+          releaseFiles: out/uniPEQ-${{ needs.version.outputs.version }}.aab
+          releaseName: ${{ needs.version.outputs.version }}
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
 
-      - name: Attach to the release
-        if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" out/* --clobber
+      - name: Keep the bundle as a workflow artifact
+        if: github.event_name != 'release' || env.HAS_PLAY_KEY != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: uniPEQ-${{ needs.version.outputs.version }}-aab
+          path: out/*.aab
+          if-no-files-found: error
+          retention-days: 7

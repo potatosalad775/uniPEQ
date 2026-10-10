@@ -33,9 +33,14 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
 - Release: `npm run android:release [-- --apk --skip-web]` (`scripts/android-release.mjs`): release
   web build + `cap sync` + signed `bundleRelease` (`.aab` for Play). Signing from
   `android/key.properties` (gitignored; template `android/key.properties.example`, keystore
-  `keystore.jks` in the repo root, also gitignored). `.github/workflows/release.yml` does the same on
-  a published GitHub release (tag `vX.Y.Z` must match package.json) from `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` secrets.
+  `keystore.jks` in the repo root, also gitignored). `.github/workflows/release.yml` runs on a
+  published GitHub release (tag `vX.Y.Z` must match package.json): it deploys the web build to
+  GitHub Pages (`BASE_PATH=/uniPEQ` → `paths.base`; skipped for pre-releases) and uploads the
+  `.aab` to a Play track (`PLAY_SERVICE_ACCOUNT_JSON`; `PLAY_TRACK` variable, default internal),
+  signed from `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  `ANDROID_KEY_PASSWORD` secrets; a manual run keeps it as a workflow artifact. Nothing Android is
+  attached to the release: upload-key APKs trip Play Protect. `ci.yml` runs check, lint, test,
+  build and a debug APK on pushes to main and PRs.
 - Version: `package.json` only (`npm version patch|minor|major`). `android/app/build.gradle` reads it:
   versionName verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`; Settings shows it via
   `__APP_VERSION__`. `native/device-io`'s own version is internal and never changes.

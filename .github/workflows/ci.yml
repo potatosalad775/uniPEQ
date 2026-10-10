@@ -1,0 +1,75 @@
+name: CI
+
+# Every push to main and every pull request: type check, lint, tests and a release web build, plus
+# a debug APK so a Kotlin break in native/device-io or android/ shows up before a release does.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Component specs (*.svelte.spec.ts) run in Chromium browser mode.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Zulu 21: what android/gradle/gradle-daemon-jvm.properties asks for (see CLAUDE.md).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+      - run: npm run android:sync:debug
+
+      - run: ./gradlew assembleDebug
+        working-directory: android

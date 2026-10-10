@@ -5,7 +5,7 @@ import { createRawSnippet } from 'svelte';
 import { dispatchBack } from '$lib/platform/back-button';
 import AppShell from './AppShell.svelte';
 
-const location = vi.hoisted(() => ({ url: new URL('http://localhost/presets') }));
+const location = vi.hoisted(() => ({ route: { id: '/presets' as string | null } }));
 const goto = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock('$app/state', () => ({ page: location }));
@@ -21,7 +21,7 @@ describe('AppShell', () => {
 	});
 
 	it('renders the three tabs and marks the current one', async () => {
-		location.url = new URL('http://localhost/presets');
+		location.route.id = '/presets';
 		render(AppShell, { children: body });
 
 		const nav = browserPage.getByRole('navigation', { name: 'Sections' });
@@ -37,7 +37,7 @@ describe('AppShell', () => {
 	});
 
 	it('sends back to the EQ tab from another tab, replacing history', async () => {
-		location.url = new URL('http://localhost/settings');
+		location.route.id = '/settings';
 		const { unmount } = await render(AppShell, { children: body });
 
 		expect(dispatchBack()).toBe(true);
@@ -46,7 +46,7 @@ describe('AppShell', () => {
 	});
 
 	it('declines back on the EQ tab, so the app goes to the background', async () => {
-		location.url = new URL('http://localhost/');
+		location.route.id = '/';
 		const { unmount } = await render(AppShell, { children: body });
 
 		expect(dispatchBack()).toBe(false);

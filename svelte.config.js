@@ -18,6 +18,9 @@ const config = {
 			fallback: 'index.html',
 			precompress: false
 		}),
+		// The GitHub Pages build sets BASE_PATH (`/uniPEQ`, from actions/configure-pages); the app and
+		// Capacitor serve from the root. Links go through `resolve()` from `$app/paths`, so they follow it.
+		paths: { base: process.env.BASE_PATH ?? '' },
 		version: { name: process.env.UNIPEQ_BUILD_VERSION }
 	},
 	vitePlugin: {

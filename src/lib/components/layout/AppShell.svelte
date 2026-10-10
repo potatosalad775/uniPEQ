@@ -9,7 +9,8 @@
 
 	let { children }: { children: Snippet } = $props();
 
-	const current = $derived(activeTab(page.url.pathname));
+	// The route id, not the URL path: it leaves out the base path (GitHub Pages serves under /uniPEQ).
+	const current = $derived(activeTab(page.route.id ?? '/'));
 
 	// Lowest back handler: from another tab, back goes home. On home it declines, and native.ts
 	// backgrounds the app. Tab switches replace history, so there is no tab history to walk.
