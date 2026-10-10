@@ -46,12 +46,12 @@
 <svelte:window {onkeydown} />
 
 <header
-	class="flex min-h-14 items-center gap-1 pr-1 pl-2 wide:max-w-6xl"
+	class="flex min-h-14 items-center gap-1 pr-1 pl-4 wide:max-w-6xl"
 	role="toolbar"
 	aria-label={m.eq_toolbar()}
 >
 	<h1 class="sr-only">UniPEQ</h1>
-	<div class="min-w-0 flex-1 wide:hidden">
+	<div class="-ml-2 min-w-0 flex-1 wide:hidden">
 		<DeviceChip onclick={onDevice} />
 	</div>
 	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">UniPEQ</p>
