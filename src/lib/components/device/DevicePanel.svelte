@@ -334,6 +334,8 @@
 				<p class="text-sm text-base-content/70">{m.device_peq_reconnect_prompt()}</p>
 				<Button
 					title={m.device_peq_reconnect()}
+					size="sm"
+					variant="outline"
 					disabled={devicePeqStore.isConnecting}
 					onclick={() => devicePeqService.reconnect()}
 				>
