@@ -2,10 +2,9 @@
 
 Parametric-EQ control app for USB/BT audio devices: SvelteKit + Svelte 5 + Tailwind 4 + bits-ui
 in Capacitor 8, on the eqcaps packages (device data, protocols, browser transports).
-[ARCHITECTURE.md](ARCHITECTURE.md) describes the app as it is. **Plan, decisions and checklist:
-[docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4.6 and the Phase 7 cutover done;
-Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
-[docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md). Work happens on `main`.
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the app as it is. **Decisions ("decision N") and
+what's open: [docs/rebuild-plan.md](docs/rebuild-plan.md)** (Phases 0–4.6 and the Phase 7 cutover
+done; Phases 5 and 6 postponed). Work happens on `main`.
 
 ## Commands
 
@@ -101,6 +100,8 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
 
 ## Gotchas
 
+- A spec that hides WebHID must delete `hid` from `Navigator.prototype`: feature detection is
+  `'hid' in navigator` (`canConnectUsb`).
 - TS strictness: a `Uint8Array` where the DOM wants `BufferSource` / `BodyInit` fails
   (`ArrayBufferLike` vs `ArrayBuffer`); `.slice()` at the DOM boundary.
 - The DeviceIo plugin (`native/device-io`, a `file:` dependency) stays protocol-free: device bytes

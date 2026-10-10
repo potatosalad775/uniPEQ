@@ -1,6 +1,6 @@
 <!--
-	The EQ response and one node per band (docs/reuse-from-modernGraphTool.md §C: a slim graph, not
-	its GraphEngine). Gestures, after modernGraphTool's GraphEqOverlay ideas but on pointer events so
+	The EQ response and one node per band: a slim graph, not modernGraphTool's GraphEngine (which is
+	built around measurement curves). Gestures, after modernGraphTool's GraphEqOverlay ideas but on pointer events so
 	touch and mouse share one path:
 	- drag a node: frequency across, gain up and down (each only where the slot lets it move);
 	- tap a node: select it (the band editor follows); tap the background: deselect;

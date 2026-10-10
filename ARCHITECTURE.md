@@ -123,7 +123,7 @@ uniPEQ/
 ├── native/device-io/           # Capacitor plugin `uni-peq-device-io` (Kotlin, Android only)
 ├── android/                    # Capacitor Android project
 ├── scripts/                    # android-install, android-hid-spike, data-snapshot
-└── docs/                       # rebuild-plan.md, reuse-from-modernGraphTool.md
+└── docs/                       # rebuild-plan.md (decisions, open items)
 ```
 
 ---
@@ -261,8 +261,9 @@ Writing:
 Layout principles: the EQ graph is the main element; desktop and phone each get an intentional
 layout. One breakpoint, `wide:` (900 px): side rail and two columns above it, bottom tab bar
 below. Touch sizing follows the pointer, not the width (`touch:` variant, 48 px targets). Colours
-come only from the semantic tokens in `src/lib/styles/theme.css` (light + dark). Component and
-push-path sources: [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
+come only from the semantic tokens in `src/lib/styles/theme.css` (light + dark). Atoms and
+`device-peq/` files copied from modernGraphTool name their source path and commit in a header
+comment.
 
 ### 8.1 EQ tab
 - **Phone** (decisions 22, 23): app bar (device chip, undo/redo, overflow menu with Load preset,
@@ -357,8 +358,8 @@ audio device's HID interface to the system, so the plugin claims with `force = t
   (`connect.spec.ts`), the native transport against a fake plugin, the demo device end to end through
   `openDevice` (`demo.spec.ts`), the push plan, sync status, the writable table against the snapshot,
   the preset file and APO formats, graph gestures, the editor's domains and the stores.
-- **On hardware**, by hand: each phase's open checks are listed in
-  [docs/rebuild-plan.md](docs/rebuild-plan.md). `npm run android:hid-spike` runs a raw pull through
+- **On hardware**, by hand: the open checks are listed in
+  [docs/rebuild-plan.md](docs/rebuild-plan.md#open). `npm run android:hid-spike` runs a raw pull through
   the plugin on a debug build.
 - Before a commit: `npm run check`, `npm run lint`, `npm test`.
 
@@ -366,15 +367,14 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 
 ## 11. Roadmap
 
-Phases and their checklists: [docs/rebuild-plan.md](docs/rebuild-plan.md). Open after the cutover:
+Open items: [docs/rebuild-plan.md](docs/rebuild-plan.md#open). In short:
 
 - **Phase 5:** Serial and Bluetooth in the browser (postponed).
 - **Phase 6:** the full Android plugin: serial, BLE and SPP postponed; launch-on-attach (a
   `device_filter.xml` from eqcaps vendor ids) not now.
 - **eqcaps E1:** a `writable` flag on presets, then delete `device-peq/writable.ts`.
+- **Splash screen:** the Android one is still the prototype's white PNGs.
 - **Network devices** (decision 6): modernGraphTool's `device-peq/network.ts` is the starting point.
-- **Release:** icons and splash, Play Store internal track, a static web deploy (HTTPS, for the
-  device APIs).
 
 ---
 

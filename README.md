@@ -14,7 +14,7 @@ works here; a missing one is added there.
 
 > **Status:** USB HID devices work end to end (connect, read, edit on the graph, write, presets) in
 > Chrome / Edge and in the Android app. Serial and Bluetooth devices are not wired up yet. Design:
-> [ARCHITECTURE.md](ARCHITECTURE.md); plan and progress: [docs/rebuild-plan.md](docs/rebuild-plan.md).
+> [ARCHITECTURE.md](ARCHITECTURE.md); decisions and open items: [docs/rebuild-plan.md](docs/rebuild-plan.md).
 
 ## Platforms
 
@@ -117,6 +117,6 @@ Capacitor 8, Vitest.
 - A device that doesn't connect, or limits that look wrong: report it to
   [eqcaps](https://github.com/potatosalad775/eqcaps/issues) — the device panel links there.
 - Code conventions and project notes: [CLAUDE.md](CLAUDE.md). Shared UI and device code comes
-  from [modernGraphTool](https://github.com/potatosalad775/modernGraphTool); see
-  [docs/reuse-from-modernGraphTool.md](docs/reuse-from-modernGraphTool.md).
+  from [modernGraphTool](https://github.com/potatosalad775/modernGraphTool); copied files name
+  their source in a header comment.
 - Before a pull request: `npm run check`, `npm run lint` and `npm test`.

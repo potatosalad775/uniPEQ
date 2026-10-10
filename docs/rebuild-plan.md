@@ -5,17 +5,12 @@ the eqcaps packages replacing uniPEQ's own device database, protocol handlers, w
 adaptation engine. This supersedes the earlier "migrate the Ionic Vue prototype to eqcaps" plan.
 Its decisions 1–7 carry over unchanged.
 
-Status: **decided 2026-10-06. Phase 0 passed 2026-10-06** (real phone + walkplay dongle, see
-Phase 0). **Phase 1 done 2026-10-06** on the `rebuild` branch. **Phase 2 passed 2026-10-06** (web and
-Android on real hardware). **Phase 3 code done 2026-10-07** (demo and mocked devices; the hardware
-check is open, see Phase 3). **Phase 4 code done 2026-10-07** (demo device, web at desktop and phone
-widths; the user found every feature working on a real Samsung phone, see Phase 4). **Phase 4.5
-(mobile UX pass) started 2026-10-07**, decision 22; **Phase 4.6 (hardware-first refinements) code
-done 2026-10-08**, decision 23. **Phase 7 (cutover) done 2026-10-09**, ahead of Phases 5 and 6, which
-are postponed (decision 24). Tick tasks as they land; record deviations in the Decisions section.
+Status: **decided 2026-10-06; Phases 0–4.6 done 2026-10-06 → 10-08, the Phase 7 cutover
+2026-10-09.** Phases 5 and 6 (serial and Bluetooth) are postponed (decision 24). What's left is
+under [Open](#open). Record new decisions in the Decisions section; code cites them as
+"decision N".
 
-Related: [reuse-from-modernGraphTool.md](reuse-from-modernGraphTool.md) (what we copy and what we
-rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
+Related: [ARCHITECTURE.md](../ARCHITECTURE.md) (the app as it is).
 
 ## Why this stack
 
@@ -60,9 +55,9 @@ rewrite), [ARCHITECTURE.md](../ARCHITECTURE.md).
    `src/lib/data/eqcaps-bundle.json` and refreshed by `npm run data:snapshot` before each release,
    not fetched during the build (keeps builds offline and reproducible).
 4. **Devices without a profile.** `guessProtocol(vendorId)` connects them as experimental,
-   **read-only**: no profile means nothing to `fit` against. *(Check against modernGraphTool,
-   which builds a profile from `analyzeCodec` so a guessed device can still be written. Adopt that
-   if it holds up.)*
+   **read-only**: no profile means nothing to `fit` against. *(Replaced by modernGraphTool's
+   approach: `guessedProfile` in `device-peq/connect.ts` builds a profile from `analyzeCodec`, so a
+   guessed device can be written within what its wire carries.)*
 5. **Preset format.** Adopt eqcaps filter type codes (`PK LSC HSC LPQ HPQ BP NO AP`) in the app
    model; `PeqPreset.schemaVersion` 2, with v1 presets migrated on load (`LSQ→LSC`, `HSQ→HSC`,
    `LPF→LPQ`, `HPF→HPQ`, `BPF→BP`, `NOTCH→NO`, `APF→AP`; `BSF` and `CQ` have no v1 equivalent and
@@ -89,8 +84,8 @@ New:
    - Code style matches modernGraphTool: tabs, single quotes, no trailing commas, Prettier + ESLint.
 9. **Reuse is copy-and-adapt.** Files taken from modernGraphTool carry a header comment with the
    source path and commit. There is no shared package until both copies settle.
-10. **Push semantics follow modernGraphTool's `device-peq` invariants.** These are listed in the
-    reuse doc. Notably, read and write only a reachable preset: the current
+10. **Push semantics follow modernGraphTool's `device-peq` invariants** (its
+    `src/lib/device-peq/AGENTS.md`). Notably, read and write only a reachable preset: the current
     `eqStore.pushToDevice` silent retarget to the first writable slot is **not** carried over.
 11. **Rebuild in place, on a branch.** The Vue/Ionic tree stays runnable on `main` until the
     cutover (Phase 7). The rebuild doesn't keep both UIs alive at once.
@@ -351,183 +346,19 @@ New:
 
 ## Phases
 
-### Phase 0: Android on real hardware (go/no-go) · 1–2 days
+The done phases' checklists and exit notes are in git history (this file at `284dadd`); what
+they decided is above.
 
-The current prototype has **no native plugin** (`native/` doesn't exist), so on Android today
-only the demo device and the WebView UI can be checked. Real hardware needs the USB HID spike.
-That spike doesn't depend on the UI, so everything it produces carries over to the rebuild.
-
-- [x] `npx cap sync android`, run on a phone: demo device works and the UI is usable in the
-      WebView. This is a smoke test only; the UI is being replaced. *(2026-10-06, on the
-      Medium_Phone emulator, API 37: demo connects, reads 10 bands, UI usable. Decision 12.)*
-- [x] Kotlin spike: enumerate (VID, PID, product string), request USB permission, claim the FiiO
-      HID interface (`force = true`), and exchange one report on a real device. This is eqcaps D27's
-      "Watch" item and ARCHITECTURE risk #1.
-      *Code done:* `native/device-io` (`DeviceIoPlugin.kt`, `UsbHidConnection.kt`): list, permission,
-      `describe` (force-claims each HID interface and reads its report descriptor), `open`,
-      interrupt IN loop, output via interrupt OUT or SET_REPORT, feature reports, detach events.
-      Builds and answers `list()` from the WebView. *Ran on hardware 2026-10-06 (see Exit).*
-- [x] Shape the plugin's TS wrapper after the bridge's `HidTransport` interface (`sendReport`,
-      `sendFeatureReport`, `receiveFeatureReport`, `onInputReport`, `collections`), not after
-      uniPEQ's `src/core/transport`, which eqcaps replaces. *`src/transports/native/`:
-      `nativeHidTransport.ts` implements the bridge's `HidTransport` directly, `collections`
-      come from `hidReportDescriptor.ts`. `tests/unit/nativeHidTransport.spec.ts` runs the real
-      `walkplay-hid` pull through it against a fake plugin.*
-- **Exit:** a FiiO device answers a pull over the native transport. If the HID claim fails, stop
-  and rethink the Android story before any rebuild. *(Decision 12: a walkplay device counts.)*
-  Run: plug the device in, start the debug app, `npm run android:hid-spike -- --bands 8`.
-  *Passed 2026-10-06:* Samsung SM-S936N over wireless adb, CrinEar Protocol Micro
-  (`0x3302:0xc20f`). Permission granted, HID interface 3 force-claimed, descriptor parsed
-  (usage page 0x0C, input/output reports 0x4B and 0x54), `walkplay-hid` pull returned 8 PK bands,
-  preamp −1 dB, slot 1. Feature reports are still unexercised (this device has none).
-
-### Phase 1: Scaffold · 1 day
-
-- [x] SvelteKit + Svelte 5 + Tailwind 4 + bits-ui + Paraglide, configured as in decision 8.
-      Capacitor 8 pointing at the static build. Android build runs the empty shell.
-      *adapter-static writes `dist/` (Capacitor's existing `webDir`), SPA fallback, `ssr = false`.
-      Paraglide en + ko, `localStorage` → `preferredLanguage` → `baseLocale`.*
-- [x] Tokens and atoms from modernGraphTool (`theme.css` / `layout.css` structure, `atoms/`).
-      Light/dark via `.dark` on `<html>`. *Tokens in `src/lib/styles/theme.css` (primary is blue);
-      all nine atoms copied @ `23ddc4dd` with header comments. A pre-paint script in `app.html`
-      applies the saved theme, so a dark launch doesn't flash.*
-- [x] App shell: bottom tab bar under ~900 px, side rail above it. Safe-area insets. Android back
-      button via `@capacitor/app`. *Decision 17.*
-- [x] Port framework-free code into `src/lib/`: `biquad.ts`, `undoRedoStack`, `autoPushScheduler`,
-      `presetStorage`, `logger`, plus their specs. *`biquad.ts` speaks the eqcaps type codes
-      (`src/lib/eq/model.ts`, decision 5); the services got specs (they had none). Preset
-      validation moved to Phase 3 (decision 18).*
-- **Exit:** `build`, `check`, `lint` and `test` green; the shell runs on web and Android.
-  *Passed 2026-10-06:* 48 tests (node + Chromium browser mode). Web checked at desktop and phone
-  widths, light/dark, en/ko. Android: debug APK on the Pixel_9_Pro_Fold emulator (API 35): tabs,
-  back button, theme persistence, bar icon contrast. `window.uniPeqHidSpike` is still installed
-  on native builds, so `npm run android:hid-spike` keeps working.
-
-### Phase 2: eqcaps data and connection · 1 day
-
-- [x] Install the three eqcaps packages. `scripts/data-snapshot.ts` + `npm run data:snapshot`
-      downloads `https://potatosalad775.github.io/eqcaps/v1/bundle.json` into
-      `src/lib/data/eqcaps-bundle.json`. *Validates every profile with `validateProfile` before
-      writing; 102 profiles, data `2026.10.05-e1b07cf`.*
-- [x] `eqcaps-client.ts` (decision 3); `loadIndex()` at startup, not awaited in the UI path.
-      *Decision 19 on ETags.*
-- [x] Copy `device-peq/{connect,types,preset,errors,panel-status}.ts` and adapt them. Add the
-      native-transport path from Phase 0 next to the browser chooser. *Plus their specs;
-      `connectNativeHid` (decision 19).*
-- [x] Device store (from `device-peq-store`): `profile`, `capabilities`, `experimental`, the preset
-      list, writable presets (decision 1), the bypass preset.
-- **Exit:** connect, read and current slot work for a real FiiO device (web and Android) and for
-  the demo. *Code verified 2026-10-06 without hardware: 89 tests (connect flows against the real
-  bridge with mocked choosers and plugin; the panel against a fake device), web boot caches the
-  index, and on the emulator Connect runs the plugin's `list()` and reports no device.
-  Passed 2026-10-06 on real hardware, in Chrome and in the Android app (checked by the user).
-  The demo half moves to Phase 3 with the demo device itself.*
-
-### Phase 3: Push path, presets, demo · 1–2 days
-
-- [x] Copy `push-plan.ts`, `eq-constraint.ts`, `eq-preamp.ts` and adapt them to the filter model
-      (decision 5). Decide between our `AutoPushScheduler` and their `device-peq-service`
-      auto-write, keeping manual-save mode for `disconnectOnSave`. *Theirs (decision 20).
-      `eq-constraint.ts` and `eq-preamp.ts` live in `src/lib/eq/`.*
-- [x] Push-confirm dialog from `DevicePeqPushDialog`, which renders `fit` changes,
-      `unassigned` and `complete` warnings. *`components/device/PushDialog.svelte`; Android back
-      closes it.*
-- [x] `BridgeError` → messages; `PushResult.reconnect` → reconnect flow; `setEnabled` for EQ
-      on/off and the Device EQ dropdown. *Messages and `setEnabled` came in Phase 2; Write, the
-      auto-write switch and the restart-to-save flow are in `DevicePanel`.*
-- [x] Presets: schemaVersion 2 + v1 migration (decision 5); import/export JSON; APO / AutoEq
-      text via `eq-apo.ts`. *`eq/preset-file.ts`, `stores/preset-store.svelte.ts`, a plain
-      Presets tab (decision 20).*
-- [x] Demo device (decision 2): demo profile + simulated `fiio-usb-hid` transport.
-- **Exit:** applying a preset to a device shows an accurate diff and writes what `fit` produced.
-  The demo pipeline test runs through `openDevice`.
-  *Code verified 2026-10-07: 176 tests. `demo.spec.ts` connects the demo through `openDevice`,
-  reads, plans, writes and reads back. `DevicePanel` specs check the review dialog's diff and
-  that a confirmed write sends `fit`'s values. Open: load a preset and write it to a real device
-  (web and Android), and the demo on Android.*
-
-### Phase 4: Screens · 3–4 days
-
-- [x] **Main.** A large interactive `EqGraph` is the main element: response from `biquad.ts`,
-      draggable band nodes, tap-to-select with a touch path for Q. Band list/editor from
-      `EqFilterCard`. Device row + Device EQ + single status line from `DevicePeq`. Undo/redo,
-      load/save preset. Desktop puts the graph and editor side by side; phone stacks them, with the
-      band editor in a bottom sheet. *Decision 21; plus Fit, Ctrl+Z / Ctrl+Y.*
-- [x] Per-band domains from `resolveSlot` / `slotOf`: min/max/step, fixed value lists, locked
-      fields read-only, allowed types. `isGraphic` profiles get a fixed-frequency layout. Live
-      `validateList` flags while editing. *`BandEditor` / `BandField`; graphic bands drag only in
-      gain and have no add or remove.*
-- [x] Preamp by `preamp.mode`: `manual` slider, `auto` hidden, `none` warns on boost, `unknown`
-      slider with a note.
-- [x] Profile status badge, experimental badge, links to the eqcaps inspector and its
-      "wrong constraint" form.
-- [x] **Presets** and **Settings** (theme, language, auto-push delay, diagnostics log viewer/export).
-      *Plus real file export on Android (share sheet).*
-- **Exit:** feature parity with the Vue prototype, on desktop and phone widths.
-  *Code verified 2026-10-07: 242 tests (graph gestures and keys, the editor's domains, the preamp
-  modes, presets search / rename / duplicate / fit, the log viewer). Checked by hand in Chromium
-  with the demo device at 1280 and 390 px, light and dark, en and ko; the debug APK builds with the
-  two new plugins. Open, for the user: on a real phone, graph drags at 60 fps (Risks), pinch for
-  Q, the bottom sheet, Android back closing it and the dialogs, export through the share sheet,
-  and importing a file; on hardware, Fit then Write on a real device (web and Android).*
-  *2026-10-07: the user ran it on a Samsung phone with hardware; every feature worked. The
-  feedback became Phase 4.5.*
-
-### Phase 4.5: Mobile UX pass · 2–3 days
-
-Decision 22. Order: atoms first, then the screens that use them.
-
-- [x] **Model:** drop per-band `enabled` (model, store, push, preamp, graph, preset file, APO
-      import/export, the row and editor switches). *`toWrittenFilter` is gone (`planPush` sends
-      `toCapsFilter`); `ParsedPreset.disabled` became `dropped`.*
-- [x] **Frequencies in full** in the band rows, the editor and the graph's node labels.
-- [x] **Atoms:** `touch:` variant; a size scale that is touch-sized under it (Button, Switch,
-      SegmentedControl, icon buttons); `ListRow` (label, supporting text, trailing control, whole
-      row tappable); a generic `Sheet` (from `BandSheet`); `Slider` (bits-ui, large thumb and touch
-      area) for the native ranges; `RadioDialog` for one-of-N settings. *`Slider` is a restyled
-      native range (`.range` in layout.css), not bits-ui: it keeps the slider role, keyboard steps
-      and the specs that drive it. Also `ListSection`, `ChipGroup`, and `Input` at 48 px on touch.*
-- [x] **Settings** as list rows: Theme and Language as rows that open a radio dialog, switches
-      trailing, the auto-write delay as a slider row, help as supporting text.
-- [x] **EQ tab:** app bar with the device chip, undo/redo and an overflow menu (Load, Save, Fit);
-      device sheet holding the device panel; graph pinned; preamp as one row; band rows; sync bar.
-      Wide keeps its two columns, with the sync bar at the bottom of the content. *`EqToolbar` is
-      gone (`EqAppBar`). The device panel's Device EQ is a row and a radio dialog, its facts are
-      inline text, and its status line is the sync bar. The review dialog is
-      `devicePeqService.review` (`requestWrite` / `confirmReview`), shown by `ReviewDialog`, so the
-      sync bar's Write and the panel's share it. The preamp slider hides under Auto.*
-- [x] **Sync bar states** for manual and auto-write, the chip's dot, haptics on native.
-      *`device-peq/sync-status.ts` ranks them over `panelStatus`; `devicePeqStore.autoDueAt`
-      drives the countdown ring. Before the first read or write the bar offers Read (and Write in
-      manual mode). An edit that leaves the list as the device has it (a read, an undo) schedules
-      nothing. A failed auto-write also shows a toast, which sits above the sync bar.*
-- [x] **Band editor:** type as chips, each value a stepper (− value +) over a slider, the
-      allowed-range hint only when it's violated, sized to its content. *The hint also shows while
-      the number is being typed. The sheet's title names the band and its type.*
-- [x] **Presets tab:** the same row and touch treatment. *Save is one line (name + Save); tags
-      are set in Edit or in the EQ tab's save dialog.*
-- **Exit:** on a real phone, no control under 48 px, editing a band never needs a scroll to see
-  whether the device has it, and the build, check, lint and tests are green.
-  *Code done 2026-10-07: 248 tests, build green. Checked in Chromium with Playwright's Pixel 7
-  emulation (coarse pointer) and at 1280 px with a mouse, demo device. Open, for the user: the
-  whole pass on a real phone (sheets, Android back on the sheets and the menu, haptics, the
-  countdown ring), and with hardware.*
-
-### Phase 4.6: Hardware-first refinements · 1 day
-
-Decision 23.
-
-- [x] **Graph** edge to edge on a phone.
-- [x] **Menus:** `Menu`, `MenuItem`, `MenuSeparator`, `SelectMenu`; the EQ overflow and the preset
-      ⋮ on them; Theme, Language and Device EQ as select menus; `RadioDialog` removed.
-- [x] **Preamp** as one band-style row, `PreampEditor` in a sheet (phone) or inline (wide).
-- [x] **Fixed bands:** no Add with a band count, Reset instead of Remove (Remove only past the
-      count), Delete on a graph node resets, presets padded on load, Fit offered for a short list.
-- [x] **No device:** the EQ tab's connect prompt, Load preset off; **disconnect** keeps
-      `knownDevice`, the sync bar's Disconnected + Connect.
-- **Exit:** build, check, lint and tests green (258). *Code done 2026-10-08, checked with
-  Playwright's Pixel 7 emulation and at 1280 px, demo device. Open, for the user: a real phone
-  (menus with Android back, the preamp sheet) and a real cable pull.*
+| Phase | Done | Outcome |
+|---|---|---|
+| 0: Android on real hardware | 2026-10-06 | `native/device-io` force-claims a USB HID interface; a walkplay dongle answered a `walkplay-hid` pull on a Samsung SM-S936N (decision 12). `npm run android:hid-spike -- --bands 8` reruns it on a debug build. |
+| 1: Scaffold | 2026-10-06 | SvelteKit shell, tokens and atoms from modernGraphTool, framework-free services ported (decisions 8, 15, 17, 18). |
+| 2: eqcaps data and connection | 2026-10-06 | Snapshot, client, connect flows, device store; checked on a FiiO device in Chrome and the Android app (decisions 3, 19). |
+| 3: Push path, presets, demo | 2026-10-07 | Auto-write, review dialog, preset file v2, APO text, demo device (decisions 2, 5, 20). |
+| 4: Screens | 2026-10-07 | Graph, band editor, preamp, presets and settings; every feature worked on a Samsung phone with hardware (decision 21). |
+| 4.5: Mobile UX pass | 2026-10-07 | Touch sizing, list rows, sheets, sync bar, no per-band on/off (decision 22). |
+| 4.6: Hardware-first refinements | 2026-10-08 | Fixed band counts, menus, preamp row, no editing before a device (decision 23). |
+| 7: Cutover | 2026-10-09 | `legacy/` deleted, ARCHITECTURE.md and CLAUDE.md rewritten, eqcaps D27 updated (decision 24). |
 
 ### Phase 5: Serial and Bluetooth in the browser · 1 day · postponed (decision 24)
 
@@ -537,47 +368,54 @@ Decision 23.
 
 ### Phase 6: Android native plugin, full · separate milestone · serial and Bluetooth postponed (decision 24)
 
-- [ ] Grow the Phase 0 spike into the plugin: USB HID (attach/detach broadcasts, permission flow),
-      then `StreamTransport` for USB serial and BLE, then Classic SPP. No protocol code in the plugin.
-- [x] Android discovery UX: live candidate list without a picker. *HID, 2026-10-09
-      (decision 24): no list to pick from; the app follows the plugin's USB events instead.
-      Plugging in a drivable device while nothing is connected and the app is in view connects it
-      (the chip's path: permission prompt, a pick if several); anything else attached is ignored.
-      Unplugging the connected device disconnects it at once (`usbDeviceName` on native
-      connections), keeping the known device, so a replug reconnects. Open, for the user: on a
-      real phone, that `USB_DEVICE_ATTACHED` reaches the plugin's runtime receiver (Android also
+- [ ] Grow the Phase 0 spike into the plugin: `StreamTransport` for USB serial and BLE, then
+      Classic SPP. No protocol code in the plugin. *USB HID (attach/detach broadcasts, the
+      permission flow) is done.*
+- [x] Android discovery UX, HID (2026-10-09, decision 24): no list to pick from; the app follows
+      the plugin's USB events. Plugging in a drivable device while nothing is connected and the app
+      is in view connects it (the chip's path: permission prompt, a pick if several); anything else
+      attached is ignored. Unplugging the connected device disconnects it at once
+      (`usbDeviceName` on native connections), keeping the known device, so a replug reconnects.
+      Launch-on-attach (manifest `device_filter.xml`): not now.
+
+## Open
+
+### Checks on a real phone, for the user
+
+Code for these is done and checked in emulation; each needs a run on a phone with hardware.
+
+- [ ] Phase 4.5: sheets and the overflow menu closing on Android back, haptics on write, the
+      sync bar's countdown ring.
+- [ ] Phase 4.6: the select menus with Android back, the preamp sheet, a real cable pull.
+- [ ] Phase 6 discovery: `USB_DEVICE_ATTACHED` reaching the plugin's runtime receiver (Android also
       sends it to activities; only `DETACHED` has been seen so far), plug and unplug with the app
-      open, and a plug-in while the app is in the background (should do nothing).
-      Launch-on-attach (manifest `device_filter.xml`): not now.*
+      open, and a plug-in with the app in the background (should do nothing).
+- [ ] Decision 17: the edge-to-edge path on WebView ≥ 140 (system bar icon style).
+- [ ] Risks: graph drags at 60 fps on a mid-range phone.
 
-### Phase 7: Cutover · ½ day
+### eqcaps-side tasks
 
-- [x] Delete the Vue/Ionic tree: `rm -r legacy` (decision 15; its dependencies already left in
-      Phase 1), then drop the `legacy` ignore entries and the unused `@capacitor/status-bar`.
-      *Also deleted `docs/eqcaps-migration.md` (superseded; decisions 1–7 live here).*
-- [x] ARCHITECTURE.md: rewrite §3–§7, §9–§11 for the new tree; drop risk #7. CLAUDE.md: replace
-      the Ionic/Vue sections with the new conventions. *ARCHITECTURE.md rewritten whole: it now
-      describes the app as built (eqcaps, the push invariants, the EQ model, the plugin as it is);
-      the old milestones became a short roadmap pointing here.*
-- [x] eqcaps DECISIONS D27: "Ionic + Capacitor prototype" → "SvelteKit + Capacitor".
-- **Exit:** build, lint and tests green; no reference to removed modules. *Passed 2026-10-09.*
+- [ ] **E1** (decision 1): optional `writable` on `protocol.presets[]`. *eqcaps side done
+      2026-10-10 (eqcaps `8dbf2b4`, D48): format 1.1, SPEC §9 + §15, schema, `version-too-low`,
+      the bridge's `Slot.writable`, and marks on the 30 profiles of `device-peq/writable.ts`
+      (same ids; none confirmed on hardware). Left: push eqcaps and release it (owner, npm 2FA),
+      then here bump the eqcaps packages, `npm run data:snapshot`, and replace `writable.ts`'s
+      table with the flag (keep "nothing marked = unrestricted").*
 
-## eqcaps-side tasks
+### Other
 
-- [ ] **E1** (decision 1): optional `writable` on `protocol.presets[]`. SPEC §9 + schema +
-      codegen + DECISIONS entry; the bridge's `Slot` type; data for the FiiO profiles, confirmed
-      on hardware where possible. Release, then delete uniPEQ's temporary writable table.
+- [ ] Splash screen: still the prototype's white PNGs, light only.
 
 ## Risks
 
-- **Android HID claim** (Phase 0). If it fails for a device family, that family is web-only. If
-  it fails broadly, the Android app is in question whatever the UI stack.
-- **WebView feel.** Graph drags must hold 60 fps on mid-range Android. Measure in Phase 4 on a real
-  phone, not in desktop emulation.
+- **Android HID claim.** Passed on one Samsung phone (Phase 0, Phase 2). A device family that
+  fails stays web-only.
+- **WebView feel.** Graph drags must hold 60 fps on mid-range Android. Measure on a real phone,
+  not in desktop emulation.
 - **Draft data.** Most eqcaps profiles are seeded `draft`s whose ranges come from devicePEQ's
   handler code. The status badge makes this visible; wrong limits get reported upstream.
 - **Copy drift.** Fixes in modernGraphTool's `device-peq/` won't reach us automatically. The
-  header comments make it possible to diff against upstream; revisit a shared package after
-  Phase 4.
+  header comments make it possible to diff against upstream; a shared package can wait until both
+  copies settle (decision 9).
 - **Breaking eqcaps releases** (0.x). Pin a caret range and read the eqcaps changelog / DECISIONS
   before bumping.
