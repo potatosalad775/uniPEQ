@@ -54,7 +54,7 @@
 </script>
 
 <PageHeader title={m.nav_settings()} />
-<!-- Android-style lists (decisions 22, 23): rows with the control trailing, choices in menus. -->
+<!-- Android-style lists: rows with the control trailing, choices in menus. -->
 <PageBody class="flex flex-col gap-5 pb-6 wide:max-w-2xl">
 	<ListSection title={m.settings_display()}>
 		<SelectMenu

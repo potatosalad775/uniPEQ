@@ -1,5 +1,5 @@
 /**
- * Refreshes the embedded eqcaps snapshot (rebuild decision 3): downloads the published
+ * Refreshes the embedded eqcaps snapshot: downloads the published
  * `bundle.json` into src/lib/data/eqcaps-bundle.json. The app only falls back to it on an offline
  * or CDN-down first launch; run before each release (`npm run data:snapshot`), never during a build.
  *

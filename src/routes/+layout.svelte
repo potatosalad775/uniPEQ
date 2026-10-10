@@ -25,9 +25,9 @@
 		if (isNative && distribution === 'github') {
 			void import('$lib/platform/release-updates').then((mod) => mod.installReleaseUpdates());
 		}
-		// Revalidate the eqcaps index in the background (decision 3), so a connect finds it ready.
+		// Revalidate the eqcaps index in the background, so a connect finds it ready.
 		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());
-		// Android: plugging a device in connects it, unplugging it disconnects (Phase 6).
+		// Android: plugging a device in connects it, unplugging it disconnects.
 		if (isNative) {
 			void import('$lib/services/device-peq-service.svelte').then((mod) =>
 				mod.devicePeqService.watchUsb()

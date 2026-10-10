@@ -42,7 +42,7 @@ function pointer(type: string, target: Element, x: number, y: number) {
 
 describe('EqGraph', () => {
 	beforeEach(() => {
-		// Editing needs a connected device (decision 25); this one takes anything.
+		// Editing needs a connected device; this one takes anything.
 		devicePeqStore.setConnected(fakeConnection(UNCONSTRAINED), null);
 		eqStore.reset();
 		eqStore.replace([pk(100, 3), pk(1000, -2)], -3);

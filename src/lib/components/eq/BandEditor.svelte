@@ -4,9 +4,9 @@
 	the slot takes, and the fields in BandField. Domains come from the band's slot (`resolveSlot`):
 	bounds, steps, value lists, locked fields read-only; flags from `validateList`. Edits are
 	projected onto the slot as they are made; other fields are left alone (Fit folds those in).
-	Phase 4.5 (decision 22): types as chips, no on/off, and the header only inline (the phone's
-	sheet has its own, with previous / next). Decision 23: a device's bands are reset to flat, not
-	removed; only a band past its count (or any, with no device count) has Remove.
+	Types as chips, no on/off, and the header only inline (the phone's sheet has its own, with
+	previous / next). A device's bands are reset to flat, not removed; only a band past its count
+	(or any, with no device count) has Remove.
 -->
 <script lang="ts">
 	import { RotateCcw, Trash2 } from '@lucide/svelte';
@@ -51,7 +51,7 @@
 	});
 	const typeOptions = $derived(types.map((t) => ({ value: t, label: t, title: TYPE_LABEL[t]() })));
 
-	/** Where Reset takes the band (a device's bands are reset, not removed: decision 23). */
+	/** Where Reset takes the band (a device's bands are reset, not removed). */
 	const flat = $derived(filter ? flatBand(filter, profile, slotIndex) : null);
 	const isFlat = $derived(!!filter && !!flat && sameFilters([filter], [flat]));
 
@@ -66,7 +66,7 @@
 </script>
 
 {#if filter && slot}
-	<!-- Read-only while the device is away (decision 25): every control in it is off. -->
+	<!-- Read-only while the device is away: every control in it is off. -->
 	<fieldset
 		disabled={!eqConstraintStore.editable}
 		class="flex min-w-0 flex-col gap-3"

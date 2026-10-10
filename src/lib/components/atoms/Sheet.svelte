@@ -1,5 +1,5 @@
 <!--
-	A bottom sheet (decision 22). Android back, or the close button, closes it.
+	A bottom sheet. Android back, or the close button, closes it.
 	- `modal` (default): bits-ui Dialog under a scrim, focus held inside (the device sheet).
 	- not modal: a panel over the bottom of the screen with the page above it still live (the band
 	  editor, so a graph node can still be dragged while it is up).

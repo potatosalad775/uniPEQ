@@ -1,5 +1,5 @@
 <!--
-	The device panel in a modal bottom sheet, opened from the device chip on a phone (decision 22),
+	The device panel in a modal bottom sheet, opened from the device chip on a phone,
 	or by a connect from the chip that needs a pick or has something to say. It closes itself once a
 	connect attempt has connected, so the EQ is in view again.
 -->

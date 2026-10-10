@@ -8,9 +8,9 @@
 	  under the pointer first);
 	- double-click the background: add a band there (only without a device band count);
 	- keys on a focused node: arrows move it, Page Up/Down change Q, Delete removes it (or, for a
-	  device's set bands, resets it to flat: decision 23).
+	  device's set bands, resets it to flat).
 	A drag is one undo step, and moves less than 3 px are a tap, not a drag. While the device is away
-	the graph is read-only (decision 25): no gestures or keys, dimmed nodes.
+	the graph is read-only: no gestures or keys, dimmed nodes.
 -->
 <script lang="ts">
 	import { usesGain } from '@potatosalad775/eqcaps-core';

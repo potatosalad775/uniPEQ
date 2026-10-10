@@ -4,7 +4,7 @@
 	src/lib/components/equalizer/EqFilterCard.svelte @ 23ddc4dd: a locked domain shows a read-only
 	value, a value list slides along its values, Escape reverts what arrow keys already committed,
 	and the hint says what the device takes. Arrow keys step musically (`nudge`), as on the graph.
-	Phase 4.5 (decision 22): − and + steppers either side of the number (the same musical steps, so
+	For touch: − and + steppers either side of the number (the same musical steps, so
 	repeated taps are one undo step), a touch-sized slider, and the allowed-range hint only while
 	the number is being typed or the value is one the device won't take.
 -->

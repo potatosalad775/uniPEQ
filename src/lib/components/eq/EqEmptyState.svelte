@@ -1,5 +1,5 @@
 <!--
-	The EQ tab before any device (decision 23): uniPEQ edits a device's EQ, so there is nothing to
+	The EQ tab before any device: uniPEQ edits a device's EQ, so there is nothing to
 	edit until one is connected; its profile brings the band count and limits. Connect does what the
 	device chip does (phone; on `wide:` the device panel is beside this, so it isn't offered), and
 	the demo device is one press away for trying the app without hardware (in every build, decision

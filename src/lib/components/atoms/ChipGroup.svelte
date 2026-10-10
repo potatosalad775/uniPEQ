@@ -1,5 +1,5 @@
 <!--
-	One-of-N as a row of pill chips that scrolls sideways when it runs out of room (decision 22): the
+	One-of-N as a row of pill chips that scrolls sideways when it runs out of room: the
 	band editor's filter types, which can be eight. bits-ui's single ToggleGroup underneath, as in
 	SegmentedControl: radio semantics, arrow-key focus, and always one value.
 -->

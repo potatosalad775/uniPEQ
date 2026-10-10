@@ -1,6 +1,6 @@
 <!-- Copied from modernGraphTool src/lib/components/atoms/Input.svelte @ 23ddc4dd; its props also take
 	the input element's own attributes (aria-label, inputmode, …), which it already spread. 48 px
-	tall under `touch:` (decision 22). -->
+	tall under `touch:`. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';

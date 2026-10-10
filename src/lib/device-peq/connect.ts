@@ -325,7 +325,7 @@ export async function connectBle(): Promise<ConnectResult> {
 // ── Demo ────────────────────────────────────────────────────────────────────
 
 /**
- * The demo device (decision 2): a simulated FiiO-protocol DAC, driven by the real bridge through
+ * The demo device: a simulated FiiO-protocol DAC, driven by the real bridge through
  * `openDevice`. Reopening finds the same simulated device, with what was written to it.
  */
 export async function connectDemo(): Promise<ConnectResult> {

@@ -102,7 +102,7 @@ class EqStore {
 
 	/**
 	 * Take the list as a fresh start: what an automatic read brings in on connecting or switching
-	 * presets (decision 25). Nothing before it is undoable, since an undo there would hand the
+	 * presets. Nothing before it is undoable, since an undo there would hand the
 	 * device another device's or preset's bands.
 	 */
 	open(filters: EqFilter[], preamp?: number): void {

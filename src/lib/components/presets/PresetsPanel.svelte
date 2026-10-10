@@ -1,8 +1,8 @@
 <!--
 	Saved presets: save the EQ, search, load one into it, rename and tag, duplicate, import and
 	export files, delete. With a device connected, each preset says how it fits the device (the
-	prototype's compatibility badge, now from eqcaps' `fit`). Phase 4.5 (decision 22): a one-line
-	save, and touch-height rows.
+	prototype's compatibility badge, now from eqcaps' `fit`). A one-line save, and
+	touch-height rows.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';

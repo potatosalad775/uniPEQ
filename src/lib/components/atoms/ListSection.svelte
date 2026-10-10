@@ -1,5 +1,5 @@
 <!--
-	A titled group of ListRows (decision 22): a small heading above a card whose rows are divided by
+	A titled group of ListRows: a small heading above a card whose rows are divided by
 	hairlines, as Android settings screens group theirs.
 -->
 <script lang="ts">

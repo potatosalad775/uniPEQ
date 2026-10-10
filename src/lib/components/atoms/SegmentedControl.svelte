@@ -1,6 +1,6 @@
 <!--
 	Copied from modernGraphTool src/lib/components/atoms/SegmentedControl.svelte @ 23ddc4dd. uniPEQ:
-	40 px items under `touch:` (decision 22).
+	40 px items under `touch:`.
 -->
 <script lang="ts" generics="T extends string">
 	import { ToggleGroup } from 'bits-ui';

@@ -23,8 +23,8 @@ export function installNative(): void {
 		if (!dispatchBack()) void App.minimizeApp();
 	});
 
-	// Phase 0 USB HID spike (docs/rebuild-plan.md), driven by scripts/android-hid-spike.mjs. Not UI,
-	// and not in a release.
+	// USB HID spike ($lib/transports/native/hid-spike.ts), driven by
+	// scripts/android-hid-spike.mjs. Not UI, and not in a release.
 	if (isDebugBuild) {
 		Object.assign(window, {
 			uniPeqHidSpike: (options?: HidSpikeOptions) =>

@@ -1,5 +1,5 @@
 <!--
-	One row of a settings-style list (decision 22): a label, optional supporting text under it, and
+	One row of a settings-style list: a label, optional supporting text under it, and
 	a trailing control or value. The whole row is the target:
 	- `onclick`: the row is a button (a row that opens a dialog or a sheet);
 	- `buttonProps`: the row is a button carrying these props (a `Menu`'s trigger props);

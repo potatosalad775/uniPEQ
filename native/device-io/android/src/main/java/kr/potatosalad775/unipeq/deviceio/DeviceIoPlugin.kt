@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * uniPEQ device I/O (ARCHITECTURE.md §9). Phase 0 spike: USB HID only.
+ * uniPEQ device I/O (ARCHITECTURE.md §9). USB HID only so far.
  *
  * Bytes cross the JS bridge as base64. Events: `inputReport` {handle, data},
  * `deviceAttached` {device}, `deviceDetached` {deviceName}. Failures reject with code

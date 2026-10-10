@@ -1,12 +1,12 @@
 <!--
 	Adapted from modernGraphTool src/lib/components/features/DevicePeq.svelte @ 23ddc4dd: connect
 	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
-	Phase 4 added the profile's status and experimental badges, and links to the profile in the
-	eqcaps inspector and to its wrong-constraint form. Phase 4.5 (decision 22): list rows with the
-	switch trailing and hints as supporting text, Device EQ in a radio dialog (a menu since decision
-	23), the connection facts inline rather than in a popover, and the status line moved to the EQ
-	tab's sync bar (with the review dialog, now `devicePeqService.review`). On a phone this is the
-	device sheet's body. The demo device (offered in every build, decision 26) shows as simulated,
+	Added: the profile's status and experimental badges, links to the profile in the eqcaps
+	inspector and to its wrong-constraint form, list rows with the switch trailing and hints as
+	supporting text, Device EQ as a select menu, the connection facts inline rather than in a
+	popover; the status line moved to the EQ tab's sync bar (with the review dialog, now
+	`devicePeqService.review`). On a phone this is the
+	device sheet's body. The demo device (offered in every build) shows as simulated,
 	without a status or eqcaps links: eqcaps doesn't list its profile.
 -->
 <script lang="ts">

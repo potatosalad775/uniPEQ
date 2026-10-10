@@ -1,5 +1,5 @@
 /**
- * The demo pipeline (rebuild decision 2, Phase 3 exit): connect the demo device through
+ * The demo pipeline: connect the demo device through
  * `openDevice`, read it, plan a write with `fit` + `complete`, write it and read it back, all over
  * the real `fiio-usb-hid` handler talking to the simulated device.
  */

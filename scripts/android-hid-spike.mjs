@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Phase 0 USB HID spike driver (docs/rebuild-plan.md). Runs `window.uniPeqHidSpike()` inside the
-// debug app's WebView on the connected phone or emulator, over adb + the Chrome DevTools
-// protocol, and prints the WebView's console output and the result.
+// USB HID spike driver (src/lib/transports/native/hid-spike.ts). Runs `window.uniPeqHidSpike()`
+// inside the debug app's WebView on the connected phone or emulator, over adb + the Chrome
+// DevTools protocol, and prints the WebView's console output and the result.
 //
 //   node scripts/android-hid-spike.mjs [--bands 8] [--serial emulator-5554]
 //

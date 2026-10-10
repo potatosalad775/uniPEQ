@@ -1,7 +1,7 @@
 /**
  * Saved presets: the list, and moving presets between storage, the EQ and files. Every preset
  * read back goes through `parsePreset`, so a prototype install's schemaVersion 1 presets load as
- * v2 (rebuild decision 5); they are stored as v2 the next time they are saved.
+ * v2; they are stored as v2 the next time they are saved.
  */
 import { presetFit, type PresetFit } from '$lib/device-peq/preset-fit';
 import type { PeqCapabilities } from '$lib/device-peq/types';
@@ -61,7 +61,7 @@ export class PresetStore {
 	 */
 	async apply(id: string): Promise<ParsedPreset> {
 		const parsed = await this.load(id);
-		// A device's bands are a set number (decision 23): a shorter preset is padded with flat
+		// A device's bands are a set number: a shorter preset is padded with flat
 		// bands, which sound the same. What doesn't fit is still only flagged; Fit is the user's.
 		const profile = devicePeqStore.knownDevice?.profile;
 		const filters = parsed.preset.filters;

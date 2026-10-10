@@ -1,11 +1,11 @@
 /**
- * The preset file: schemaVersion 2 (eqcaps type codes, rebuild decision 5), what a stored or
+ * The preset file: schemaVersion 2 (eqcaps type codes), what a stored or
  * imported preset is checked against, and the migration from the prototype's schemaVersion 1.
  *
  * v1 named the types differently (`LSQ`, `HPF`, `NOTCH`, …). Each maps onto its eqcaps code,
  * except `BSF` and `CQ`, which have no v2 equivalent: those bands are dropped and counted, so the
- * caller can warn about them. A band saved switched off (`enabled: false`, before decision 22)
- * played nothing, so it is dropped without a word.
+ * caller can warn about them. A band saved switched off (`enabled: false`; the app has no
+ * per-band on/off now) played nothing, so it is dropped without a word.
  */
 import { isKnownType, type FilterType as CapsFilterType } from '@potatosalad775/eqcaps-core';
 import { parseApo } from './eq-apo';

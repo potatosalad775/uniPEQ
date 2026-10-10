@@ -9,7 +9,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * `touch:` = a coarse pointer (a phone or tablet finger), whatever the width (decision 22). Atoms
+ * `touch:` = a coarse pointer (a phone or tablet finger), whatever the width. Atoms
  * grow to touch size under it; a mouse keeps the compact sizes. Layout still switches on `wide:`.
  */
 @custom-variant touch (@media (pointer: coarse));

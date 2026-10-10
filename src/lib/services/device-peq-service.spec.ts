@@ -94,7 +94,7 @@ describe('devicePeqService on Android USB events', () => {
 	});
 });
 
-describe('devicePeqService reading the device (decision 25)', () => {
+describe('devicePeqService reading the device', () => {
 	const ON_DEVICE = [{ type: 'PK' as const, freq: 100, gain: -2, q: 0.7 }];
 
 	/** A device that holds `ON_DEVICE`, with two presets it can switch between. */

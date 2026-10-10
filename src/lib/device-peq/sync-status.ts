@@ -1,5 +1,5 @@
 /**
- * What the EQ tab's sync bar and the device chip's dot say (decision 22): whether the device has
+ * What the EQ tab's sync bar and the device chip's dot say: whether the device has
  * the EQ on screen, and the one action that would change that.
  *
  * `panelStatus` still ranks the device's own messages; this adds what happens around it: the
@@ -42,7 +42,7 @@ export interface SyncInput extends PanelStatusInput {
 
 /**
  * Null before any device: the bar hides, and the chip offers to connect. After a disconnect the
- * list stays on screen, read-only (decision 25), so the bar says so and offers to connect.
+ * list stays on screen, read-only, so the bar says so and offers to connect.
  */
 export function syncStatus(s: SyncInput): SyncStatus | null {
 	if (!s.connected) {
@@ -69,7 +69,7 @@ export function syncStatus(s: SyncInput): SyncStatus | null {
 	// manual mode so is sending this one. A notice about where the device is (a built-in preset,
 	// one out of reach) still comes first.
 	const notice = urgent || s.builtIn || s.unreachable;
-	// Changes from before a disconnect or a preset change weren't read over (decision 25): send
+	// Changes from before a disconnect or a preset change weren't read over: send
 	// them, or take the device's. Auto-write doesn't decide this for the user.
 	if (s.inSync === null && s.unwritten && !notice && (s.canRead || s.canWrite)) {
 		const actions: SyncAction[] = [];

@@ -14,7 +14,7 @@ import snapshotText from '$lib/data/eqcaps-bundle.json?raw';
 
 /**
  * The eqcaps database client: EQ constraint profiles for hardware, matched to a connected device
- * by its USB / Bluetooth identity (rebuild decision 3).
+ * by its USB / Bluetooth identity.
  *
  * - `ttl: 0`: `index.json` is revalidated with its ETag on every launch (a 304 costs nothing), so a
  *   fixed or added profile reaches users without an app update.

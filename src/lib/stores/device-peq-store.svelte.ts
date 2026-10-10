@@ -1,10 +1,10 @@
 // Adapted from modernGraphTool src/lib/stores/device-peq-store.svelte.ts @ 23ddc4dd: no separate
-// constraint store (the connected profile is the constraint), and writable presets (decision 1).
+// constraint store (the connected profile is the constraint), and writable presets.
 /**
  * The connected EQ device and what the app is doing with it.
  *
  * The connection's eqcaps profile is the active constraint while it lasts (`profile`). The device's
- * EQ is what the list edits (decision 25): it is read on connecting unless the list holds changes
+ * EQ is what the list edits: it is read on connecting unless the list holds changes
  * the device never got (`unwritten`), and it can't be edited while disconnected (`canEdit`). Bands
  * that don't fit are flagged, never refitted: Fit is the user's call.
  */
@@ -30,7 +30,7 @@ export interface DeviceSnapshot {
 class DevicePeqStore {
 	connection = $state.raw<DeviceConnection | null>(null);
 	/**
-	 * The device the EQ is edited for (decision 23): the connected one, or after a disconnect the
+	 * The device the EQ is edited for: the connected one, or after a disconnect the
 	 * last one, so a dropped cable doesn't take the editor with it. Null until a first connection:
 	 * the EQ tab then asks for a device.
 	 */
@@ -93,7 +93,7 @@ class DevicePeqStore {
 	}
 
 	/**
-	 * The list can be edited: a device is connected and reachable (decision 25). Disconnected, the
+	 * The list can be edited: a device is connected and reachable. Disconnected, the
 	 * list stays on screen read-only, to look at or save as a preset.
 	 */
 	get canEdit(): boolean {
@@ -134,7 +134,7 @@ class DevicePeqStore {
 	}
 
 	/**
-	 * The memories a write may target (decision 1): the user presets eqcaps marks `writable`, not
+	 * The memories a write may target: the user presets eqcaps marks `writable`, not
 	 * the built-in curves. A profile that marks none (all memories, a guessed device) leaves every
 	 * preset but the bypass one writable (eqcaps SPEC §9).
 	 */
@@ -160,8 +160,8 @@ class DevicePeqStore {
 
 	/**
 	 * How Write reaches the target preset, or null when it can't from where the device is, or the
-	 * target is a built-in preset (decision 1). Never retargets: picking a writable preset is the
-	 * user's call (decision 10).
+	 * target is a built-in preset. Never retargets: picking a writable preset is the
+	 * user's call.
 	 */
 	get writeTarget(): PresetRequest | null {
 		const caps = this.connection?.device.capabilities;

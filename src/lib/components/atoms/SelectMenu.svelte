@@ -1,7 +1,7 @@
 <!--
-	One-of-N as a `Menu` of radio items, anchored to what opens it (decision 23, replacing the
-	radio dialog): a check marks the current choice, and picking one closes the menu. Pair it with
-	a `ListRow` given the trigger props (`buttonProps`) that shows the current choice.
+	One-of-N as a `Menu` of radio items, anchored to what opens it (rather than a radio dialog
+	stacked on a sheet): a check marks the current choice, and picking one closes the menu. Pair it
+	with a `ListRow` given the trigger props (`buttonProps`) that shows the current choice.
 -->
 <script lang="ts" generics="T extends string">
 	import { Check } from '@lucide/svelte';

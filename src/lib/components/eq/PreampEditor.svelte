@@ -1,5 +1,5 @@
 <!--
-	The preamp's editor (decision 23), opened from its row: in a sheet on a phone, under the row on
+	The preamp's editor, opened from its row: in a sheet on a phone, under the row on
 	`wide:`. Auto (follow the bands: −largest boost) as a switch row; while it's off, the level as a
 	band field (− value + over a slider) bounded by the device's range. The guessed-range note and
 	the clipping warning sit under it. Only for a `slider` preamp control.

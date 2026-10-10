@@ -1,5 +1,5 @@
 <!--
-	The EQ tab's app bar (decision 22), replacing the page title and the old toolbar: the device
+	The EQ tab's app bar, replacing the page title and the old toolbar: the device
 	chip (phone; `wide:` shows the device panel instead), undo and redo (also Ctrl+Z,
 	Ctrl+Shift+Z / Ctrl+Y outside text boxes), and an overflow menu with Load preset, Save preset
 	and Fit.

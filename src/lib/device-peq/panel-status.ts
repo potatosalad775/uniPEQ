@@ -1,5 +1,5 @@
 // Adapted from modernGraphTool src/lib/device-peq/panel-status.ts @ 23ddc4dd, plus `builtIn`
-// (writable presets, rebuild decision 1).
+// (a built-in preset can't be written).
 /**
  * The one status line under the device's Read and Write buttons.
  *

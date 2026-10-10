@@ -45,13 +45,13 @@
 </script>
 
 <!--
-	Decision 22: the app bar, the graph and the sync bar hold still; only the bands scroll.
+	The app bar, the graph and the sync bar hold still; only the bands scroll.
 	Phone: app bar (device chip), the graph edge to edge (pinned chrome, not a card), the band card
 	(preamp + bands) scrolling, sync bar; the device panel is a sheet from the chip, the selected
 	band's editor a sheet over the bottom. Before a connection the chip connects directly.
 	Wide: the graph fills the left column over the device panel; the band card scrolls on the right,
 	where the selected row opens the editor in place.
-	Decision 23: before any device there is nothing to edit, so the graph and the band card give way
+	Before any device there is nothing to edit, so the graph and the band card give way
 	to a prompt to connect one.
 -->
 <div class="flex h-full flex-col">

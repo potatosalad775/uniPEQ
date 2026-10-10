@@ -3,10 +3,9 @@
 	band as it is. A row selects its band (as tapping its node does). `inlineEditor` (the desktop
 	layout) opens the selected band's editor under its row; on a phone the editor is a sheet.
 	Layout after modernGraphTool's EqFilterList, rewritten lighter (no channels, no AutoEQ).
-	Phase 4.5 (decision 22): touch-height rows, no per-band switch, Add band as the last row, and
-	no card of its own: it sits in the EQ tab's band card under the preamp. Decision 23: a device
-	with a set band count has no Add row; Fit pads a short list. Decision 25: rows, Add and Fit are
-	off while the device is disconnected.
+	Touch-height rows, no per-band switch, Add band as the last row, and no card of its own: it
+	sits in the EQ tab's band card under the preamp. A device with a set band count has no Add row;
+	Fit pads a short list. Rows, Add and Fit are off while the device is disconnected.
 -->
 <script lang="ts">
 	import { Plus, TriangleAlert } from '@lucide/svelte';

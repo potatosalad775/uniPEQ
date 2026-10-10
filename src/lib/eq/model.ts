@@ -1,6 +1,6 @@
 /**
- * The app's EQ model (rebuild decision 5): eqcaps filter type codes and units. There is no per-band
- * on/off (decision 22): no device has one, so every band on screen is a band the device plays.
+ * The app's EQ model: eqcaps filter type codes and units. There is no per-band
+ * on/off: no device has one, so every band on screen is a band the device plays.
  */
 import { isKnownType, type Filter, type KnownFilterType } from '@potatosalad775/eqcaps-core';
 

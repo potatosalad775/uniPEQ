@@ -1,8 +1,8 @@
 /**
  * The EQ checked against what it will be written to: the known device's profile (the connected
  * one, or the last one after a disconnect), or `UNCONSTRAINED` before any; the EQ tab shows no
- * editor then (decision 23). Derived only; there is no constraint picker (the connected profile is
- * the constraint, rebuild decision 20). Everything the band editor and the graph bound or flag
+ * editor then. Derived only; there is no constraint picker (the connected profile is
+ * the constraint). Everything the band editor and the graph bound or flag
  * comes from here.
  */
 import {
@@ -21,14 +21,14 @@ import { eqStore } from './eq-store.svelte';
 class EqConstraintStore {
 	/** A device has been connected, so there is a profile to edit for. */
 	hasDevice = $derived(devicePeqStore.knownDevice !== null);
-	/** The list can be edited: its device is connected (decision 25). Read-only otherwise. */
+	/** The list can be edited: its device is connected. Read-only otherwise. */
 	editable = $derived(devicePeqStore.canEdit);
 	profile = $derived(devicePeqStore.knownDevice?.profile ?? UNCONSTRAINED);
 	isGraphic = $derived(isGraphicProfile(this.profile));
 	/** Band cap; 0 = unlimited. */
 	maxBands = $derived(maxBandsOf(this.profile));
 	/**
-	 * The device has a set number of bands (decision 23): the list is that many rows, so bands are
+	 * The device has a set number of bands: the list is that many rows, so bands are
 	 * reset rather than added or removed. Only rows past the count can go.
 	 */
 	fixedBands = $derived(this.profile.bandCount !== null);

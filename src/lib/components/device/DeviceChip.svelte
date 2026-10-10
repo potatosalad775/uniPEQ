@@ -1,5 +1,5 @@
 <!--
-	The device in the EQ tab's app bar (decision 22): its name and a dot for whether it has the EQ
+	The device in the EQ tab's app bar: its name and a dot for whether it has the EQ
 	on screen (the sync bar's state; a disconnected device's is the warning tone), or "Connect
 	device" before any. The page decides what a press does: connect, or open the device sheet.
 -->

@@ -1,7 +1,7 @@
 // Adapted from modernGraphTool src/lib/services/device-peq-service.svelte.ts and the connect flow
 // of components/features/DevicePeq.svelte @ 23ddc4dd: our settings (`autoPushEnabled`, its delay),
 // the status line instead of toasts, and the demo device. It replaces the prototype's
-// AutoPushScheduler (rebuild decision 20).
+// AutoPushScheduler.
 /**
  * Connects, reads, writes and switches the device, and auto-writes, independent of any screen:
  * screens unmount on every tab switch, and a connection (and auto-write) has to outlive them.
@@ -79,7 +79,7 @@ class DevicePeqService {
 		return this.autoWriteOn && !!caps?.canWrite && !caps.disconnectOnSave;
 	}
 
-	/** What the sync bar and the device chip show (decision 22); null before any device. */
+	/** What the sync bar and the device chip show; null before any device. */
 	get sync(): SyncStatus | null {
 		const store = devicePeqStore;
 		const caps = store.connection?.device.capabilities;
@@ -173,7 +173,7 @@ class DevicePeqService {
 	}
 
 	/**
-	 * Decision 25: the device's EQ is what the list edits, so a connection starts by reading it,
+	 * The device's EQ is what the list edits, so a connection starts by reading it,
 	 * unless the list holds changes this device never got (the sync bar then offers Write and Read).
 	 */
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
@@ -382,7 +382,7 @@ class DevicePeqService {
 
 	/**
 	 * Switch the device to what Device EQ picked: `p<id>` for a preset, `on`, or `off`. A preset
-	 * picked is then read (decision 25), unless the list holds changes not written yet.
+	 * picked is then read, unless the list holds changes not written yet.
 	 */
 	async switchTo(value: string): Promise<void> {
 		const conn = devicePeqStore.connection;

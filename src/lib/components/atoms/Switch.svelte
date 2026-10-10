@@ -1,7 +1,7 @@
 <!--
 	Copied from modernGraphTool src/lib/components/atoms/Switch.svelte @ 23ddc4dd. uniPEQ: under
 	`touch:` an `sm` switch grows to `md`, and `labelSide="start"` puts the label first, filling the
-	row, as Android lists do (decision 22).
+	row, as Android lists do.
 -->
 <script lang="ts">
 	import { Switch, Label, useId, type WithoutChildrenOrChild } from 'bits-ui';

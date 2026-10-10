@@ -1,5 +1,5 @@
 /**
- * The demo device (rebuild decision 2): an app-local eqcaps profile and a simulated USB HID device
+ * The demo device: an app-local eqcaps profile and a simulated USB HID device
  * that speaks `fiio-usb-hid`, so the zero-hardware path runs the real bridge, `fit` and push path.
  *
  * The simulation keeps the device's state for the page's lifetime, so a write survives a

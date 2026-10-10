@@ -1,8 +1,8 @@
 <!--
-	The EQ tab's sync bar (decision 22): whether the device has the EQ on screen, always in view at
+	The EQ tab's sync bar: whether the device has the EQ on screen, always in view at
 	the bottom, and the one action that would change that (Write, Review, Reconnect). An auto-write
 	waiting to fire shows a ring that runs out with the delay. Hidden before any device; after a
-	disconnect it says so and offers Connect (decision 23). It is the
+	disconnect it says so and offers Connect. It is the
 	device's one status line (device-peq invariant 6): the live region screen readers hear.
 -->
 <script lang="ts">

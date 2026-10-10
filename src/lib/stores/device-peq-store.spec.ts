@@ -63,7 +63,7 @@ describe('devicePeqStore', () => {
 		expect(devicePeqStore.activeSlot).toBe(0);
 	});
 
-	it('writes only user presets, and never retargets to one (decisions 1 and 10)', () => {
+	it('writes only user presets, and never retargets to one', () => {
 		devicePeqStore.setConnected(connection(), 0);
 		expect(devicePeqStore.writableSlots.map((s) => s.name)).toEqual(['USER1', 'USER2', 'USER3']);
 		expect(devicePeqStore.targetWritable).toBe(false);
@@ -111,7 +111,7 @@ describe('devicePeqStore', () => {
 		expect(devicePeqStore.knownDevice).toBeNull();
 	});
 
-	describe('unwritten changes and editing (decision 25)', () => {
+	describe('unwritten changes and editing', () => {
 		const band = (gain: number) => ({ type: 'PK' as const, freq: 1000, gain, q: 1 });
 
 		function connectedAndRead() {

@@ -39,7 +39,7 @@
 		link: 'text-primary underline-offset-4 hover:underline'
 	};
 
-	// uniPEQ: under `touch:` (a finger, decision 22) every size grows to a touch target and turns
+	// uniPEQ: under `touch:` (a finger) every size grows to a touch target and turns
 	// pill-shaped: `md` and `icon` are 48 px, `sm` and `icon-sm` 40 px, `xs` and `icon-xs` 32 px
 	// (only for a control that sits inside a larger tappable row).
 	const sizeClasses = {

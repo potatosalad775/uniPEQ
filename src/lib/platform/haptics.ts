@@ -1,5 +1,5 @@
 /**
- * Haptic feedback for device writes (decision 22): a light tick when a write lands, an error buzz
+ * Haptic feedback for device writes: a light tick when a write lands, an error buzz
  * when one fails. Native only, and loaded on first use; a no-op on the web.
  */
 import { isNative } from './native';

@@ -5,7 +5,7 @@
  * USB HID, USB / Bluetooth serial and BLE devices are driven by `@potatosalad775/eqcaps-device-bridge`
  * and described by their eqcaps profile, over the browser's WebHID / Web Serial / Web Bluetooth or
  * the Android DeviceIo plugin. The UI never needs to know which. (modernGraphTool's network devices
- * are left out: rebuild decision 6.)
+ * are left out for now.)
  */
 import type { Profile } from '@potatosalad775/eqcaps-core';
 import type {

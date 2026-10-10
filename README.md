@@ -13,8 +13,8 @@ uniPEQ doesn't carry its own device list or protocol code. It runs on
 works here; a missing one is added there.
 
 > **Status:** USB HID devices work end to end (connect, read, edit on the graph, write, presets) in
-> Chrome / Edge and in the Android app. Serial and Bluetooth devices are not wired up yet. Design:
-> [ARCHITECTURE.md](ARCHITECTURE.md); decisions and open items: [docs/rebuild-plan.md](docs/rebuild-plan.md).
+> Chrome / Edge and in the Android app. Serial and Bluetooth devices are not wired up yet. Design
+> and open items: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Platforms
 
@@ -30,59 +30,22 @@ either, which is why Android gets a native app rather than a web page.
 
 ## Getting started
 
-Requirements: Node.js 20.19 or newer. For Android, also the Android SDK (Android Studio installs
-it) and a phone with USB debugging, or an emulator.
+Requirements: Node.js 20.19 or newer.
 
 ```sh
 npm install
 npm run dev          # http://localhost:5173
 ```
 
-Open it in Chrome or Edge, plug in a supported device and press **Connect USB device**.
+Open it in Chrome or Edge, plug in a supported device and press **Connect USB device**, or try the
+demo device without one.
 
-### Android
+For the Android app, plug in a phone with USB debugging (or start an emulator) and run
+`npm run android`: it builds, installs and starts the debug app. Plug the audio device into the
+phone (a USB-C dongle, or through an OTG adapter) and connect; Android asks for permission the
+first time.
 
-Connect a phone with USB debugging on (or pair one over Wi-Fi with `adb pair` / `adb connect`), or
-start an emulator, then:
-
-```sh
-npm run android
-```
-
-This builds the web app, syncs it into the Android project, builds the debug APK, installs it and
-starts it. Options:
-
-```sh
-npm run android -- --serial <id>   # pick a device when several are connected (see `adb devices`)
-npm run android -- --skip-web      # reuse the last web build (only native code changed)
-npm run android -- --no-launch     # install without starting
-```
-
-The SDK is found through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `android/local.properties` or the
-default install location. Gradle downloads its own JDK (Azul Zulu 21) if it isn't installed, so
-`JAVA_HOME` doesn't matter.
-
-Plug the audio device into the phone (a USB-C dongle, or through an OTG adapter), open the app and
-press **Connect USB device**; Android asks for permission the first time.
-
-## Scripts
-
-| Command                     | What it does                                                    |
-| --------------------------- | --------------------------------------------------------------- |
-| `npm run dev`               | Dev server                                                      |
-| `npm run build`             | Static build into `dist/`                                       |
-| `npm test`                  | Unit tests (Node) and component tests (headless Chromium)       |
-| `npm run check`             | Type check                                                      |
-| `npm run lint`              | Prettier and ESLint (`npm run format` fixes formatting)         |
-| `npm run android`           | Build, install and start the Android debug app                  |
-| `npm run android:sync`      | Web build + `cap sync android` only, for working in Android Studio |
-| `npm run android:sync:debug` | The same with the debug-only UI (DEBUG badge, HID spike hook) |
-| `npm run data:snapshot`     | Refresh the eqcaps data bundled for offline first launches      |
-| `npm run android:hid-spike` | Low-level USB HID check on a running debug app                  |
-| `npm run release -- patch`  | Bump, tag and publish a GitHub release; CI builds web, Play and APK |
-
-Component tests run in Playwright's Chromium; run `npx playwright install chromium` once if it
-isn't installed.
+Tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How it fits together
 
@@ -91,7 +54,7 @@ src/
 ├── routes/                 # one route per tab: EQ, Presets, Settings
 └── lib/
     ├── components/         # atoms (Button, Switch, …), layout shell, device panel
-    ├── device-peq/         # connect flows, preset reachability, writable presets, errors
+    ├── device-peq/         # connect flows, push plan, sync status, demo device
     ├── eq/                 # filter model (eqcaps type codes) and biquad response math
     ├── services/           # eqcaps client, device service, presets, logger, undo/redo
     ├── stores/             # app state as Svelte 5 rune classes
@@ -116,10 +79,7 @@ Capacitor 8, Vitest.
 
 - A device that doesn't connect, or limits that look wrong: report it to
   [eqcaps](https://github.com/potatosalad775/eqcaps/issues) — the device panel links there.
-- Code conventions and project notes: [CLAUDE.md](CLAUDE.md). Shared UI and device code comes
-  from [modernGraphTool](https://github.com/potatosalad775/modernGraphTool); copied files name
-  their source in a header comment.
-- Before a pull request: `npm run check`, `npm run lint` and `npm test`.
+- Everything else: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

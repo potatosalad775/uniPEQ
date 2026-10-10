@@ -1,6 +1,6 @@
 <!--
 	The preamp, by the profile's `preamp.mode` (eqcaps SPEC §9, `preampControl`), as the first row
-	of the EQ tab's band card. Decision 23: one row in the band rows' shape (an icon where a band
+	of the EQ tab's band card: one row in the band rows' shape (an icon where a band
 	has its number, the level in the gain column, "Auto" in the Q column, and the warning flag when
 	it may clip); tapping it opens `PreampEditor`, in a sheet on a phone and under the row with
 	`inlineEditor` (wide).
@@ -29,7 +29,7 @@
 	const clips = $derived(control.kind === 'slider' && eqStore.preamp > needed + 0.05);
 
 	let open = $state(false);
-	// Read-only while the device is away (decision 25): its editor closes.
+	// Read-only while the device is away: its editor closes.
 	$effect(() => {
 		if (!eqConstraintStore.editable) open = false;
 	});

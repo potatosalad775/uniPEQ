@@ -109,7 +109,7 @@ export function parseApo(text: string): ApoImport {
 		if (!match) continue;
 
 		const [, onOff, rawType, rest] = match;
-		// An OFF band plays nothing, and the app has no switched-off bands (decision 22): leave it out.
+		// An OFF band plays nothing, and the app has no switched-off bands: leave it out.
 		if (onOff?.toUpperCase() === 'OFF') continue;
 		const name = rawType.toUpperCase();
 		const type = TYPE_FROM_APO[name];

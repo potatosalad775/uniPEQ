@@ -1,5 +1,5 @@
 // Adapted from modernGraphTool src/lib/utils/eq-constraint.ts @ 23ddc4dd: the app model already
-// speaks eqcaps type codes (decision 5), bands have no channel and no unset fields, and the
+// speaks eqcaps type codes, bands have no channel and no unset fields, and the
 // software-profile builders and AutoEQ envelope helpers are left out.
 import {
 	assign,
@@ -218,7 +218,7 @@ export function newBand(filters: EqFilter[], profile: Profile): EqFilter {
 }
 
 /**
- * `filter` made flat where it sits (decision 23: a device's bands are reset, not removed): a 0 dB
+ * `filter` made flat where it sits (a device's bands are reset, not removed): a 0 dB
  * peak at Q 1 on the same frequency, as Fit's padding bands are, or the slot's first type where it
  * takes no peak. Projected onto the slot.
  */
