@@ -51,7 +51,7 @@
 	aria-label={m.eq_toolbar()}
 >
 	<h1 class="sr-only">UniPEQ</h1>
-	<div class="min-w-0 flex-1 wide:hidden -ml-2">
+	<div class="-ml-2 min-w-0 flex-1 wide:hidden">
 		<DeviceChip onclick={onDevice} />
 	</div>
 	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">UniPEQ</p>
