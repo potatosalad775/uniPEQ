@@ -4,6 +4,9 @@ Parametric EQ control for USB and Bluetooth audio devices: DACs, dongles, headph
 a built-in hardware EQ. Read the EQ a device holds, edit it, and write it back — from a desktop
 browser or an Android phone.
 
+**Web app:** <https://potatosalad775.github.io/uniPEQ/> (Chrome or Edge on a computer; see
+[Platforms](#platforms)).
+
 uniPEQ doesn't carry its own device list or protocol code. It runs on
 [eqcaps](https://github.com/potatosalad775/eqcaps), a database of what each device's EQ accepts
 (bands, ranges, filter types, presets) plus the protocols that drive them. A device eqcaps knows
@@ -19,8 +22,11 @@ works here; a missing one is added there.
 | ------------------------------- | ------------------------------------------------ |
 | Chrome / Edge on a computer     | WebHID (Web Serial and Web Bluetooth are planned) |
 | Android app                     | A Capacitor plugin that claims the USB HID interface directly |
+| Firefox, Safari (any platform)  | None: no WebHID. The app opens, but can't connect to a device |
 
-Android Chrome has no WebHID, which is why Android gets a native app rather than a web page.
+WebHID exists only in Chromium-based browsers on desktop, so Firefox and Safari can't reach USB
+devices; the device panel says so in place of the Connect button. Android Chrome has no WebHID
+either, which is why Android gets a native app rather than a web page.
 
 ## Getting started
 
