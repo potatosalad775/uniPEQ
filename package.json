@@ -21,6 +21,7 @@
 		"android": "node scripts/android-install.mjs",
 		"android:sync": "vite build && cap sync android",
 		"android:sync:debug": "vite build --mode debug && cap sync android",
+		"android:release": "node scripts/android-release.mjs",
 		"android:hid-spike": "node scripts/android-hid-spike.mjs"
 	},
 	"dependencies": {

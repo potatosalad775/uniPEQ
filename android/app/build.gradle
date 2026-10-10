@@ -1,4 +1,20 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
+
+// The version lives in package.json only (`npm version …`). versionName is it verbatim;
+// versionCode is MAJOR*10000 + MINOR*100 + PATCH, so 1.2.3 → 10203 and every bump raises it.
+def appVersion = new JsonSlurper().parse(rootProject.file('../package.json')).version as String
+def versionParts = (appVersion =~ /^(\d+)\.(\d+)\.(\d+)/)
+if (!versionParts.find()) throw new GradleException("package.json version '$appVersion' is not MAJOR.MINOR.PATCH")
+def (major, minor, patch) = (1..3).collect { versionParts.group(it) as int }
+if (minor > 99 || patch > 99) throw new GradleException("versionCode scheme needs MINOR and PATCH ≤ 99 ($appVersion)")
+
+// Release signing: android/key.properties (gitignored; see key.properties.example). Written by
+// hand locally, by the release workflow in CI. Without it a release build comes out unsigned.
+def keyProperties = new Properties()
+def keyPropertiesFile = rootProject.file('key.properties')
+if (keyPropertiesFile.exists()) keyPropertiesFile.withInputStream { keyProperties.load(it) }
 
 android {
     namespace = "kr.potatosalad775.unipeq"
@@ -7,8 +23,8 @@ android {
         applicationId "kr.potatosalad775.unipeq"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode major * 10000 + minor * 100 + patch
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +32,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (keyPropertiesFile.exists()) {
+            release {
+                storeFile rootProject.file(keyProperties['storeFile'])
+                storePassword keyProperties['storePassword']
+                keyAlias keyProperties['keyAlias']
+                keyPassword keyProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keyPropertiesFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

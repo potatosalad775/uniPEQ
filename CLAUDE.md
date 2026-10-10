@@ -30,6 +30,17 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
   foojay has no JetBrains 21. Regenerate with
   `./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=azul`. The SDK comes from `ANDROID_HOME` or
   `android/local.properties` (gitignored, `sdk.dir`).
+- Release: `npm run android:release [-- --apk --skip-web]` (`scripts/android-release.mjs`): release
+  web build + `cap sync` + signed `bundleRelease` (`.aab` for Play). Signing from
+  `android/key.properties` (gitignored; template `android/key.properties.example`, keystore
+  `keystore.jks` in the repo root, also gitignored). `.github/workflows/release.yml` does the same on
+  a published GitHub release (tag `vX.Y.Z` must match package.json) from `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` secrets.
+- Version: `package.json` only (`npm version patch|minor|major`). `android/app/build.gradle` reads it:
+  versionName verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`; Settings shows it via
+  `__APP_VERSION__`. `native/device-io`'s own version is internal and never changes.
+- `npm run icons` renders `resources/icon.svg` into `static/favicon.png`, `static/apple-touch-icon.png`
+  and `resources/play-store-icon.png` (512 px, Play listing). Launcher mipmaps are separate.
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull; only
   in a debug-mode web build)

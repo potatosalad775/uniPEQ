@@ -1,0 +1,6 @@
+# Release signing for `npm run android:release`. Copy to key.properties (gitignored) and fill in.
+# storeFile is relative to this android/ directory.
+storeFile=../keystore.jks
+storePassword=
+keyAlias=
+keyPassword=

@@ -1,0 +1,85 @@
+name: Android release
+
+# Builds the signed Play bundle (.aab) and APK. A published GitHub release (tag vX.Y.Z, matching
+# package.json) gets both attached; a manual run keeps them as workflow artifacts.
+#
+# Repository secrets:
+#   ANDROID_KEYSTORE_BASE64    base64 of the upload keystore (`base64 -i keystore.jks | pbcopy`)
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Zulu 21: what android/gradle/gradle-daemon-jvm.properties asks for (see CLAUDE.md).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 21
+          cache: gradle
+
+      - name: Check the tag matches package.json
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$version" ]; then
+            echo "::error::Release tag $TAG doesn't match package.json ($version)"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Write key.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/keystore.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+
+      - run: npm run android:release -- --apk
+
+      - name: Name the outputs after the version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          mkdir out
+          cp android/app/build/outputs/bundle/release/app-release.aab "out/uniPEQ-$version.aab"
+          cp android/app/build/outputs/apk/release/app-release.apk "out/uniPEQ-$version.apk"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: uniPEQ-android
+          path: out/*
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" out/* --clobber

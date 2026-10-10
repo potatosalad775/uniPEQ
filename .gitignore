@@ -13,6 +13,10 @@ Thumbs.db
 UserInterfaceState.xcuserstate
 $RECYCLE.BIN/
 
+*.jks
+*.keystore
+/android/key.properties
+
 *.log
 log.txt
 npm-debug.log*
