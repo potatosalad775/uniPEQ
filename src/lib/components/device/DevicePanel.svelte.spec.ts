@@ -33,7 +33,7 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 		canEnable: true,
 		slots: [
 			{ id: 0, name: 'Jazz' },
-			{ id: 4, name: 'USER1' },
+			{ id: 4, name: 'USER1', writable: true },
 			{ id: 10, name: 'BYPASS', bypass: true }
 		],
 		disconnectOnSave: false,

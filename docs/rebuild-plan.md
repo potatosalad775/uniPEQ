@@ -149,10 +149,9 @@ New:
       WebView's own HTTP cache (`max-age=600` + ETag) revalidates it, so the cost is still near
       zero. An eqcaps follow-up: if a mirror ever exposes `ETag`, the client's `If-None-Match`
       would trigger a preflight GitHub Pages refuses.
-    - Writable presets (decision 1) live in `src/lib/device-peq/writable.ts`: the user memories of
-      the 30 profiles that mix them with built-ins; every other profile is unrestricted.
-      `writable.spec.ts` checks the table against the snapshot. `writeTarget` is null on a
-      built-in preset, never retargeted (decision 10).
+    - Writable presets (decision 1) lived in `src/lib/device-peq/writable.ts` until eqcaps E1:
+      the user memories of the 30 profiles that mix them with built-ins; every other profile is
+      unrestricted. `writeTarget` is null on a built-in preset, never retargeted (decision 10).
     - Android connects without a chooser: `connectNativeHid` lists attached HID devices, keeps
       those the database matches or the bridge can guess, opens a single one after the system's
       USB permission prompt (a refusal reads as a cancelled chooser) and asks when there are
@@ -395,12 +394,10 @@ Code for these is done and checked in emulation; each needs a run on a phone wit
 
 ### eqcaps-side tasks
 
-- [ ] **E1** (decision 1): optional `writable` on `protocol.presets[]`. *eqcaps side done
-      2026-10-10 (eqcaps `8dbf2b4`, D48): format 1.1, SPEC §9 + §15, schema, `version-too-low`,
-      the bridge's `Slot.writable`, and marks on the 30 profiles of `device-peq/writable.ts`
-      (same ids; none confirmed on hardware). Left: push eqcaps and release it (owner, npm 2FA),
-      then here bump the eqcaps packages, `npm run data:snapshot`, and replace `writable.ts`'s
-      table with the flag (keep "nothing marked = unrestricted").*
+- [x] **E1** (decision 1): optional `writable` on `protocol.presets[]`. *Done 2026-10-10: eqcaps
+      format 1.1 (D48, eqcaps 0.3.0) marks the user memories of the 30 profiles that mix them with
+      built-ins (none confirmed on hardware yet); `devicePeqStore.writableSlots` reads the marks,
+      and `device-peq/writable.ts` is gone.*
 
 ### Other
 

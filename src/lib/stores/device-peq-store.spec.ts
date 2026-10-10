@@ -6,9 +6,9 @@ import { eqStore } from './eq-store.svelte';
 
 const KA17_SLOTS = [
 	{ id: 0, name: 'Jazz' },
-	{ id: 4, name: 'USER1' },
-	{ id: 8, name: 'USER2' },
-	{ id: 9, name: 'USER3' },
+	{ id: 4, name: 'USER1', writable: true },
+	{ id: 8, name: 'USER2', writable: true },
+	{ id: 9, name: 'USER3', writable: true },
 	{ id: 10, name: 'BYPASS', bypass: true }
 ];
 
@@ -72,6 +72,13 @@ describe('devicePeqStore', () => {
 
 		devicePeqStore.played(4);
 		expect(devicePeqStore.writeTarget).toEqual({});
+	});
+
+	it('writes to every preset but the bypass one when the profile marks none', () => {
+		const slots = KA17_SLOTS.map(({ id, name, bypass }) => ({ id, name, bypass }));
+		devicePeqStore.setConnected(connection({ slots }), 0);
+		expect(devicePeqStore.writableSlots.map((s) => s.id)).toEqual([0, 4, 8, 9]);
+		expect(devicePeqStore.targetWritable).toBe(true);
 	});
 
 	it('reaches a preset the device is not on only when the protocol names slots', () => {

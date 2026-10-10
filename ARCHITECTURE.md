@@ -177,9 +177,9 @@ opens only when the attempt needs a pick or has something to say.
   cached in localStorage, so a fixed or added profile reaches users without an app update.
 - The embedded snapshot (`src/lib/data/eqcaps-bundle.json`, `npm run data:snapshot` before a
   release) is used only when neither network nor cache answers: an offline first launch.
-- **Writable presets** (decision 1): eqcaps can't yet say which presets the user may write, so
-  `device-peq/writable.ts` lists the user memories of the profiles that mix them with built-ins,
-  checked against the snapshot by its spec. It goes away with eqcaps task E1.
+- **Writable presets** (decision 1): eqcaps marks the user memories `writable` (format 1.1) where
+  a list mixes them with built-in curves; `devicePeqStore.writableSlots` takes the marked ones, or
+  every preset but the bypass one when none is marked.
 - **Demo device** (decision 2): an app-local profile and a simulated `fiio-usb-hid` device that runs
   the real bridge code. Offered only in dev and debug builds (`isDebugBuild`,
   `platform/build.ts`).
@@ -356,7 +356,7 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 - **Protocols are tested in eqcaps** (handler fixtures, conformance vectors). The app tests what it
   adds: connect flows against the real bridge with mocked choosers and a fake plugin
   (`connect.spec.ts`), the native transport against a fake plugin, the demo device end to end through
-  `openDevice` (`demo.spec.ts`), the push plan, sync status, the writable table against the snapshot,
+  `openDevice` (`demo.spec.ts`), the push plan, sync status,
   the preset file and APO formats, graph gestures, the editor's domains and the stores.
 - **On hardware**, by hand: the open checks are listed in
   [docs/rebuild-plan.md](docs/rebuild-plan.md#open). `npm run android:hid-spike` runs a raw pull through
@@ -372,7 +372,6 @@ Open items: [docs/rebuild-plan.md](docs/rebuild-plan.md#open). In short:
 - **Phase 5:** Serial and Bluetooth in the browser (postponed).
 - **Phase 6:** the full Android plugin: serial, BLE and SPP postponed; launch-on-attach (a
   `device_filter.xml` from eqcaps vendor ids) not now.
-- **eqcaps E1:** a `writable` flag on presets, then delete `device-peq/writable.ts`.
 - **Network devices** (decision 6): modernGraphTool's `device-peq/network.ts` is the starting point.
 
 ---

@@ -10,7 +10,6 @@
  */
 import { readRequest, writeRequest, type PresetRequest } from '$lib/device-peq/preset';
 import type { DeviceConnection, PeqCapabilities } from '$lib/device-peq/types';
-import { writableSlots } from '$lib/device-peq/writable';
 import { eqFiltersEqual, type EqFilter } from '$lib/eq/model';
 import type { Filter, Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
@@ -134,10 +133,14 @@ class DevicePeqStore {
 		return this.connection?.device.capabilities.slots.find((s) => s.bypass) ?? null;
 	}
 
-	/** The memories a write may target (decision 1): user presets, not built-in curves. */
+	/**
+	 * The memories a write may target (decision 1): the user presets eqcaps marks `writable`, not
+	 * the built-in curves. A profile that marks none (all memories, a guessed device) leaves every
+	 * preset but the bypass one writable (eqcaps SPEC §9).
+	 */
 	get writableSlots(): Slot[] {
-		const c = this.connection;
-		return c ? writableSlots(c.profileId, c.device.capabilities.slots) : [];
+		const marked = this.slots.filter((s) => s.writable);
+		return marked.length ? marked : this.slots;
 	}
 
 	/** Whether the target preset is one the user may write; true for a device without presets. */
