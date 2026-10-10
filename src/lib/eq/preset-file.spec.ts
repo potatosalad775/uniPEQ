@@ -104,7 +104,11 @@ describe('createPreset', () => {
 		const preset = createPreset({ name: 'Mine', filters, pregain: 'auto', deviceId: 'fiio-ka17' });
 		expect(preset.filters).toEqual(filters);
 		expect(preset.filters[0]).not.toBe(filters[0]);
-		expect(preset.source).toEqual({ deviceId: 'fiio-ka17', app: 'uniPEQ', appVersion: '0.0.1' });
+		expect(preset.source).toEqual({
+			deviceId: 'fiio-ka17',
+			app: 'uniPEQ',
+			appVersion: __APP_VERSION__
+		});
 		expect(preset.createdAt).toBe(preset.updatedAt);
 	});
 });
