@@ -164,12 +164,16 @@ jobs:
       - run: npm run android:release
 
       - name: Name the bundle after the version
+        id: bundle
         run: |
           mkdir out
           cp android/app/build/outputs/bundle/release/app-release.aab \
             "out/uniPEQ-${{ needs.version.outputs.version }}.aab"
 
+      # Each output depends only on the build it ships, not on the steps before it: a failed Play
+      # upload still keeps the bundle and still builds and attaches the sideload APK.
       - name: Upload to Play
+        id: play
         if: github.event_name == 'release' && env.HAS_PLAY_KEY == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
@@ -181,7 +185,9 @@ jobs:
           status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
 
       - name: Keep the bundle as a workflow artifact
-        if: github.event_name != 'release' || env.HAS_PLAY_KEY != 'true'
+        if: >-
+          !cancelled() && steps.bundle.outcome == 'success' && (github.event_name != 'release' ||
+          env.HAS_PLAY_KEY != 'true' || steps.play.outcome == 'failure')
         uses: actions/upload-artifact@v7
         with:
           name: uniPEQ-${{ needs.version.outputs.version }}-aab
@@ -190,14 +196,15 @@ jobs:
           retention-days: 7
 
       - name: Build the sideload APK
-        if: env.HAS_SIDELOAD_KEY == 'true'
+        id: apk
+        if: ${{ !cancelled() && steps.bundle.outcome == 'success' && env.HAS_SIDELOAD_KEY == 'true' }}
         run: |
           npm run android:release -- --sideload
           cp android/app/build/outputs/apk/release/app-release.apk \
             "out/uniPEQ-${{ needs.version.outputs.version }}.apk"
 
       - name: Attach the APK to the release
-        if: github.event_name == 'release' && env.HAS_SIDELOAD_KEY == 'true'
+        if: ${{ !cancelled() && steps.apk.outcome == 'success' && github.event_name == 'release' }}
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
@@ -206,7 +213,7 @@ jobs:
             --repo "${{ github.repository }}" --clobber
 
       - name: Keep the APK as a workflow artifact
-        if: github.event_name != 'release' && env.HAS_SIDELOAD_KEY == 'true'
+        if: ${{ !cancelled() && steps.apk.outcome == 'success' && github.event_name != 'release' }}
         uses: actions/upload-artifact@v7
         with:
           name: uniPEQ-${{ needs.version.outputs.version }}-apk
