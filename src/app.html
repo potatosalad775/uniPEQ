@@ -10,6 +10,10 @@
 		<!-- Rendered from resources/icon.svg by `npm run icons`. -->
 		<link rel="icon" type="image/png" href="%sveltekit.assets%/favicon.png" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<!-- base-100 of each theme (src/lib/styles/theme.css), as hex. -->
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1d232a" />
 		<!--
 			Applies the saved theme before first paint, so a dark-theme launch doesn't flash light.
 			Mirrors resolveDark() in $lib/stores/settings-store.svelte.ts and its storage key.

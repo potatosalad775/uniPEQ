@@ -236,5 +236,7 @@
 	"eq_empty_body": "uniPEQ는 DAC, 앰프, 헤드폰 안의 EQ를 편집합니다. 기기를 연결하면 밴드 수와 제한도 함께 불러옵니다.",
 	"sync_disconnected": "{device} 연결이 끊어졌습니다. 편집하려면 다시 연결하세요.",
 	"sync_connect": "연결",
-	"presets_apply_needs_device": "프리셋을 불러오려면 기기를 연결하세요"
+	"presets_apply_needs_device": "프리셋을 불러오려면 기기를 연결하세요",
+	"update_ready": "uniPEQ 새 버전이 준비되었습니다.",
+	"update_reload": "새로고침"
 }

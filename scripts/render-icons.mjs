@@ -4,6 +4,10 @@
 //
 //   static/favicon.png             96 px, rounded corners (browser tabs show it as is)
 //   static/apple-touch-icon.png    180 px, square (iOS rounds it)
+//   static/icon-192.png            192 px, rounded (web app manifest, `any`)
+//   static/icon-512.png            512 px, rounded (web app manifest, `any`)
+//   static/icon-maskable-512.png   512 px, square (web app manifest, `maskable`: the mark sits
+//                                  inside the 80 % safe zone, so the launcher's mask can't clip it)
 //   resources/play-store-icon.png  512 px, square (Play applies its own mask)
 //
 //   npm run icons
@@ -21,6 +25,9 @@ const svg = readFileSync(join(root, 'resources', 'icon.svg'), 'utf8');
 const targets = [
 	{ file: 'static/favicon.png', size: 96, radius: 0.22 },
 	{ file: 'static/apple-touch-icon.png', size: 180, radius: 0 },
+	{ file: 'static/icon-192.png', size: 192, radius: 0.22 },
+	{ file: 'static/icon-512.png', size: 512, radius: 0.22 },
+	{ file: 'static/icon-maskable-512.png', size: 512, radius: 0 },
 	{ file: 'resources/play-store-icon.png', size: 512, radius: 0 }
 ];
 

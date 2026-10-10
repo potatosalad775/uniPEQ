@@ -100,6 +100,7 @@ Rules:
 uniPEQ/
 ├── src/
 │   ├── routes/                 # +page.svelte (EQ), presets/, settings/; ssr = false
+│   ├── service-worker.ts       # web build's offline cache (registered by platform/pwa)
 │   └── lib/
 │       ├── components/
 │       │   ├── atoms/          # Button, Switch, ListRow, Sheet, Menu, Slider, … (from modernGraphTool)
@@ -113,7 +114,8 @@ uniPEQ/
 │       ├── eq/                 # model, biquad, eq-constraint, eq-preamp, preset-file, eq-apo, graph-scale, nudge
 │       ├── services/           # device-peq-service, eqcaps-client, preset-storage, undo-redo-stack, logger
 │       ├── stores/             # rune-class stores (above)
-│       ├── platform/           # native.ts (back button, system bars), back-button, haptics, save-file, build
+│       ├── platform/           # native.ts (back button, system bars), pwa (service worker), back-button,
+│       │                       # haptics, save-file, build
 │       ├── transports/native/  # DeviceIo typings, native HidTransport, HID report descriptor parser
 │       ├── styles/theme.css    # semantic colour tokens
 │       └── data/               # eqcaps-bundle.json (offline snapshot)
@@ -289,6 +291,7 @@ logging with a log viewer (clear, export), the eqcaps data version and profile c
 - `preset-store` — index and bodies over `preset-storage`.
 - `settings-store` — theme, auto-write, logging; localStorage key `unipeq.settings`.
 - `notice-store` — the shell's toast.
+- `update-store` — a newer build is waiting; the shell's update prompt (`UpdatePrompt`).
 
 ### 8.5 Platform shell
 - Android back is a handler stack (`platform/back-button.ts`): overlays register with `onBack()`;
@@ -298,6 +301,13 @@ logging with a log viewer (clear, export), the eqcaps data version and profile c
 - Haptics on native only (a tick per write, an error buzz on failure).
 - Dev and debug builds show a DEV / DEBUG badge in each header and the demo device; a release
   (`vite build`, production mode) drops both.
+- The web build is an installable PWA: `static/manifest.webmanifest` (icons from
+  `npm run icons`) and `src/service-worker.ts`, registered by `platform/pwa.ts` on the web only
+  (not on native, not in `vite dev`). The worker precaches the shell, chunks and `static/` per
+  build version and answers every navigation with the cached shell, so the app runs offline;
+  Pretendard's subsets are cached as they load. A newer deploy's worker waits: the page checks
+  hourly and on becoming visible, and `UpdatePrompt` offers Reload, never automatic, because a
+  reload drops the device connection and unwritten edits.
 
 ---
 

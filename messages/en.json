@@ -237,5 +237,7 @@
 	"eq_empty_body": "uniPEQ edits the EQ inside your DAC, amp or headphones. Connect one to start: its bands and limits come with it.",
 	"sync_disconnected": "{device} is disconnected. Connect it to edit.",
 	"sync_connect": "Connect",
-	"presets_apply_needs_device": "Connect a device to load a preset"
+	"presets_apply_needs_device": "Connect a device to load a preset",
+	"update_ready": "A new version of uniPEQ is ready.",
+	"update_reload": "Reload"
 }

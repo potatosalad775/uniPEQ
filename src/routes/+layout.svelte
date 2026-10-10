@@ -16,6 +16,10 @@
 	onMount(() => {
 		document.documentElement.lang = getLocale();
 		installNative();
+		// Web: offline cache and the update prompt. The APK carries its own files.
+		if (!isNative && !import.meta.env.DEV) {
+			void import('$lib/platform/pwa').then((mod) => mod.installServiceWorker());
+		}
 		// Revalidate the eqcaps index in the background (decision 3), so a connect finds it ready.
 		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());
 		// Android: plugging a device in connects it, unplugging it disconnects (Phase 6).
