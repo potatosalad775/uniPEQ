@@ -12,7 +12,8 @@
 //
 //   npm run icons
 //
-// The Android launcher icons (android/app/src/main/res/mipmap-*) are not rendered from it.
+// The Android launcher icons (android/app/src/main/res/mipmap-*) are not rendered from it, and the
+// splash icon (res/drawable/splash_icon.xml) is the same mark redrawn as a vector drawable.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

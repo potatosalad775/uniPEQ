@@ -53,7 +53,10 @@ done; Phases 5 and 6 postponed). Work happens on `main`.
   versionName verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`; Settings shows it via
   `__APP_VERSION__`. `native/device-io`'s own version is internal and never changes.
 - `npm run icons` renders `resources/icon.svg` into `static/favicon.png`, `static/apple-touch-icon.png`
-  and `resources/play-store-icon.png` (512 px, Play listing). Launcher mipmaps are separate.
+  and `resources/play-store-icon.png` (512 px, Play listing). Launcher mipmaps are separate. The
+  Android splash is `res/drawable/splash_icon.xml` (the mark as a vector, by hand from `icon.svg`)
+  on `splash_background` (`values` / `values-night`, the app's base-100), drawn by
+  core-splashscreen through the `AppTheme.NoActionBarLaunch` style on every API level.
 - `npm run android:hid-spike -- --bands 8` — Phase 0 USB HID spike on the running debug app
   (adb + DevTools protocol → `window.uniPeqHidSpike`, which runs the eqcaps handler's pull; only
   in a debug-mode web build)

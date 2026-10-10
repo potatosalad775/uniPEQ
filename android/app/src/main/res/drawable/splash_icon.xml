@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The splash screen's icon: the mark of resources/icon.svg (two T's back to back, in its frame
+    turned 45° and scaled by 1/√2), without the icon's white square and grid. A splash icon without
+    a background is 288 dp, and only its centre 192 dp circle shows; the mark is drawn 2.5× the
+    icon's dp, about 125 dp across.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <group
+        android:translateX="144"
+        android:translateY="144"
+        android:scaleX="2.5"
+        android:scaleY="2.5">
+        <group
+            android:rotation="-45"
+            android:scaleX="0.70710678"
+            android:scaleY="0.70710678">
+            <path android:pathData="M5,-25H15V-5H35V5H15V25H5ZM-5,-25H-15V-5H-35V5H-15V25H-5Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="linear"
+                        android:startX="-35"
+                        android:startY="0"
+                        android:endX="35"
+                        android:endY="0"
+                        android:startColor="#7FD4FF"
+                        android:endColor="#4EADFF" />
+                </aapt:attr>
+            </path>
+        </group>
+    </group>
+</vector>

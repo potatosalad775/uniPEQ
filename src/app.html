@@ -26,6 +26,18 @@
 				document.documentElement.classList.toggle('dark', dark);
 			} catch (e) {}
 		</script>
+		<!--
+			base-100 before the stylesheet loads, so the Android splash (the same colours) hands over
+			to the page without the WebView's blank canvas, black in dark mode, in between.
+		-->
+		<style>
+			html {
+				background: #f8fafc;
+			}
+			html.dark {
+				background: #1d232a;
+			}
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

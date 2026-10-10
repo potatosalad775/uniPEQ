@@ -404,7 +404,9 @@ Code for these is done and checked in emulation; each needs a run on a phone wit
 
 ### Other
 
-- [ ] Splash screen: still the prototype's white PNGs, light only.
+- [x] Splash screen (2026-10-10): the mark from `resources/icon.svg` as a vector on the app's
+      base-100, light or dark with the system, the Android 12 way on every API level (androidx
+      core-splashscreen); the old prototype's white PNGs are gone.
 
 ## Risks
 

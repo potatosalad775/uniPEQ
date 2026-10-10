@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's light base-100, as src/app.html's theme-color. values-night has the dark one. -->
+    <color name="splash_background">#F8FAFC</color>
+</resources>

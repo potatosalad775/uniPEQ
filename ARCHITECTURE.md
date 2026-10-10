@@ -373,7 +373,6 @@ Open items: [docs/rebuild-plan.md](docs/rebuild-plan.md#open). In short:
 - **Phase 6:** the full Android plugin: serial, BLE and SPP postponed; launch-on-attach (a
   `device_filter.xml` from eqcaps vendor ids) not now.
 - **eqcaps E1:** a `writable` flag on presets, then delete `device-peq/writable.ts`.
-- **Splash screen:** the Android one is still the prototype's white PNGs.
 - **Network devices** (decision 6): modernGraphTool's `device-peq/network.ts` is the starting point.
 
 ---
