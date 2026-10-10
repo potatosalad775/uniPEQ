@@ -46,38 +46,40 @@
 <svelte:window {onkeydown} />
 
 <header
-	class="flex min-h-14 items-center gap-1 px-4 wide:max-w-6xl"
+	class="flex min-h-14 items-center gap-1 pr-1 pl-2 wide:max-w-6xl"
 	role="toolbar"
 	aria-label={m.eq_toolbar()}
 >
 	<h1 class="sr-only">UniPEQ</h1>
-	<div class="-ml-2 min-w-0 flex-1 wide:hidden">
+	<div class="min-w-0 flex-1 wide:hidden">
 		<DeviceChip onclick={onDevice} />
 	</div>
 	<p class="hidden flex-1 text-lg font-semibold wide:block" aria-hidden="true">UniPEQ</p>
 	<BuildBadge />
 	<Button
 		title={m.eq_undo()}
-		size="icon"
+		size="icon-sm"
 		variant="ghost"
+		class="p-2"
 		disabled={!eqConstraintStore.editable || !eqStore.canUndo}
 		onclick={() => eqStore.undo()}
 	>
-		<Undo2 class="size-4" aria-hidden="true" />
+		<Undo2 class="-mt-0.5 size-5" aria-hidden="true" />
 	</Button>
 	<Button
 		title={m.eq_redo()}
-		size="icon"
+		size="icon-sm"
 		variant="ghost"
+		class="p-2"
 		disabled={!eqConstraintStore.editable || !eqStore.canRedo}
 		onclick={() => eqStore.redo()}
 	>
-		<Redo2 class="size-4" aria-hidden="true" />
+		<Redo2 class="-mt-0.5 size-5" aria-hidden="true" />
 	</Button>
 	<Menu>
 		{#snippet trigger(props)}
-			<Button {...props} title={m.eq_more()} size="icon" variant="ghost">
-				<EllipsisVertical class="size-4" aria-hidden="true" />
+			<Button {...props} title={m.eq_more()} size="icon-sm" class="p-2" variant="ghost">
+				<EllipsisVertical class="size-5" aria-hidden="true" />
 			</Button>
 		{/snippet}
 		<MenuItem disabled={!eqConstraintStore.editable} onSelect={() => (pickerOpen = true)}>
