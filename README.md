@@ -79,6 +79,7 @@ press **Connect USB device**; Android asks for permission the first time.
 | `npm run android:sync:debug` | The same with the debug-only UI (demo device, DEBUG badge)     |
 | `npm run data:snapshot`     | Refresh the eqcaps data bundled for offline first launches      |
 | `npm run android:hid-spike` | Low-level USB HID check on a running debug app                  |
+| `npm run release -- patch`  | Bump, tag and publish a GitHub release; CI builds web, Play and APK |
 
 Component tests run in Playwright's Chromium; run `npx playwright install chromium` once if it
 isn't installed.

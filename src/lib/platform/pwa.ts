@@ -26,9 +26,12 @@ export async function installServiceWorker(): Promise<void> {
 	// controller it's the first install, which takes the page by itself.
 	const offer = (worker: ServiceWorker) => {
 		if (!serviceWorker.controller) return;
-		updateStore.offer(() => {
-			serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-			worker.postMessage({ type: 'skip-waiting' });
+		updateStore.offer({
+			kind: 'reload',
+			apply: () => {
+				serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+				worker.postMessage({ type: 'skip-waiting' });
+			}
 		});
 	};
 	if (registration.waiting) offer(registration.waiting);

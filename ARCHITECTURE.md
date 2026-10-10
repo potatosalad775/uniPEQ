@@ -291,7 +291,8 @@ logging with a log viewer (clear, export), the eqcaps data version and profile c
 - `preset-store` — index and bodies over `preset-storage`.
 - `settings-store` — theme, auto-write, logging; localStorage key `unipeq.settings`.
 - `notice-store` — the shell's toast.
-- `update-store` — a newer build is waiting; the shell's update prompt (`UpdatePrompt`).
+- `update-store` — a newer version (a waiting service worker, or a GitHub release for the sideload
+  APK) for the shell's `UpdatePrompt`.
 
 ### 8.5 Platform shell
 - Android back is a handler stack (`platform/back-button.ts`): overlays register with `onBack()`;
@@ -308,6 +309,12 @@ logging with a log viewer (clear, export), the eqcaps data version and profile c
   Pretendard's subsets are cached as they load. A newer deploy's worker waits: the page checks
   hourly and on becoming visible, and `UpdatePrompt` offers Reload, never automatic, because a
   reload drops the device connection and unwritten edits.
+- Updates on Android: Play updates its own installs. The sideload APK attached to GitHub releases
+  (app id `kr.potatosalad775.unipeq.sideload`, so it sits beside the Play app;
+  `VITE_DISTRIBUTION=github`, `distribution` in `platform/build.ts`) asks GitHub's
+  `releases/latest` at launch and on resume, at most every 6 hours (`platform/release-updates.ts`,
+  `services/release-check.ts`); a newer release with its APK attached shows in `UpdatePrompt` with
+  Download (the release page). A dismissed version isn't offered again.
 
 ---
 

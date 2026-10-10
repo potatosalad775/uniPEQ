@@ -8,6 +8,11 @@ declare global {
 		// interface Platform {}
 	}
 	const __APP_VERSION__: string;
+
+	interface ImportMetaEnv {
+		/** `github` for the sideloaded APK; see `distribution` in $lib/platform/build. */
+		readonly VITE_DISTRIBUTION?: string;
+	}
 }
 
 export {};

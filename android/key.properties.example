@@ -4,3 +4,10 @@ storeFile=../keystore.jks
 storePassword=
 keyAlias=
 keyPassword=
+
+# The sideload APK (`npm run android:release -- --sideload`, attached to GitHub releases): its own
+# key, not the upload key. Only needed to build it.
+sideload.storeFile=../sideload.jks
+sideload.storePassword=
+sideload.keyAlias=
+sideload.keyPassword=

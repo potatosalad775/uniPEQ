@@ -30,7 +30,11 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
   foojay has no JetBrains 21. Regenerate with
   `./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=azul`. The SDK comes from `ANDROID_HOME` or
   `android/local.properties` (gitignored, `sdk.dir`).
-- Release: `npm run android:release [-- --apk --skip-web]` (`scripts/android-release.mjs`): release
+- Cutting a release: `npm run release -- patch|minor|major|X.Y.Z [--prerelease]`
+  (`scripts/release.mjs`): checks a clean, up-to-date main, runs check + test, then `npm version`,
+  pushes the commit and tag and publishes the GitHub release with `gh`; the workflow below builds
+  everything from there.
+- Release builds: `npm run android:release [-- --apk --skip-web]` (`scripts/android-release.mjs`): release
   web build + `cap sync` + signed `bundleRelease` (`.aab` for Play). Signing from
   `android/key.properties` (gitignored; template `android/key.properties.example`, keystore
   `keystore.jks` in the repo root, also gitignored). `.github/workflows/release.yml` runs on a
@@ -38,9 +42,14 @@ Phases 5 and 6 postponed); what to copy from `../modernGraphTool`:
   GitHub Pages (`BASE_PATH=/uniPEQ` → `paths.base`; skipped for pre-releases) and uploads the
   `.aab` to a Play track (`PLAY_SERVICE_ACCOUNT_JSON`; `PLAY_TRACK` variable, default internal),
   signed from `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-  `ANDROID_KEY_PASSWORD` secrets; a manual run keeps it as a workflow artifact. Nothing Android is
-  attached to the release: upload-key APKs trip Play Protect. `ci.yml` runs check, lint, test,
-  build and a debug APK on pushes to main and PRs.
+  `ANDROID_KEY_PASSWORD` secrets; a manual run keeps it as a workflow artifact. It also attaches the
+  sideload APK (`npm run android:release -- --sideload`: `VITE_DISTRIBUTION=github` web build,
+  Gradle `-Psideload`: app id `kr.potatosalad775.unipeq.sideload`, signed with the `sideload.*`
+  entries of `key.properties` / `SIDELOAD_*` secrets; its own id and key, since upload-key APKs
+  under the Play id trip Play Protect). Only that build checks GitHub `releases/latest` for updates
+  (`platform/release-updates.ts`); Play updates its installs, the web build has its service worker
+  (`src/service-worker.ts`, `platform/pwa.ts`). `ci.yml` runs check, lint, test, build and a debug
+  APK on pushes to main and PRs.
 - Version: `package.json` only (`npm version patch|minor|major`). `android/app/build.gradle` reads it:
   versionName verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`; Settings shows it via
   `__APP_VERSION__`. `native/device-io`'s own version is internal and never changes.

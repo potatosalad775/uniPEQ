@@ -5,6 +5,7 @@
 	import './layout.css';
 	import { onMount } from 'svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { distribution } from '$lib/platform/build';
 	import { installNative, isNative, setSystemBarsDark } from '$lib/platform/native';
 	import { settingsStore } from '$lib/stores/settings-store.svelte';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
@@ -19,6 +20,10 @@
 		// Web: offline cache and the update prompt. The APK carries its own files.
 		if (!isNative && !import.meta.env.DEV) {
 			void import('$lib/platform/pwa').then((mod) => mod.installServiceWorker());
+		}
+		// Sideloaded APK: notices of newer GitHub releases. Play updates its own installs.
+		if (isNative && distribution === 'github') {
+			void import('$lib/platform/release-updates').then((mod) => mod.installReleaseUpdates());
 		}
 		// Revalidate the eqcaps index in the background (decision 3), so a connect finds it ready.
 		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());

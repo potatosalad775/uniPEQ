@@ -238,5 +238,7 @@
 	"sync_connect": "연결",
 	"presets_apply_needs_device": "프리셋을 불러오려면 기기를 연결하세요",
 	"update_ready": "uniPEQ 새 버전이 준비되었습니다.",
-	"update_reload": "새로고침"
+	"update_reload": "새로고침",
+	"update_available": "uniPEQ {version} 업데이트가 있습니다.",
+	"update_download": "다운로드"
 }

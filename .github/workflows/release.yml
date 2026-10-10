@@ -1,9 +1,12 @@
 name: Release
 
 # A published GitHub release (tag vX.Y.Z, matching package.json) deploys the web app to GitHub Pages
-# and uploads the signed Play bundle (.aab) to a Play Console track (internal by default). Nothing
-# Android is attached to the GitHub release: APKs signed with the upload key trip Play Protect, so
-# APKs to share come from the Play Console, signed with Play's key.
+# and uploads the signed Play bundle (.aab) to a Play Console track (internal by default). It also
+# attaches the sideload APK (`android:release -- --sideload`) to the release: its own app id
+# (kr.potatosalad775.unipeq.sideload) and key, so it installs beside the Play app and Play Protect
+# doesn't take it for a re-signed copy. It tells its users about newer releases, which it finds
+# through GitHub's releases/latest: that skips pre-releases, and a release counts only once its APK
+# is attached. `npm run release` (scripts/release.mjs) bumps, tags and publishes the release.
 # A pre-release uploads the bundle but leaves the website alone. A manual run deploys the website
 # and keeps the bundle as a workflow artifact instead of uploading it (Play refuses a versionCode
 # twice, so only releases upload); so does a release while PLAY_SERVICE_ACCOUNT_JSON is unset.
@@ -20,6 +23,11 @@ name: Release
 #   ANDROID_KEY_ALIAS
 #   ANDROID_KEY_PASSWORD
 #   PLAY_SERVICE_ACCOUNT_JSON  the service account's JSON key
+#   SIDELOAD_KEYSTORE_BASE64   base64 of the sideload APK's keystore (not the upload keystore).
+#                              Keep it forever: a new key can't update existing installs.
+#   SIDELOAD_KEYSTORE_PASSWORD
+#   SIDELOAD_KEY_ALIAS
+#   SIDELOAD_KEY_PASSWORD      Without these four the APK is skipped.
 #
 # Repository variables (optional):
 #   PLAY_TRACK                 internal (default), alpha, beta or production
@@ -100,10 +108,13 @@ jobs:
   android:
     needs: version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # attach the APK to the release
     env:
       # Secrets can't be tested in `if:`. Only whether it's set, so the key itself reaches no step
       # but the upload (not npm's install scripts).
       HAS_PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+      HAS_SIDELOAD_KEY: ${{ secrets.SIDELOAD_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -121,12 +132,17 @@ jobs:
 
       - run: npm ci
 
+      # The upload key, and the sideload APK's key under `sideload.` when its secrets are set.
       - name: Write key.properties
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SIDELOAD_KEYSTORE_BASE64: ${{ secrets.SIDELOAD_KEYSTORE_BASE64 }}
+          SIDELOAD_KEYSTORE_PASSWORD: ${{ secrets.SIDELOAD_KEYSTORE_PASSWORD }}
+          SIDELOAD_KEY_ALIAS: ${{ secrets.SIDELOAD_KEY_ALIAS }}
+          SIDELOAD_KEY_PASSWORD: ${{ secrets.SIDELOAD_KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
           {
@@ -135,6 +151,15 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "keyPassword=$KEY_PASSWORD"
           } > android/key.properties
+          if [ -n "$SIDELOAD_KEYSTORE_BASE64" ]; then
+            echo "$SIDELOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sideload.jks"
+            {
+              echo "sideload.storeFile=$RUNNER_TEMP/sideload.jks"
+              echo "sideload.storePassword=$SIDELOAD_KEYSTORE_PASSWORD"
+              echo "sideload.keyAlias=$SIDELOAD_KEY_ALIAS"
+              echo "sideload.keyPassword=$SIDELOAD_KEY_PASSWORD"
+            } >> android/key.properties
+          fi
 
       - run: npm run android:release
 
@@ -161,5 +186,30 @@ jobs:
         with:
           name: uniPEQ-${{ needs.version.outputs.version }}-aab
           path: out/*.aab
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build the sideload APK
+        if: env.HAS_SIDELOAD_KEY == 'true'
+        run: |
+          npm run android:release -- --sideload
+          cp android/app/build/outputs/apk/release/app-release.apk \
+            "out/uniPEQ-${{ needs.version.outputs.version }}.apk"
+
+      - name: Attach the APK to the release
+        if: github.event_name == 'release' && env.HAS_SIDELOAD_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" "out/uniPEQ-${{ needs.version.outputs.version }}.apk" \
+            --repo "${{ github.repository }}" --clobber
+
+      - name: Keep the APK as a workflow artifact
+        if: github.event_name != 'release' && env.HAS_SIDELOAD_KEY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: uniPEQ-${{ needs.version.outputs.version }}-apk
+          path: out/*.apk
           if-no-files-found: error
           retention-days: 7

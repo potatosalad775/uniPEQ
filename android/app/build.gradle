@@ -10,17 +10,25 @@ if (!versionParts.find()) throw new GradleException("package.json version '$appV
 def (major, minor, patch) = (1..3).collect { versionParts.group(it) as int }
 if (minor > 99 || patch > 99) throw new GradleException("versionCode scheme needs MINOR and PATCH ≤ 99 ($appVersion)")
 
+// `-Psideload` (`npm run android:release -- --sideload`): the APK attached to GitHub releases. It's
+// its own app (`.sideload` id), so it installs beside the Play one and Play Protect doesn't take it
+// for a re-signed copy of it, and it's signed with its own key, not the Play upload key.
+def sideload = project.hasProperty('sideload')
+
 // Release signing: android/key.properties (gitignored; see key.properties.example). Written by
-// hand locally, by the release workflow in CI. Without it a release build comes out unsigned.
+// hand locally, by the release workflow in CI. The sideload build reads the `sideload.`-prefixed
+// entries. Without them a release build comes out unsigned.
 def keyProperties = new Properties()
 def keyPropertiesFile = rootProject.file('key.properties')
 if (keyPropertiesFile.exists()) keyPropertiesFile.withInputStream { keyProperties.load(it) }
+def keyPrefix = sideload ? 'sideload.' : ''
+def hasReleaseKey = keyProperties[keyPrefix + 'storeFile'] != null
 
 android {
     namespace = "kr.potatosalad775.unipeq"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "kr.potatosalad775.unipeq"
+        applicationId sideload ? "kr.potatosalad775.unipeq.sideload" : "kr.potatosalad775.unipeq"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode major * 10000 + minor * 100 + patch
@@ -33,18 +41,18 @@ android {
         }
     }
     signingConfigs {
-        if (keyPropertiesFile.exists()) {
+        if (hasReleaseKey) {
             release {
-                storeFile rootProject.file(keyProperties['storeFile'])
-                storePassword keyProperties['storePassword']
-                keyAlias keyProperties['keyAlias']
-                keyPassword keyProperties['keyPassword']
+                storeFile rootProject.file(keyProperties[keyPrefix + 'storeFile'])
+                storePassword keyProperties[keyPrefix + 'storePassword']
+                keyAlias keyProperties[keyPrefix + 'keyAlias']
+                keyPassword keyProperties[keyPrefix + 'keyPassword']
             }
         }
     }
     buildTypes {
         release {
-            if (keyPropertiesFile.exists()) signingConfig signingConfigs.release
+            if (hasReleaseKey) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
