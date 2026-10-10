@@ -58,7 +58,7 @@
 	</nav>
 
 	<main
-		class="min-h-0 flex-1 overflow-y-auto pt-(--inset-top) pr-(--inset-right) max-wide:pl-(--inset-left) wide:pb-(--inset-bottom)"
+		class="flex min-h-0 flex-1 flex-col pt-(--inset-top) pr-(--inset-right) max-wide:pl-(--inset-left) wide:pb-(--inset-bottom)"
 	>
 		{@render children()}
 	</main>

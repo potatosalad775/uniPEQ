@@ -14,6 +14,7 @@
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import PageBody from '$lib/components/layout/PageBody.svelte';
 
 	/** The `wide:` breakpoint (layout.css): the band editor opens in the list, not in a sheet. */
 	const wide = new MediaQuery('min-width: 56.25rem');
@@ -82,12 +83,12 @@
 			{/if}
 		</div>
 		{#if hasDevice}
-			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 wide:pt-0 wide:pl-0">
+			<PageBody class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4 wide:pt-0 wide:pl-0">
 				<div class="divide-y divide-base-content/10 rounded-xl bg-base-100">
 					<PreampControl inlineEditor={wide.current} />
 					<BandList inlineEditor={wide.current} />
 				</div>
-			</div>
+			</PageBody>
 		{/if}
 	</div>
 	<SyncBar onConnect={wide.current ? undefined : onDevice} />

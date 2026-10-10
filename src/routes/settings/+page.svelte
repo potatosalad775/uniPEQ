@@ -6,6 +6,7 @@
 	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Slider from '$lib/components/atoms/Slider.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
+	import PageBody from '$lib/components/layout/PageBody.svelte';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LicensesSheet from '$lib/components/settings/LicensesSheet.svelte';
 	import LogDialog from '$lib/components/settings/LogDialog.svelte';
@@ -54,7 +55,7 @@
 
 <PageHeader title={m.nav_settings()} />
 <!-- Android-style lists (decisions 22, 23): rows with the control trailing, choices in menus. -->
-<div class="flex flex-col gap-5 px-4 pb-6 wide:max-w-2xl">
+<PageBody class="flex flex-col gap-5 pb-6 wide:max-w-2xl">
 	<ListSection title={m.settings_display()}>
 		<SelectMenu
 			label={m.settings_theme()}
@@ -179,7 +180,7 @@
 			{/snippet}
 		</ListRow>
 	</ListSection>
-</div>
+</PageBody>
 
 <LogDialog bind:open={logOpen} />
 <LicensesSheet bind:open={licensesOpen} />
