@@ -15,6 +15,7 @@
 		"format": "prettier --write .",
 		"i18n:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy localStorage preferredLanguage baseLocale",
 		"data:snapshot": "node scripts/data-snapshot.ts",
+		"icons": "node scripts/render-icons.mjs",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
 		"android": "node scripts/android-install.mjs",

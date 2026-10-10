@@ -1,0 +1,30 @@
+<!--
+	uniPEQ icon, redrawn as a vector from the Android launcher icon
+	(android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png). The viewBox is the 72 dp
+	that an adaptive icon shows of its 108 dp layer, centred on 0. The mark is drawn in a frame turned
+	45°, in units of 1/√2 dp: `a` runs bottom-left → top-right, `b` top-left → bottom-right.
+	Rendered by scripts/render-icons.mjs into the favicon, the touch icon and the Play Store icon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-36 -36 72 72" width="512" height="512">
+	<defs>
+		<linearGradient id="mark" gradientUnits="userSpaceOnUse" x1="-35" y1="0" x2="35" y2="0">
+			<stop offset="0" stop-color="#7fd4ff" />
+			<stop offset="1" stop-color="#4eadff" />
+		</linearGradient>
+	</defs>
+	<rect x="-36" y="-36" width="72" height="72" fill="#fff" />
+	<g transform="matrix(0.5 -0.5 0.5 0.5 0 0)">
+		<!-- Construction grid: the mark's edges carried out to the border. -->
+		<g stroke="#e5e9f1" stroke-width="0.35" fill="none">
+			<path
+				d="M-55-110V110M-35-110V110M-15-110V110M-5-110V110M5-110V110M15-110V110M35-110V110M55-110V110"
+			/>
+			<path d="M-110-45H110M-110-25H110M-110-5H110M-110 5H110M-110 25H110M-110 45H110" />
+		</g>
+		<!-- Two T's back to back: stems 10 wide and 50 long, crossbars reaching 35 from the centre. -->
+		<path
+			fill="url(#mark)"
+			d="M5-25H15V-5H35V5H15V25H5ZM-5-25H-15V-5H-35V5H-15V25H-5Z"
+		/>
+	</g>
+</svg>
