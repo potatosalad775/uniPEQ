@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Pretendard Variable, bundled (no CDN): split by unicode-range, so a page fetches only the
+	// subsets its text uses.
+	import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 	import './layout.css';
 	import { onMount } from 'svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
