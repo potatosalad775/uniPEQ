@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Copy, EllipsisVertical, FileUp, Search, SquarePen, Trash } from '@lucide/svelte';
+	import Badge from '$lib/components/atoms/Badge.svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Input from '$lib/components/atoms/Input.svelte';
 	import Menu from '$lib/components/atoms/Menu.svelte';
@@ -23,7 +24,7 @@
 	import { searchPresets } from '$lib/services/preset-storage';
 	import { presetStore } from '$lib/stores/preset-store.svelte';
 	import EditPresetDialog from './EditPresetDialog.svelte';
-	import { describePresetError, FIT_TONE_CLASS, fitBadge, withWarnings } from './preset-messages';
+	import { describePresetError, fitBadge, withWarnings } from './preset-messages';
 
 	let name = $state('');
 	let query = $state('');
@@ -212,15 +213,11 @@
 							<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/60">
 								<span>{dateOf(entry.updatedAt)}</span>
 								{#each entry.tags as tag (tag)}
-									<span class="rounded bg-base-300 px-1.5 py-0.5 text-[11px] text-base-content/80"
-										>{tag}</span
-									>
+									<Badge>{tag}</Badge>
 								{/each}
 								{#if fit}
 									{@const badge = fitBadge(fit)}
-									<span class="rounded-full px-2 py-0.5 text-[11px] {FIT_TONE_CLASS[badge.tone]}">
-										{badge.text}
-									</span>
+									<Badge tone={badge.tone}>{badge.text}</Badge>
 								{/if}
 							</p>
 						</div>

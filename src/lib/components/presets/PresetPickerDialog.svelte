@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import { Search } from '@lucide/svelte';
+	import Badge from '$lib/components/atoms/Badge.svelte';
 	import Input from '$lib/components/atoms/Input.svelte';
 	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
@@ -15,7 +16,7 @@
 	import { noticeStore } from '$lib/stores/notice-store.svelte';
 	import { searchPresets } from '$lib/services/preset-storage';
 	import { presetStore } from '$lib/stores/preset-store.svelte';
-	import { describePresetError, FIT_TONE_CLASS, fitBadge, withWarnings } from './preset-messages';
+	import { describePresetError, fitBadge, withWarnings } from './preset-messages';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 
@@ -87,11 +88,7 @@
 						</span>
 						{#if fit}
 							{@const badge = fitBadge(fit)}
-							<span
-								class="shrink-0 rounded-full px-2 py-0.5 text-[11px] {FIT_TONE_CLASS[badge.tone]}"
-							>
-								{badge.text}
-							</span>
+							<Badge tone={badge.tone}>{badge.text}</Badge>
 						{/if}
 					</button>
 				</li>

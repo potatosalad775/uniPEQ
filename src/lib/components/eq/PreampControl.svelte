@@ -10,6 +10,7 @@
 -->
 <script lang="ts">
 	import { ChevronDown, TriangleAlert, Volume2 } from '@lucide/svelte';
+	import Badge from '$lib/components/atoms/Badge.svelte';
 	import Sheet from '$lib/components/atoms/Sheet.svelte';
 	import { derivePreamp } from '$lib/eq/eq-preamp';
 	import * as m from '$lib/paraglide/messages';
@@ -58,12 +59,7 @@
 			</span>
 			<span class="min-w-0 flex-1 truncate">{m.eq_preamp()}</span>
 			{#if eqStore.autoPreamp}
-				<span
-					class="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-primary"
-					title={m.eq_preamp_auto()}
-				>
-					{m.eq_preamp_auto()}
-				</span>
+				<Badge tone="primary">{m.eq_preamp_auto()}</Badge>
 			{/if}
 			<span class="w-14 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
 			<span class="flex w-14 shrink-0 justify-end">

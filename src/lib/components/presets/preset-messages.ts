@@ -1,3 +1,4 @@
+import type { BadgeTone } from '$lib/components/atoms/Badge.svelte';
 import type { PresetFit } from '$lib/device-peq/preset-fit';
 import { PresetError } from '$lib/eq/preset-file';
 import * as m from '$lib/paraglide/messages';
@@ -21,7 +22,7 @@ export function describePresetError(e: unknown): string {
 }
 
 /** A preset's fit to the connected device, as a badge. */
-export function fitBadge(fit: PresetFit): { text: string; tone: 'success' | 'warning' | 'error' } {
+export function fitBadge(fit: PresetFit): { text: string; tone: BadgeTone } {
 	if (fit.kind === 'exact') return { text: m.presets_fit_exact(), tone: 'success' };
 	if (fit.kind === 'adjusted') {
 		return { text: m.presets_fit_adjusted({ count: fit.changes }), tone: 'warning' };
@@ -31,9 +32,3 @@ export function fitBadge(fit: PresetFit): { text: string; tone: 'success' | 'war
 		tone: 'error'
 	};
 }
-
-export const FIT_TONE_CLASS = {
-	success: 'bg-success/15 text-success',
-	warning: 'bg-warning/15 text-warning',
-	error: 'bg-error/15 text-error'
-} as const;

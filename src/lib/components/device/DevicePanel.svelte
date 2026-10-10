@@ -12,6 +12,7 @@
 <script lang="ts">
 	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
+	import Badge from '$lib/components/atoms/Badge.svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import ListRow from '$lib/components/atoms/ListRow.svelte';
 	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
@@ -113,12 +114,6 @@
 		}
 		return { text: m.device_peq_status_community(), tone: 'info' as const };
 	});
-	const badgeClass = {
-		success: 'bg-success/15 text-success',
-		info: 'bg-info/15 text-info',
-		warning: 'bg-warning/15 text-warning',
-		error: 'bg-error/15 text-error'
-	} as const;
 	const reportUrl = $derived.by(() => {
 		if (!connection?.profileId || isDemo) return null;
 		const url = new URL(ISSUES_URL);
@@ -255,21 +250,13 @@
 				<p class="text-xs text-base-content/60 touch:text-sm">{limitsSummary}</p>
 				<p class="mt-1.5 flex flex-wrap gap-1">
 					{#if statusBadge}
-						<span
-							class="rounded-full px-2 py-0.5 text-[11px] font-medium {badgeClass[
-								statusBadge.tone
-							]}"
-						>
-							{statusBadge.text}
-						</span>
+						<Badge tone={statusBadge.tone}>{statusBadge.text}</Badge>
 					{/if}
 					{#if isExperimental}
-						<span
-							class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium {badgeClass.warning}"
-						>
+						<Badge tone="warning">
 							<FlaskConical class="size-3" aria-hidden="true" />
 							{m.device_peq_experimental_badge()}
-						</span>
+						</Badge>
 					{/if}
 				</p>
 			</div>
