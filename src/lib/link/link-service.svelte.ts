@@ -23,6 +23,7 @@ import {
 	parseRoomInput,
 	PROTO,
 	startJoiner,
+	WEB_LINK_PARAM,
 	type ApprovalRequest,
 	type CommandArgs,
 	type CommandName,
@@ -462,6 +463,20 @@ class LinkService {
 		this.#goBackTimer = setTimeout(() => this.#sync(true), GO_BACK_MS);
 		this.#sync();
 		return true;
+	}
+
+	/**
+	 * uniPEQ on the web, opened by modernGraphTool's "Open uniPEQ" (`webLink`): the room is in the
+	 * address. Joins it, and returns the address without it, so a reload doesn't join again; null
+	 * when the address holds no link.
+	 */
+	openAddress(href: string): URL | null {
+		const url = new URL(href);
+		const link = url.searchParams.get(WEB_LINK_PARAM);
+		if (link === null) return null;
+		url.searchParams.delete(WEB_LINK_PARAM);
+		this.open(link);
+		return url;
 	}
 
 	/** "Link": starts the link service and keep-visible (Android), then the shared list. */

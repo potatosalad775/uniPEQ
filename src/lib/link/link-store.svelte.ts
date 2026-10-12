@@ -8,6 +8,12 @@ import type { ApprovalRequest, JoinerState } from 'peq-link/client';
 
 /** Survives a crash: an approved session that never ended means Android killed uniPEQ. */
 export const CRASH_MARKER_KEY = 'unipeq.link.session';
+/**
+ * The address parameter modernGraphTool's "Open uniPEQ" puts the room in, off Android (`webLink`).
+ * peq-link's `WEB_LINK_PARAM`, restated so this module imports nothing of the client; a spec holds
+ * the two together.
+ */
+export const WEB_LINK_PARAM = 'link';
 /** The battery tip is shown once, ever. */
 const TIP_SEEN_KEY = 'unipeq.link.batteryTip';
 

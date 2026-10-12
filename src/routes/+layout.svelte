@@ -4,6 +4,9 @@
 	import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 	import './layout.css';
 	import { onMount } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import { WEB_LINK_PARAM } from '$lib/link/link-store.svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { appState } from '$lib/platform/app-state.svelte';
 	import { distribution } from '$lib/platform/build';
@@ -36,6 +39,16 @@
 			);
 			// The modernGraphTool link: the room a cold start was opened with, and later links.
 			void import('$lib/link/link-store.svelte').then((mod) => mod.loadLinkService());
+		} else if (new URLSearchParams(location.search).has(WEB_LINK_PARAM)) {
+			// Web, opened by modernGraphTool's "Open uniPEQ": join the room in the address.
+			void import('$lib/link/link-store.svelte')
+				.then((mod) => mod.loadLinkService())
+				.then((service) => {
+					const rest = service.openAddress(location.href);
+					// This page's own address minus `link`, not a route: `resolve()` has nothing to add.
+					// eslint-disable-next-line svelte/no-navigation-without-resolve
+					if (rest) replaceState(rest, page.state);
+				});
 		}
 	});
 

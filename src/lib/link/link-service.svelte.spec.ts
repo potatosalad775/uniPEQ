@@ -1,5 +1,6 @@
 import { flushSync } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { webLink, WEB_LINK_PARAM as CLIENT_WEB_LINK_PARAM } from 'peq-link/client';
 import type { Change, EditOp, JoinerOptions } from 'peq-link/client';
 import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
 import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
@@ -7,7 +8,7 @@ import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
 import { settingsStore } from '$lib/stores/settings-store.svelte';
-import { CRASH_MARKER_KEY, linkStore } from './link-store.svelte';
+import { CRASH_MARKER_KEY, linkStore, WEB_LINK_PARAM } from './link-store.svelte';
 import { linkService } from './link-service.svelte';
 
 /** The joiner stands in for the client: no signaling, and the spec plays mGT through its handlers. */
@@ -128,6 +129,15 @@ describe('linkService', () => {
 		expect(linkStore.linked).toBe(true);
 		expect(linkStore.host).toBe('squig.link');
 		expect(localStorage.getItem(CRASH_MARKER_KEY)).toContain('ABCD1234');
+	});
+
+	it('joins the room in a web address, and hands back the address without it', () => {
+		expect(WEB_LINK_PARAM).toBe(CLIENT_WEB_LINK_PARAM);
+		const href = webLink('https://other.example', 'ABCD1234', 'https://app.example/uniPEQ/?tab=eq');
+		expect(linkService.openAddress('https://app.example/uniPEQ/')).toBeNull();
+		expect(linkService.openAddress(href)?.href).toBe('https://app.example/uniPEQ/?tab=eq');
+		expect(joiners[0].options.server).toBe('https://other.example');
+		expect(joiners[0].options.room).toBe('ABCD1234');
 	});
 
 	it("applies mGT's edits as one undo step per burst, a band projected onto its slot", () => {

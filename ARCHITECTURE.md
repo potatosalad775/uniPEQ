@@ -373,7 +373,9 @@ gets a tag; then both apps bump.
   `autoVerify`) or a typed code (EQ menu → Link with modernGraphTool, `LinkSheet`), and opens the
   channel before asking, because phone Chrome loses its network 5 s after it's left. Nothing mGT
   sends touches the device before "Link with `<host>`?" is answered; the host is mGT's attested
-  origin, never its own claim. A cold start reads the room from `App.getLaunchUrl()`.
+  origin, never its own claim. A cold start reads the room from `App.getLaunchUrl()`. On the web,
+  mGT's "Open uniPEQ" opens this app with the room in `?link=` (`webLink`); `+layout.svelte`
+  joins it through `openAddress` and drops the parameter, so a reload doesn't join again.
 - **Edits** apply through `eqStore`: a band op projected onto its slot as a local edit is, one undo
   step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited.
   uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
