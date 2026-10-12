@@ -19,6 +19,11 @@ function codeOf(error: unknown): Code | null {
 	return null;
 }
 
+/** The eqcaps `BridgeError` code of a failure, or `failed` for anything else. */
+export function errorCode(error: unknown): string {
+	return codeOf(error) ?? 'failed';
+}
+
 /** The connection is gone and has to be made again. */
 export function isConnectionLost(error: unknown): boolean {
 	return codeOf(error) === 'transport';

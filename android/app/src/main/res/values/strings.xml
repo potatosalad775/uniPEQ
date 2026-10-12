@@ -4,4 +4,8 @@
     <string name="title_activity_main">uniPEQ</string>
     <string name="package_name">kr.potatosalad775.unipeq</string>
     <string name="custom_url_scheme">kr.potatosalad775.unipeq</string>
+    <string name="link_channel">modernGraphTool link</string>
+    <string name="link_notification">Linked with %1$s</string>
+    <string name="link_notification_device">Linked with %1$s · %2$s</string>
+    <string name="link_unlink">Unlink</string>
 </resources>

@@ -22,7 +22,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- modernGraphTool's "Open uniPEQ": intent://link?server=…&room=…#Intent;scheme=unipeq;…
+                 Chrome only resolves intents to BROWSABLE filters. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="unipeq" android:host="link" />
+            </intent-filter>
+
+            <!-- The link's QR code (https://link.unipeq.com/l/<CODE>), verified through the Worker's
+                 assetlinks.json for both the Play and the sideload package. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="link.unipeq.com" android:pathPrefix="/l/" />
+            </intent-filter>
+
         </activity>
+
+        <!-- The modernGraphTool link, from approval to the session's end (LinkPlugin). -->
+        <service
+            android:name=".LinkService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -38,4 +62,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The modernGraphTool link's foreground service. Android 14+ wants one of a short list of
+         permissions for a connectedDevice service; CHANGE_NETWORK_STATE is a normal one. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

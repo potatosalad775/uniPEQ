@@ -34,6 +34,8 @@ class EqStore {
 	#historyVersion = $state(0);
 	#coalesceKey: string | null = null;
 	#coalesceAt = 0;
+	/** Bumped by every `open`: a fresh start, not an edit. */
+	#opened = $state(0);
 
 	get canUndo(): boolean {
 		void this.#historyVersion;
@@ -43,6 +45,16 @@ class EqStore {
 	get canRedo(): boolean {
 		void this.#historyVersion;
 		return this.history.canRedo;
+	}
+
+	/** Changes with every new undo step (and undo, redo): edits sharing it are one step. */
+	get step(): number {
+		return this.#historyVersion;
+	}
+
+	/** Changes with every `open`, which an undo can't go back past. */
+	get epoch(): number {
+		return this.#opened;
 	}
 
 	/** The preamp as a preset stores it. */
@@ -87,10 +99,11 @@ class EqStore {
 
 	/**
 	 * Replace the whole list (a device read, a loaded preset, Fit), as one undoable step. `preamp`:
-	 * a fixed value, `'auto'` to follow the bands, or undefined to keep the current one.
+	 * a fixed value, `'auto'` to follow the bands, or undefined to keep the current one. `history`
+	 * as in `update`.
 	 */
-	replace(filters: EqFilter[], preamp?: number | 'auto'): void {
-		this.record();
+	replace(filters: EqFilter[], preamp?: number | 'auto', history: boolean | string = true): void {
+		this.#recordFor(history);
 		this.filters = filters;
 		if (preamp === 'auto') this.autoPreamp = true;
 		else if (preamp !== undefined) {
@@ -110,6 +123,7 @@ class EqStore {
 		this.history.clear();
 		this.#coalesceKey = null;
 		this.#historyVersion++;
+		this.#opened++;
 	}
 
 	/**
@@ -151,10 +165,13 @@ class EqStore {
 		this.manualPreamp = db;
 	}
 
-	/** Let the preamp follow the bands, or stop: it then stays where it was, not where it was set. */
-	setAutoPreamp(on: boolean): void {
+	/**
+	 * Let the preamp follow the bands, or stop: it then stays where it was, not where it was set.
+	 * `history` as in `update`.
+	 */
+	setAutoPreamp(on: boolean, history: boolean | string = true): void {
 		if (this.autoPreamp === on) return;
-		this.record();
+		this.#recordFor(history);
 		if (!on) this.manualPreamp = derivePreamp(this.filters);
 		this.autoPreamp = on;
 	}

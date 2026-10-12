@@ -84,6 +84,11 @@
 	--toast-lift: 3.5rem;
 }
 
+/* …and above the modernGraphTool link row stacked on it. */
+:root:has([data-sync-bar]:not(.hidden)):has([data-link-bar]) {
+	--toast-lift: 7rem;
+}
+
 :root {
 	--inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 	--inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
@@ -261,4 +266,14 @@ html.theme-transition *::after {
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
 	}
+}
+
+/*
+ * In the background (platform/app-state). While the modernGraphTool link keeps the WebView
+ * "visible", a running animation (the sync bar's ring, a spinner) would keep drawing frames.
+ */
+html[data-background] *,
+html[data-background] *::before,
+html[data-background] *::after {
+	animation-play-state: paused !important;
 }

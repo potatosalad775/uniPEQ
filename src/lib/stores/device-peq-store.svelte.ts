@@ -82,6 +82,8 @@ class DevicePeqStore {
 	statusMessage = $state<string | null>(null);
 	/** Whether `statusMessage` reports a failure, which outranks every other status line. */
 	statusIsError = $state(false);
+	/** The failure `statusMessage` reports: the operation and its eqcaps `BridgeError` code. */
+	failure = $state.raw<{ op: string; code: string } | null>(null);
 	/**
 	 * The device dropped the connection after saving (some do by design), so the next operation
 	 * needs a fresh one. The connection itself is kept for its name and `reopen`.
@@ -300,6 +302,7 @@ class DevicePeqStore {
 	setStatus(message: string | null, isError = false): void {
 		this.statusMessage = message;
 		this.statusIsError = message !== null && isError;
+		if (!this.statusIsError) this.failure = null;
 	}
 }
 

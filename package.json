@@ -39,6 +39,7 @@
 		"@potatosalad775/eqcaps-core": "^0.2.4",
 		"@potatosalad775/eqcaps-device-bridge": "^0.2.4",
 		"bits-ui": "^2.19.5",
+		"peq-link": "github:potatosalad775/uniPEQ_link#semver:^1.0.0",
 		"pretendard": "1.3.9",
 		"tailwind-merge": "^3.7.0",
 		"uni-peq-device-io": "file:native/device-io"

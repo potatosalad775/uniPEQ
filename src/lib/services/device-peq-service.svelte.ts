@@ -9,7 +9,7 @@
  */
 import { untrack } from 'svelte';
 import type { ConnectResult } from '$lib/device-peq/connect';
-import { describeDeviceError, isConnectionLost } from '$lib/device-peq/errors';
+import { describeDeviceError, errorCode, isConnectionLost } from '$lib/device-peq/errors';
 import { readRequest } from '$lib/device-peq/preset';
 import {
 	needsConfirmation,
@@ -22,6 +22,7 @@ import { syncStatus, type SyncStatus } from '$lib/device-peq/sync-status';
 import type { DeviceCandidate, DeviceConnection } from '$lib/device-peq/types';
 import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
 import * as m from '$lib/paraglide/messages';
+import { appState } from '$lib/platform/app-state.svelte';
 import { hapticError, hapticTick } from '$lib/platform/haptics';
 import { isNative } from '$lib/platform/native';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
@@ -56,6 +57,8 @@ class DevicePeqService {
 
 	/** A write waiting for the user to confirm what doesn't fit (the review dialog shows it). */
 	review = $state.raw<PushPlan | null>(null);
+	/** The list `review` was planned from. */
+	#reviewed: { filters: EqFilter[]; preamp: number } | null = null;
 
 	#choice: Choice | null = null;
 	#installed = false;
@@ -118,6 +121,7 @@ class DevicePeqService {
 		logger.error(`device ${op} failed:`, error instanceof Error ? error.message : String(error));
 		const message = describeDeviceError(error);
 		devicePeqStore.setStatus(note ? `${message} ${note}` : message, true);
+		devicePeqStore.failure = { op, code: errorCode(error) };
 		if (isConnectionLost(error) && devicePeqStore.connection) devicePeqStore.needsReconnect = true;
 	}
 
@@ -231,7 +235,7 @@ class DevicePeqService {
 	async usbAttached(device: NativeUsbDevice): Promise<void> {
 		const busy = () => !!devicePeqStore.connection || devicePeqStore.isConnecting || !!this.choice;
 		if (busy()) return;
-		if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+		if (!appState.active) return;
 		const mod = await loadConnect();
 		if (!(await mod.drivableNative(device)) || busy()) return;
 		logger.info(`${device.productName || device.deviceName} plugged in`);
@@ -309,17 +313,30 @@ class DevicePeqService {
 	 * the list exactly, else after the user reviews the changes in the dialog (`review`).
 	 */
 	async requestWrite(): Promise<void> {
+		const source = { filters: eqStore.filters, preamp: eqStore.preamp };
 		const plan = await this.prepare();
 		if (!plan) return;
-		if (needsConfirmation(plan)) this.review = plan;
-		else void this.write(plan);
+		if (needsConfirmation(plan)) {
+			this.review = plan;
+			this.#reviewed = source;
+		} else await this.write(plan);
 	}
 
-	/** The review dialog's answer: write the plan it showed, or drop it. */
-	confirmReview(confirmed: boolean): void {
+	/**
+	 * The review's answer: write the plan it showed, or drop it. If the list changed while the
+	 * review was up (the modernGraphTool link edits it meanwhile), what's there now is planned
+	 * again instead: the plan was for a list no longer on screen.
+	 */
+	async confirmReview(confirmed: boolean): Promise<void> {
 		const plan = this.review;
+		const source = this.#reviewed;
 		this.review = null;
-		if (confirmed && plan) void this.write(plan);
+		this.#reviewed = null;
+		if (!confirmed || !plan) return;
+		if (source && (source.filters !== eqStore.filters || source.preamp !== eqStore.preamp)) {
+			return this.requestWrite();
+		}
+		await this.write(plan);
 	}
 
 	/**
@@ -437,6 +454,16 @@ class DevicePeqService {
 		}
 		this.install();
 		void this.#flush();
+	}
+
+	/**
+	 * Auto-write what's waiting now rather than after the delay: the modernGraphTool link's
+	 * `settle`, whose message handler is where device work has to run (a timer drifts in Doze, a
+	 * message wakes the CPU). Nothing happens unless auto-write is on.
+	 */
+	async writeNow(): Promise<void> {
+		this.#cancelPending();
+		await this.#flush();
 	}
 
 	/**

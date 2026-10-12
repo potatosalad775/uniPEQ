@@ -5,6 +5,7 @@
 	import './layout.css';
 	import { onMount } from 'svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { appState } from '$lib/platform/app-state.svelte';
 	import { distribution } from '$lib/platform/build';
 	import { installNative, isNative, setSystemBarsDark } from '$lib/platform/native';
 	import { settingsStore } from '$lib/stores/settings-store.svelte';
@@ -17,6 +18,7 @@
 	onMount(() => {
 		document.documentElement.lang = getLocale();
 		installNative();
+		appState.install();
 		// Web: offline cache and the update prompt. The APK carries its own files.
 		if (!isNative && !import.meta.env.DEV) {
 			void import('$lib/platform/pwa').then((mod) => mod.installServiceWorker());
@@ -32,6 +34,8 @@
 			void import('$lib/services/device-peq-service.svelte').then((mod) =>
 				mod.devicePeqService.watchUsb()
 			);
+			// The modernGraphTool link: the room a cold start was opened with, and later links.
+			void import('$lib/link/link-store.svelte').then((mod) => mod.loadLinkService());
 		}
 	});
 

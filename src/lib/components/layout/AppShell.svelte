@@ -5,6 +5,7 @@
 	import { onBack } from '$lib/platform/back-button';
 	import * as m from '$lib/paraglide/messages';
 	import { TABS, activeTab } from './tabs';
+	import LinkApprovalDialog from '$lib/components/link/LinkApprovalDialog.svelte';
 	import Toast from './Toast.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -65,3 +66,4 @@
 </div>
 
 <Toast />
+<LinkApprovalDialog />

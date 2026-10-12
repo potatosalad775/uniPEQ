@@ -1,19 +1,30 @@
 <!--
 	The EQ tab's app bar, replacing the page title and the old toolbar: the device
 	chip (phone; `wide:` shows the device panel instead), undo and redo (also Ctrl+Z,
-	Ctrl+Shift+Z / Ctrl+Y outside text boxes), and an overflow menu with Load preset, Save preset
-	and Fit.
+	Ctrl+Shift+Z / Ctrl+Y outside text boxes), and an overflow menu with Load preset, Save preset,
+	Fit, and Link with modernGraphTool (Unlink while linked).
 -->
 <script lang="ts">
-	import { EllipsisVertical, FolderOpen, Redo2, Save, Undo2, WandSparkles } from '@lucide/svelte';
+	import {
+		EllipsisVertical,
+		FolderOpen,
+		Link2,
+		Redo2,
+		Save,
+		Undo2,
+		Unlink2,
+		WandSparkles
+	} from '@lucide/svelte';
 	import Button from '$lib/components/atoms/Button.svelte';
 	import Menu from '$lib/components/atoms/Menu.svelte';
 	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
 	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
 	import DeviceChip from '$lib/components/device/DeviceChip.svelte';
 	import BuildBadge from '$lib/components/layout/BuildBadge.svelte';
+	import LinkSheet from '$lib/components/link/LinkSheet.svelte';
 	import PresetPickerDialog from '$lib/components/presets/PresetPickerDialog.svelte';
 	import SavePresetDialog from '$lib/components/presets/SavePresetDialog.svelte';
+	import { linkStore, loadLinkService } from '$lib/link/link-store.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
@@ -25,6 +36,7 @@
 
 	let pickerOpen = $state(false);
 	let saveOpen = $state(false);
+	let linkOpen = $state(false);
 
 	function fit() {
 		const next = eqConstraintStore.fitted;
@@ -97,8 +109,21 @@
 				{m.eq_fit()}
 			</MenuItem>
 		{/if}
+		<MenuSeparator />
+		{#if linkStore.active}
+			<MenuItem onSelect={() => void loadLinkService().then((service) => service.unlink())}>
+				{#snippet icon()}<Unlink2 class="size-4" aria-hidden="true" />{/snippet}
+				{m.link_unlink()}
+			</MenuItem>
+		{:else}
+			<MenuItem onSelect={() => (linkOpen = true)}>
+				{#snippet icon()}<Link2 class="size-4" aria-hidden="true" />{/snippet}
+				{m.link_menu()}
+			</MenuItem>
+		{/if}
 	</Menu>
 </header>
 
 <PresetPickerDialog bind:open={pickerOpen} />
 <SavePresetDialog bind:open={saveOpen} />
+<LinkSheet bind:open={linkOpen} />

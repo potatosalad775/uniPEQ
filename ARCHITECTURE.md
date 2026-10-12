@@ -108,13 +108,15 @@ src/
     │   ├── layout/         # AppShell (tab bar ↔ side rail), PageHeader, Toast, BuildBadge
     │   ├── eq/             # EqAppBar, EqGraph, BandList / BandEditor / BandSheet, Preamp*
     │   ├── device/         # DeviceChip, DevicePanel, DeviceSheet, SyncBar, Review / Push dialogs
+    │   ├── link/           # LinkSheet (code), LinkApprovalDialog, LinkBar
     │   ├── presets/        # PresetsPanel, picker / save / edit dialogs
     │   └── settings/       # LogDialog, licenses
     ├── device-peq/         # connect, push-plan, sync-status, panel-status, preset-fit, errors, demo
+    ├── link/               # the modernGraphTool link: store, service, self-check
     ├── eq/                 # model, biquad, eq-constraint, eq-preamp, preset-file, eq-apo, graph-scale, nudge
     ├── services/           # device-peq-service, eqcaps-client, preset-storage, undo-redo-stack, logger
     ├── stores/             # rune-class stores (§8.4)
-    ├── platform/           # back button, system bars, pwa, haptics, save-file, build, release updates
+    ├── platform/           # back button, system bars, app state, link, pwa, haptics, save-file, build, release updates
     ├── transports/native/  # DeviceIo typings, native HidTransport, HID report descriptor parser
     ├── styles/theme.css    # semantic colour tokens
     └── data/               # eqcaps-bundle.json (offline snapshot)
@@ -357,7 +359,42 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 
 ---
 
-## 10. Testing
+## 10. The modernGraphTool link
+
+modernGraphTool (mGT) and uniPEQ share one band list over a WebRTC DataChannel; a Cloudflare Worker
+at `link.unipeq.com` only introduces them. The protocol and its rules are
+[uniPEQ_link](https://github.com/potatosalad775/uniPEQ_link) (`docs/design.md`), installed as
+`peq-link` (a git dependency on a tag, TypeScript source). A protocol change lands there first and
+gets a tag; then both apps bump.
+
+- **uniPEQ joins, asks, then owns the list.** mGT hosts the room. uniPEQ joins from the intent link
+  (`unipeq://link?server=…&room=…`), the QR code's App Link (`https://link.unipeq.com/l/<CODE>`,
+  `autoVerify`) or a typed code (EQ menu → Link with modernGraphTool, `LinkSheet`), and opens the
+  channel before asking, because phone Chrome loses its network 5 s after it's left. Nothing mGT
+  sends touches the device before "Link with `<host>`?" is answered; the host is mGT's attested
+  origin, never its own claim. A cold start reads the room from `App.getLaunchUrl()`.
+- **Edits** apply through `eqStore`: a band op projected onto its slot as a local edit is, one undo
+  step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited.
+  uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
+- **Device work runs in the handler of the message that asked for it** (`settle` writes through
+  `devicePeqService.writeNow`, commands through `devicePeqService`), never behind a timer: in Doze
+  a message wakes the CPU and a timer doesn't. Each command holds a partial wake lock.
+- **While linked (Android)** the app module's `Link` plugin runs `LinkService` (foreground,
+  `connectedDevice`, notification with Unlink) and keep-visible: `MainActivity` keeps telling the
+  WebView its window is visible after `onStop`, since Chromium freezes a hidden page after 60 s.
+  So `document.visibilityState` stays `visible` in the background, and "is the app in front" is
+  `platform/app-state` (Capacitor's `appStateChange`): USB auto-connect, the release check, the
+  link's grace clock, and animations, which pause in the background.
+- **Self-check** (`link/self-check.ts`, Android): a freeze, a lost keep-visible or a stopped process
+  is reported to mGT (`notice`) and shown once as a battery-settings tip, as is a crash marker in
+  `localStorage` from a session that never ended, or the Restricted battery setting at approval.
+- Code: `link/link-store.svelte.ts` (what screens read; no link client), `link-service.svelte.ts`
+  (the client's handlers and events, behind `import()`), `platform/link.ts` (the plugin, no-ops on
+  the web). On the web a link works the same, without the service.
+
+---
+
+## 11. Testing
 
 - **Vitest, two projects** (`vite.config.ts`): `*.spec.ts` in Node, `*.svelte.spec.ts` in headless
   Chromium (1280×800 by default; phone-layout specs set the viewport). Component specs load no
@@ -369,7 +406,7 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 
 ---
 
-## 11. Not yet
+## 12. Not yet
 
 - **Serial and Bluetooth.** Whether the app takes them on is undecided. Web: Serial
   (`requestSerialPort`) and Bluetooth (`requestBleDevice`) in the connect menu; a Bluetooth serial
@@ -386,7 +423,7 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 
 ---
 
-## 12. Risks
+## 13. Risks
 
 | Risk | Mitigation |
 |---|---|

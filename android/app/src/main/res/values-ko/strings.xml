@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="link_channel">modernGraphTool 연결</string>
+    <string name="link_notification">%1$s에 연결됨</string>
+    <string name="link_notification_device">%1$s에 연결됨 · %2$s</string>
+    <string name="link_unlink">링크 해제</string>
+</resources>

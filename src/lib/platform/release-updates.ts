@@ -4,6 +4,7 @@
  * into view, at most every few hours (the API allows 60 unauthenticated requests an hour).
  */
 import { newerRelease } from '$lib/services/release-check';
+import { appState } from './app-state.svelte';
 import { updateStore } from '$lib/stores/update-store.svelte';
 
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -20,7 +21,7 @@ async function check(): Promise<void> {
 /** Page-lifetime; call once from the root layout. */
 export function installReleaseUpdates(): void {
 	void check();
-	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'visible') void check();
+	appState.on((active) => {
+		if (active) void check();
 	});
 }
