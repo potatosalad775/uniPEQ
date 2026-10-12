@@ -9,7 +9,6 @@
 	import EqAppBar from '$lib/components/eq/EqAppBar.svelte';
 	import EqEmptyState from '$lib/components/eq/EqEmptyState.svelte';
 	import EqGraph from '$lib/components/eq/EqGraph.svelte';
-	import LinkBar from '$lib/components/link/LinkBar.svelte';
 	import PreampControl from '$lib/components/eq/PreampControl.svelte';
 	import { canConnectUsb, devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
@@ -92,7 +91,6 @@
 			</PageBody>
 		{/if}
 	</div>
-	<LinkBar />
 	<SyncBar onConnect={wide.current ? undefined : onDevice} />
 </div>
 

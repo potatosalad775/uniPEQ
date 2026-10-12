@@ -80,13 +80,8 @@
 	--toast-lift: 0px;
 }
 
-:root:has([data-sync-bar]:not(.hidden)) {
+:root:has([data-sync-bar][data-open]) {
 	--toast-lift: 3.5rem;
-}
-
-/* …and above the modernGraphTool link row stacked on it. */
-:root:has([data-sync-bar]:not(.hidden)):has([data-link-bar]) {
-	--toast-lift: 7rem;
 }
 
 :root {

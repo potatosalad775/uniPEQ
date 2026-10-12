@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nudge, roundField } from './nudge';
+import { nudge, roundField, shownField } from './nudge';
 
 describe('nudge', () => {
 	it('steps frequency by fractions of an octave', () => {
@@ -43,5 +43,20 @@ describe('roundField', () => {
 		expect(roundField('freq', 44.44)).toBe(44.4);
 		expect(roundField('gain', -0.04)).toBe(0);
 		expect(roundField('q', 0.001)).toBe(0.01);
+	});
+});
+
+describe('shownField', () => {
+	it("shows a device grid's value at edit precision", () => {
+		expect(shownField('gain', 0.1015625)).toBe(0.1);
+		expect(shownField('q', 0.98046875)).toBe(0.98);
+		expect(shownField('gain', -0.00390625)).toBe(0);
+	});
+
+	it('keeps one finer decimal when that is the exact value', () => {
+		expect(shownField('gain', -12.25)).toBe(-12.25);
+		expect(shownField('q', 0.707)).toBe(0.707);
+		expect(shownField('freq', 84.53)).toBe(84.53);
+		expect(shownField('freq', 1000.4)).toBe(1000.4);
 	});
 });

@@ -3,7 +3,9 @@
 	slot's domain. Adapted from the field handling in modernGraphTool
 	src/lib/components/equalizer/EqFilterCard.svelte @ 23ddc4dd: a locked domain shows a read-only
 	value, a value list slides along its values, Escape reverts what arrow keys already committed,
-	and the hint says what the device takes. Arrow keys step musically (`nudge`), as on the graph.
+	and the hint says what the device takes. Arrow keys step musically (`nudge`), as on the graph,
+	in the number box and on the slider alike (the slider's own step is 1/1000 of its range). Values
+	show at edit precision (`shownField`), not as the device grid's 0.98046875.
 	For touch: − and + steppers either side of the number (the same musical steps, so
 	repeated taps are one undo step), a touch-sized slider, and the allowed-range hint only while
 	the number is being typed or the value is one the device won't take.
@@ -14,7 +16,7 @@
 	import Slider from '$lib/components/atoms/Slider.svelte';
 	import { domainHint } from '$lib/eq/eq-domain-hint';
 	import { linearToLog, logToLinear } from '$lib/eq/log-scale';
-	import { nudge, roundField, type BandField } from '$lib/eq/nudge';
+	import { EDIT_STEP, nudge, roundField, shownField, type BandField } from '$lib/eq/nudge';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
@@ -42,7 +44,8 @@
 	const id = $props.id();
 	const bounds = $derived(domainBounds(domain));
 	const values = $derived('values' in domain ? domain.values : null);
-	const hint = $derived(domainHint(domain, unit));
+	const hint = $derived(domainHint(domain, unit, EDIT_STEP[field]));
+	const shown = $derived(String(shownField(field, value)));
 	/** Log sliders for frequency and Q, as on every EQ; gain is linear. */
 	const logScale = $derived(field !== 'gain' && bounds.min > 0);
 
@@ -80,7 +83,7 @@
 		const parsed = parseFloat(input.value);
 		if (Number.isFinite(parsed)) onChange(parsed, true);
 		// Show what landed (the store projects it onto the domain), or put back what was there.
-		queueMicrotask(() => (input.value = String(value)));
+		queueMicrotask(() => (input.value = shown));
 	}
 
 	function onkeydown(e: KeyboardEvent & { currentTarget: HTMLInputElement }) {
@@ -89,14 +92,32 @@
 			input.blur();
 		} else if (e.key === 'Escape') {
 			if (focusValue !== null && focusValue !== value) onChange(focusValue, true);
-			input.value = String(focusValue ?? value);
+			input.value = String(shownField(field, focusValue ?? value));
 			input.blur();
 		} else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
 			e.preventDefault();
 			const next = nudge(domain, field, value, e.key === 'ArrowUp' ? 1 : -1, e.shiftKey);
 			onChange(next, `key-${field}`);
-			input.value = String(next);
+			input.value = String(shownField(field, next));
 		}
+	}
+
+	/** The slider's keys, as `nudge` steps; Page Up / Down and Shift take the coarse step. */
+	const SLIDER_KEYS: Record<string, 1 | -1> = {
+		ArrowUp: 1,
+		ArrowRight: 1,
+		PageUp: 1,
+		ArrowDown: -1,
+		ArrowLeft: -1,
+		PageDown: -1
+	};
+
+	function onSliderKeydown(e: KeyboardEvent) {
+		const dir = SLIDER_KEYS[e.key];
+		if (!dir) return;
+		e.preventDefault();
+		const coarse = e.shiftKey || e.key.startsWith('Page');
+		onChange(nudge(domain, field, value, dir, coarse), `key-${field}`);
 	}
 </script>
 
@@ -109,7 +130,7 @@
 				class="rounded bg-base-300 px-2 py-1 text-sm text-base-content/80 tabular-nums"
 				title={m.eq_field_locked()}
 			>
-				{value}{unit ? ` ${unit}` : ''}
+				{shown}{unit ? ` ${unit}` : ''}
 			</span>
 		{:else}
 			<span class="inline-flex items-center gap-1">
@@ -128,7 +149,7 @@
 						id="{id}-num"
 						type="number"
 						inputmode="decimal"
-						value={String(value)}
+						value={shown}
 						min={bounds.min}
 						max={bounds.max}
 						step="any"
@@ -169,7 +190,8 @@
 			step={1}
 			value={sliderValue}
 			aria-label={label}
-			aria-valuetext="{value}{unit ? ` ${unit}` : ''}"
+			aria-valuetext="{shown}{unit ? ` ${unit}` : ''}"
+			onkeydown={onSliderKeydown}
 			oninput={(e) => onChange(fromSlider(Number(e.currentTarget.value)), `slider-${field}`)}
 		/>
 	{/if}

@@ -2,7 +2,8 @@
 	The EQ tab's app bar, replacing the page title and the old toolbar: the device
 	chip (phone; `wide:` shows the device panel instead), undo and redo (also Ctrl+Z,
 	Ctrl+Shift+Z / Ctrl+Y outside text boxes), and an overflow menu with Load preset, Save preset,
-	Fit, and Link with modernGraphTool (Unlink while linked).
+	Fit, and Link with modernGraphTool (Unlink while linked, with the link's state under it). A dot
+	on ⋮ says a link is on, pulsing while it connects, dim while modernGraphTool is quiet.
 -->
 <script lang="ts">
 	import {
@@ -24,6 +25,7 @@
 	import LinkSheet from '$lib/components/link/LinkSheet.svelte';
 	import PresetPickerDialog from '$lib/components/presets/PresetPickerDialog.svelte';
 	import SavePresetDialog from '$lib/components/presets/SavePresetDialog.svelte';
+	import { linkLabel } from '$lib/link/link-status';
 	import { linkStore, loadLinkService } from '$lib/link/link-store.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
@@ -37,6 +39,15 @@
 	let pickerOpen = $state(false);
 	let saveOpen = $state(false);
 	let linkOpen = $state(false);
+
+	const linkState = $derived(linkLabel(linkStore.state, linkStore.host));
+	const linkDot = $derived(
+		linkStore.state === 'linked'
+			? 'bg-primary'
+			: linkStore.state === 'waiting'
+				? 'bg-base-content/40'
+				: 'animate-pulse bg-primary'
+	);
 
 	function fit() {
 		const next = eqConstraintStore.fitted;
@@ -90,8 +101,20 @@
 	</Button>
 	<Menu>
 		{#snippet trigger(props)}
-			<Button {...props} title={m.eq_more()} size="icon-sm" class="p-2" variant="ghost">
+			<Button
+				{...props}
+				title={linkStore.active && linkState ? `${m.eq_more()} · ${linkState}` : m.eq_more()}
+				size="icon-sm"
+				class="relative p-2"
+				variant="ghost"
+			>
 				<EllipsisVertical class="size-5" aria-hidden="true" />
+				{#if linkStore.active}
+					<span
+						class="absolute top-1 right-1 size-2.5 rounded-full ring-2 ring-base-100 {linkDot}"
+						aria-hidden="true"
+					></span>
+				{/if}
 			</Button>
 		{/snippet}
 		<MenuItem disabled={!eqConstraintStore.editable} onSelect={() => (pickerOpen = true)}>
@@ -111,7 +134,10 @@
 		{/if}
 		<MenuSeparator />
 		{#if linkStore.active}
-			<MenuItem onSelect={() => void loadLinkService().then((service) => service.unlink())}>
+			<MenuItem
+				description={linkState ?? undefined}
+				onSelect={() => void loadLinkService().then((service) => service.unlink())}
+			>
 				{#snippet icon()}<Unlink2 class="size-4" aria-hidden="true" />{/snippet}
 				{m.link_unlink()}
 			</MenuItem>

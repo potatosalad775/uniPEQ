@@ -59,6 +59,34 @@ describe('BandEditor', () => {
 		expect(eqStore.filters[0].freq).toBe(1000);
 	});
 
+	it("shows a fine device grid at edit precision, and the slider's keys step as the box's", async () => {
+		devicePeqStore.setConnected(
+			fakeConnection(
+				hardwareProfile('grid', {
+					bandCount: 4,
+					band: {
+						types: ['PK'],
+						freq: { min: 20, max: 20000, step: 1 },
+						q: { min: 0.1, max: 10, step: 1 / 256 },
+						gain: { min: -12, max: 12, step: 1 / 256 }
+					}
+				})
+			),
+			null
+		);
+		eqStore.replace([{ type: 'PK', freq: 1000, q: 251 / 256, gain: 26 / 256 }], 0);
+		render(BandEditor, { index: 0 });
+		await expect.element(page.getByRole('spinbutton', { name: 'Gain' })).toHaveValue(0.1);
+		await expect.element(page.getByRole('spinbutton', { name: 'Q' })).toHaveValue(0.98);
+		const gain = page.getByRole('slider', { name: 'Gain' });
+		(gain.element() as HTMLElement).focus();
+		await userEvent.keyboard('{ArrowRight}');
+		expect(eqStore.filters[0].gain).toBe(51 / 256);
+		await expect.element(gain).toHaveAttribute('aria-valuetext', '0.2 dB');
+		await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}');
+		expect(eqStore.filters[0].gain).toBeCloseTo(1.2, 1);
+	});
+
 	it("flags a value the device won't take, without changing it", async () => {
 		eqStore.replace([{ type: 'PK', freq: 1000, q: 1, gain: 15 }], 0);
 		render(BandEditor, { index: 0 });

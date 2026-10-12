@@ -7,11 +7,34 @@ import { near, project, type Domain } from '@potatosalad775/eqcaps-core';
 
 export type BandField = 'freq' | 'q' | 'gain';
 
+/** Decimals edits keep: whole Hz (0.1 Hz below 100), 0.1 dB, Q to 0.01. */
+function decimals(field: BandField, v: number): number {
+	if (field === 'freq') return v < 100 ? 1 : 0;
+	return field === 'gain' ? 1 : 2;
+}
+
+function round(v: number, d: number): number {
+	return Math.round(v * 10 ** d) / 10 ** d || 0;
+}
+
+/** The finest step an edit takes: a device grid finer than this isn't worth showing. */
+export const EDIT_STEP: Record<BandField, number> = { freq: 0.1, gain: 0.1, q: 0.01 };
+
 /** Values as edits produce them: whole Hz (0.1 Hz below 100), 0.1 dB, Q to 0.01. */
 export function roundField(field: BandField, v: number): number {
-	if (field === 'freq') return v < 100 ? Math.round(v * 10) / 10 : Math.round(v);
-	if (field === 'gain') return Math.round(v * 10) / 10 || 0;
-	return Math.max(0.01, Math.round(v * 100) / 100);
+	const r = round(v, decimals(field, v));
+	return field === 'q' ? Math.max(0.01, r) : r;
+}
+
+/**
+ * A value as screens show it: at edit precision, or one decimal finer when that is exact (a
+ * 0.25 dB grid, Q 0.707). A device's binary grid (1/256 dB) lands next to what was asked, and
+ * 0.1015625 would only be noise: the difference can't be heard.
+ */
+export function shownField(field: BandField, v: number): number {
+	const d = decimals(field, v);
+	const fine = round(v, d + 1);
+	return Math.abs(fine - v) < 1e-9 ? fine : round(v, d);
 }
 
 /**

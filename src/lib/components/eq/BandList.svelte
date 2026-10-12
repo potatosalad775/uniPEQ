@@ -17,7 +17,7 @@
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 	import BandEditor from './BandEditor.svelte';
-	import { formatDb, formatHz, formatQ } from './type-labels';
+	import { formatFreq, formatGain, formatQ } from './type-labels';
 
 	let { inlineEditor = false }: { inlineEditor?: boolean } = $props();
 
@@ -90,7 +90,7 @@
 						aria-expanded={inlineEditor ? isSelected : undefined}
 						aria-pressed={inlineEditor ? undefined : isSelected}
 						disabled={!eqConstraintStore.editable}
-						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums group-last:rounded-b-xl hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:text-base
+						class="flex min-h-12 w-full items-center gap-3 px-4 text-left text-sm tabular-nums group-last:rounded-b-xl hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:gap-2 touch:text-base
 							{off ? 'text-base-content/50' : ''}"
 						onclick={() => eqStore.select(isSelected && inlineEditor ? null : i)}
 					>
@@ -105,11 +105,21 @@
 						>
 							{filter.type}
 						</span>
-						<span class="min-w-0 flex-1 truncate">{formatHz(filter.freq)}</span>
-						<span class="w-14 shrink-0 text-right">
-							{usesGain(filter.type) ? formatDb(filter.gain) : '—'}
+						<!-- Numbers at full size, units small: one line at 360 dp, columns in step. -->
+						<span class="min-w-0 flex-1 truncate">
+							{formatFreq(filter.freq)} <span class="text-xs text-base-content/60">Hz</span>
 						</span>
-						<span class="w-14 shrink-0 text-right text-base-content/60">Q {formatQ(filter.q)}</span>
+						<span class="w-[6.5ch] shrink-0 text-right whitespace-nowrap">
+							{#if usesGain(filter.type)}
+								{formatGain(filter.gain)} <span class="text-xs text-base-content/60">dB</span>
+							{:else}
+								—
+							{/if}
+						</span>
+						<span class="w-[6ch] shrink-0 text-right whitespace-nowrap text-base-content/70">
+							<span class="text-xs text-base-content/60">Q</span>
+							{formatQ(filter.q)}
+						</span>
 						{#if flagged(i)}
 							<TriangleAlert
 								class="size-4 shrink-0 text-warning"

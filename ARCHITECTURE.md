@@ -108,11 +108,11 @@ src/
     │   ├── layout/         # AppShell (tab bar ↔ side rail), PageHeader, Toast, BuildBadge
     │   ├── eq/             # EqAppBar, EqGraph, BandList / BandEditor / BandSheet, Preamp*
     │   ├── device/         # DeviceChip, DevicePanel, DeviceSheet, SyncBar, Review / Push dialogs
-    │   ├── link/           # LinkSheet (code), LinkApprovalDialog, LinkBar
+    │   ├── link/           # LinkSheet (code), LinkApprovalDialog, LinkBatteryDialog
     │   ├── presets/        # PresetsPanel, picker / save / edit dialogs
     │   └── settings/       # LogDialog, licenses
     ├── device-peq/         # connect, push-plan, sync-status, panel-status, preset-fit, errors, demo
-    ├── link/               # the modernGraphTool link: store, service, self-check
+    ├── link/               # the modernGraphTool link: store, service, bar status, self-check
     ├── eq/                 # model, biquad, eq-constraint, eq-preamp, preset-file, eq-apo, graph-scale, nudge
     ├── services/           # device-peq-service, eqcaps-client, preset-storage, undo-redo-stack, logger
     ├── stores/             # rune-class stores (§8.4)
@@ -212,6 +212,7 @@ changed:
      (`fitFilters`) is the user's action.
 4. **One status line**: the EQ tab's sync bar (`device-peq/sync-status.ts`, ranked over
    `panel-status.ts`), also the live region screen readers hear. The device chip's dot repeats it.
+   The modernGraphTool link shares the bar rather than adding a row (§10).
    No toast per write; a failure gets a toast and an error haptic.
 
 Writing:
@@ -388,6 +389,11 @@ gets a tag; then both apps bump.
 - **Self-check** (`link/self-check.ts`, Android): a freeze, a lost keep-visible or a stopped process
   is reported to mGT (`notice`) and shown once as a battery-settings tip, as is a crash marker in
   `localStorage` from a session that never ended, or the Restricted battery setting at approval.
+- **On screen**: the link speaks on the sync bar only while it waits on something (joining, asking,
+  mGT quiet, go back to the browser), after a device that needs the user and
+  before the device's routine news (`link/link-status.ts`). Linked and steady, a dot on the EQ
+  menu's ⋮ says so, and Unlink in it carries the state: the bands keep the height. The battery
+  tip is a dialog (`LinkBatteryDialog`), held while the approval is open.
 - Code: `link/link-store.svelte.ts` (what screens read; no link client), `link-service.svelte.ts`
   (the client's handlers and events, behind `import()`), `platform/link.ts` (the plugin, no-ops on
   the web). On the web a link works the same, without the service.

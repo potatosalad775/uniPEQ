@@ -8,9 +8,10 @@ import * as m from '$lib/paraglide/messages';
  * "31, 62, 125 … 16000 Hz (10 values)", "1.41".
  *
  * eqcaps core has `describeDomain` for this, but its text is English; everything here is numbers
- * plus the two words that need translating.
+ * plus the two words that need translating. A step finer than `fine` (what edits round to) isn't
+ * named: "step 0.0039" for a 1/256 dB grid says nothing the number box doesn't.
  */
-export function domainHint(d: Domain, unit: string): string {
+export function domainHint(d: Domain, unit: string, fine = 0): string {
 	const u = unit ? ` ${unit}` : '';
 	if ('value' in d) return `${fmt(d.value)}${u}`;
 	if ('values' in d) {
@@ -20,7 +21,9 @@ export function domainHint(d: Domain, unit: string): string {
 		return `${shown.join(', ')}${u} (${m.eq_domain_values({ count: v.length })})`;
 	}
 	const range = `${fmt(d.min)} – ${fmt(d.max)}${u}`;
-	return 'step' in d ? `${range}, ${m.eq_domain_step({ step: fmt(d.step) })}` : range;
+	return 'step' in d && d.step >= fine - 1e-9
+		? `${range}, ${m.eq_domain_step({ step: fmt(d.step) })}`
+		: range;
 }
 
 /** Up to four decimals, without trailing zeros. */

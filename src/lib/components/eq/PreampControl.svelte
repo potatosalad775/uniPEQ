@@ -17,7 +17,7 @@
 	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 	import { eqStore } from '$lib/stores/eq-store.svelte';
 	import PreampEditor from './PreampEditor.svelte';
-	import { formatDb } from './type-labels';
+	import { formatGain } from './type-labels';
 
 	let { inlineEditor = false }: { inlineEditor?: boolean } = $props();
 
@@ -48,7 +48,7 @@
 			aria-expanded={inlineEditor ? open : undefined}
 			aria-haspopup={inlineEditor ? undefined : 'dialog'}
 			disabled={!eqConstraintStore.editable}
-			class="flex min-h-12 w-full items-center gap-3 rounded-t-xl px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:text-base"
+			class="flex min-h-12 w-full items-center gap-3 rounded-t-xl px-4 text-left text-sm tabular-nums hover:bg-base-content/5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset active:bg-base-content/10 disabled:pointer-events-none disabled:opacity-60 touch:min-h-14 touch:gap-2 touch:text-base"
 			onclick={toggle}
 		>
 			<span
@@ -61,8 +61,11 @@
 			{#if eqStore.autoPreamp}
 				<Badge tone="primary">{m.eq_preamp_auto()}</Badge>
 			{/if}
-			<span class="w-14 shrink-0 text-right">{formatDb(eqStore.preamp)}</span>
-			<span class="flex w-14 shrink-0 justify-end">
+			<!-- The band rows' gain and Q columns. -->
+			<span class="w-[6.5ch] shrink-0 text-right whitespace-nowrap">
+				{formatGain(eqStore.preamp)} <span class="text-xs text-base-content/60">dB</span>
+			</span>
+			<span class="flex w-[6ch] shrink-0 justify-end">
 				{#if clips}
 					<TriangleAlert
 						class="size-4 shrink-0 text-warning"
