@@ -23,6 +23,17 @@ const args = process.argv.slice(2);
 const has = (name) => args.includes(`--${name}`);
 const bump = args.find((arg) => !arg.startsWith('--'));
 
+/**
+ * `shell: true` (needed on Windows to run npm.cmd) joins arguments with spaces and quotes nothing,
+ * so `-m 'chore(release): v%s'` reached npm as two words. Quote what cmd would split or read.
+ */
+function shellArgs(commandArgs) {
+	if (!windows) return commandArgs;
+	return commandArgs.map((arg) =>
+		/[\s"&()<>^|]/.test(arg) ? `"${arg.replace(/"/g, '""')}"` : arg
+	);
+}
+
 function fail(message) {
 	console.error(`✖ ${message}`);
 	process.exit(1);
@@ -31,13 +42,21 @@ function fail(message) {
 /** Runs a command with its output on the terminal; exits on failure, with `hint` if given. */
 function step(title, command, commandArgs, hint = '') {
 	console.log(`\n▶ ${title}`);
-	const result = spawnSync(command, commandArgs, { cwd: root, stdio: 'inherit', shell: windows });
+	const result = spawnSync(command, shellArgs(commandArgs), {
+		cwd: root,
+		stdio: 'inherit',
+		shell: windows
+	});
 	if (result.status !== 0) fail(`${title} failed${hint ? `\n  ${hint}` : ''}`);
 }
 
 /** A command's trimmed stdout, or null when it fails. */
 function read(command, commandArgs) {
-	const result = spawnSync(command, commandArgs, { cwd: root, encoding: 'utf8', shell: windows });
+	const result = spawnSync(command, shellArgs(commandArgs), {
+		cwd: root,
+		encoding: 'utf8',
+		shell: windows
+	});
 	return result.status === 0 ? result.stdout.trim() : null;
 }
 
