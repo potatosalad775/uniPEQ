@@ -9,6 +9,17 @@ protocols (the device panel links there). This file is about the app itself.
 - Shared UI and device code comes from [modernGraphTool](https://github.com/potatosalad775/modernGraphTool);
   copied files name their source path and commit in a header comment.
 
+## How it fits together
+
+- **Device data** comes from the eqcaps CDN, cached on the device and refreshed on each launch; a
+  bundled snapshot covers an offline first launch.
+- **Protocols** are `@potatosalad775/eqcaps-device-bridge`. The Android plugin
+  (`native/device-io`) only moves bytes; it knows nothing about any vendor.
+- **Every write is fitted** to the device's limits first, and anything that had to change is shown
+  before it's written. Nothing is clamped silently.
+
+The source layout and the rules behind each part are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Setup
 
 Node.js 20.19 or newer.

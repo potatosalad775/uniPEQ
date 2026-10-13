@@ -1,85 +1,73 @@
 # uniPEQ
 
-Parametric EQ control for USB and Bluetooth audio devices: DACs, dongles, headphones and IEMs with
-a built-in hardware EQ. Read the EQ a device holds, edit it, and write it back — from a desktop
-browser or an Android phone.
+A companion app for the parametric EQ built into many USB audio devices: DACs, dongles, headphones and IEMs. 
 
-**Web app:** <https://potatosalad775.github.io/uniPEQ/> (Chrome or Edge on a computer; see
-[Platforms](#platforms)).
+uniPEQ reads the EQ a device holds, lets you edit it on a graph, and writes it back, from a desktop browser or an Android phone.
 
-uniPEQ doesn't carry its own device list or protocol code. It runs on
+## Features
+
+- **Graph editor** for the device's EQ: drag, pinch, scroll to shape the frequency response, or set 
+  the frequency, gain, Q and filter type exactly with Undo / redo.
+- **Auto-write** after a short idle delay (adjustable, or off), with a status bar that says what's
+  written and what isn't.
+- **Local presets:** save, search, tag, and import / export, with a badge showing how well each fits
+  the connected device.
+- **Live link with [modernGraphTool](https://github.com/potatosalad775/modernGraphTool):** pair by
+  QR code, link or code, and the EQ you build against a measurement there plays on your device as
+  you edit. See [docs](https://potatosalad775.github.io/modernGraphTool/docs/features/unipeq-link/) for details.
+- **Tune with measurements, entirely on Android:** open
+  [modernGraphTool database](https://github.com/potatosalad775/modernGraphTool/discussions/86) in 
+  your phone's browser, pair it with uniPEQ app, and every change you make against a measurement 
+  plays on your device. Until now this needed a desktop browser with WebHID.
+
+## Get it
+
+| Where                 | How                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Web app**           | <https://unipeq.com> <br><sub>Chromium-based browser (Chrome, Edge…) required. Installable as a PWA.</sub>                   |
+| **Android app**       | APK from [GitHub Releases](https://github.com/potatosalad775/uniPEQ/releases/latest).                                        |
+| **Google Play**       | Coming soon.                                                                                                                 |
+
+No hardware at hand? Pick the **demo device** on the EQ tab to try everything without one.
+
+### Supported browsers and platforms
+
+uniPEQ (web app) talks to devices over **WebHID**, which only Chromium-based browsers on a desktop computer have.
+
+| Platform                                   | Works?                                                        |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| Chrome, Edge or another Chromium browser on Windows, macOS, Linux, ChromeOS | ✅ Web app                   |
+| Android                                    | ✅ Android app (Chrome on Android has no WebHID)              |
+| Firefox, Safari (any platform)             | ❌ No WebHID: the app opens, but can't connect to a device    |
+| iPhone, iPad                               | ❌ No USB access for any browser or app                       |
+
+On Android, plug the audio device into the phone (directly over USB-C, or through an OTG adapter);
+Android asks for permission the first time.
+
+## Devices
+
+uniPEQ has no device list or protocol code of its own. It runs on
 [eqcaps](https://github.com/potatosalad775/eqcaps), a database of what each device's EQ accepts
-(bands, ranges, filter types, presets) plus the protocols that drive them. A device eqcaps knows
-works here; a missing one is added there.
+plus the protocols that drive it: a device eqcaps knows works here.
 
-> **Status:** USB HID devices work end to end (connect, read, edit on the graph, write, presets) in
-> Chrome / Edge and in the Android app. Serial and Bluetooth devices are not wired up yet. Design
-> and open items: [ARCHITECTURE.md](ARCHITECTURE.md).
+USB HID devices are supported. Serial and Bluetooth devices aren't yet.
 
-## Platforms
+> **Device missing, not connecting, or showing wrong limits?** Please report it to
+> [eqcaps](https://github.com/potatosalad775/eqcaps/issues), not here. The device panel links there
+> too. Issues with the app itself belong in [uniPEQ's issues](https://github.com/potatosalad775/uniPEQ/issues).
 
-| Platform                        | How it reaches the device                        |
-| ------------------------------- | ------------------------------------------------ |
-| Chrome / Edge on a computer     | WebHID (Web Serial and Web Bluetooth are planned) |
-| Android app                     | A Capacitor plugin that claims the USB HID interface directly |
-| Firefox, Safari (any platform)  | None: no WebHID. The app opens, but can't connect to a device |
+## Development
 
-WebHID exists only in Chromium-based browsers on desktop, so Firefox and Safari can't reach USB
-devices; the device panel says so in place of the Connect button. Android Chrome has no WebHID
-either, which is why Android gets a native app rather than a web page.
-
-## Getting started
-
-Requirements: Node.js 20.19 or newer.
+SvelteKit 2 (static SPA) + Svelte 5 + Tailwind CSS 4 in Capacitor 8. Node.js 20.19 or newer.
 
 ```sh
 npm install
-npm run dev          # http://localhost:5173
+npm run dev        # http://localhost:5173
+npm run android    # build, install and start the debug app on a connected phone
 ```
 
-Open it in Chrome or Edge, plug in a supported device and press **Connect USB device**, or try the
-demo device without one.
-
-For the Android app, plug in a phone with USB debugging (or start an emulator) and run
-`npm run android`: it builds, installs and starts the debug app. Plug the audio device into the
-phone (a USB-C dongle, or through an OTG adapter) and connect; Android asks for permission the
-first time.
-
-Tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## How it fits together
-
-```
-src/
-├── routes/                 # one route per tab: EQ, Presets, Settings
-└── lib/
-    ├── components/         # atoms (Button, Switch, …), layout shell, device panel
-    ├── device-peq/         # connect flows, push plan, sync status, demo device
-    ├── eq/                 # filter model (eqcaps type codes) and biquad response math
-    ├── services/           # eqcaps client, device service, presets, logger, undo/redo
-    ├── stores/             # app state as Svelte 5 rune classes
-    ├── platform/           # Capacitor glue: back button, system bars, haptics, file export
-    ├── transports/native/  # TypeScript side of the Android USB plugin
-    └── data/               # bundled eqcaps snapshot
-native/device-io/           # the Android plugin (Kotlin): USB permission, HID claim, reports
-android/                    # Capacitor's Android project
-```
-
-- **Device data** comes from the eqcaps CDN, cached on the device and refreshed on each launch; a
-  bundled snapshot covers an offline first launch.
-- **Protocols** are `@potatosalad775/eqcaps-device-bridge`. The Android plugin only moves bytes;
-  it knows nothing about any vendor.
-- **Every write is fitted** to the device's limits first, and anything that had to change is shown
-  before it's written. Nothing is clamped silently.
-
-Stack: SvelteKit 2 (static SPA), Svelte 5, Tailwind CSS 4, bits-ui, Paraglide (English, Korean),
-Capacitor 8, Vitest.
-
-## Contributing
-
-- A device that doesn't connect, or limits that look wrong: report it to
-  [eqcaps](https://github.com/potatosalad775/eqcaps/issues) — the device panel links there.
-- Everything else: [CONTRIBUTING.md](CONTRIBUTING.md).
+Setup, tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md). How the
+app is built: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## License
 
