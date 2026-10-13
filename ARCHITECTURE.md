@@ -219,6 +219,12 @@ Writing:
 - **Auto-write** (`device-peq-service.svelte.ts`): after `autoPushDelayMs` idle (default 1.5 s),
   only the latest state, edits during a write coalesced into the next one; pauses for review when a
   write would change values. A failed write stops auto-write on that connection.
+- **Volume warning** (`VolumeWarningDialog`, in the shell): a write can pop or jump in level
+  mid-playback, so the first write on each connection waits for the user to pause or lower the
+  volume. With auto-write on it comes on connecting (or switching it on); otherwise at the first
+  Write or preset switch, which runs once they go on. A linked modernGraphTool shows it too
+  (`status.consent`) and either side answers. Not now writes nothing and stops auto-write on that
+  connection. Not for the demo device; a setting silences it.
 - **Manual-save mode:** a device with `disconnectOnSave` gets no auto-write, only Write, then
   Reconnect.
 - **Review** is `devicePeqService.review`, shown by `ReviewDialog`; the sync bar's Write and the
@@ -240,6 +246,10 @@ Writing:
 - **Preamp:** derived from the filters while Auto (`eq/eq-preamp.ts`: every type counts, never
   positive, rounded up to 0.1 dB), else the value read or set. How it is shown follows the
   profile's `preamp.mode` (`eq/preamp-control.ts`).
+- **Auto is the default,** so no edit makes the EQ louder than the source. Written and shown as
+  `eqConstraintStore.preampValue`: Auto's value moved *down* onto the device's grid
+  (`headroomPreamp`; nearest would hand back headroom, and its change would pause auto-write). A
+  read keeps Auto where the device holds that value, else takes the device's preamp as fixed.
 - **Constraints** (`stores/eq-constraint-store.svelte.ts`): the connected (or last known) profile,
   resolved per band with `resolveSlot`: ranges, steps, value lists, locked fields, allowed types.
   `UNCONSTRAINED` is only the placeholder before any device and the specs' profile. No constraint
@@ -301,7 +311,7 @@ Search over names and tags, save, rename, duplicate, edit tags, import, export, 
 badge against the connected device.
 
 ### 8.3 Settings tab
-Theme, language (en / ko), auto-write switch and delay (0.5–5 s), verbose logging with a log viewer
+Theme, language (en / ko), auto-write switch, volume warning and delay (0.5–5 s), verbose logging with a log viewer
 (clear, export), eqcaps data version and profile count, app version, and Open-source licenses: the
 GPL text, then `virtual:third-party-licenses` (`scripts/third-party-licenses.ts`: npm packages from
 the client bundle's module graph, Android libraries listed by hand and shown only in the app).

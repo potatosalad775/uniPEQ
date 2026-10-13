@@ -31,3 +31,20 @@ export function preampControl(profile: Profile, writesPreamp: boolean | null): P
 	const step = 'step' in domain ? domain.step : 0.1;
 	return { kind: 'slider', domain, min, max, step, unknown: preamp.mode === 'unknown' };
 }
+
+/**
+ * Auto preamp on this device: the derived value moved down onto one the device takes, so a coarse
+ * grid never hands back headroom (-6.1 dB on a 1 dB grid is -7, not the nearest -6). Below the
+ * device's range it is the lowest the device takes. Without a slider it is `value` unchanged.
+ */
+export function headroomPreamp(value: number, control: PreampControl): number {
+	if (control.kind !== 'slider') return value;
+	const d = control.domain;
+	if ('value' in d) return d.value;
+	if ('values' in d) return [...d.values].reverse().find((v) => v <= value + 1e-9) ?? d.values[0];
+	const clamped = Math.min(Math.max(value, d.min), d.max);
+	if (!('step' in d)) return clamped;
+	// eqcaps anchors a stepped grid at 0; min lies on it.
+	const down = Math.floor(clamped / d.step + 1e-9) * d.step;
+	return Math.max(Math.round(down * 1e10) / 1e10, d.min);
+}

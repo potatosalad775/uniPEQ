@@ -14,6 +14,14 @@ import ReviewDialog from './ReviewDialog.svelte';
 import SyncBar from './SyncBar.svelte';
 import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 
+// The volume warning has its own specs (device-peq-service); here writes go straight out.
+beforeEach(() => {
+	settingsStore.writeWarning = false;
+});
+afterEach(() => {
+	settingsStore.writeWarning = true;
+});
+
 /** The panel as the EQ tab has it: its status in the sync bar, its review in the dialog. */
 function renderPanel() {
 	render(DevicePanel);

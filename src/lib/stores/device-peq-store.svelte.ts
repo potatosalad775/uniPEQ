@@ -78,6 +78,11 @@ class DevicePeqStore {
 	 * Kept out of the saved setting: one dropped connection shouldn't turn it off in later sessions.
 	 */
 	autoStopped = $state(false);
+	/**
+	 * The user went on past the volume warning on this connection, so writes may go out. Asked again
+	 * on every connection: a write can pop or jump in level while audio plays.
+	 */
+	writeConsent = $state(false);
 	/** The last operation's outcome, until the next one. */
 	statusMessage = $state<string | null>(null);
 	/** Whether `statusMessage` reports a failure, which outranks every other status line. */
@@ -231,6 +236,7 @@ class DevicePeqStore {
 		this.autoPaused = false;
 		this.autoClipRisk = false;
 		this.autoStopped = false;
+		this.writeConsent = false;
 		this.statusMessage = null;
 		this.statusIsError = false;
 	}
@@ -287,6 +293,7 @@ class DevicePeqStore {
 		this.autoPaused = false;
 		this.autoClipRisk = false;
 		this.autoStopped = false;
+		this.writeConsent = false;
 		this.statusMessage = null;
 		this.statusIsError = false;
 		this.needsReconnect = false;

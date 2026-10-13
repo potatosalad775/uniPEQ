@@ -3,6 +3,7 @@ import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
 import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
+import { settingsStore } from '$lib/stores/settings-store.svelte';
 import type { DeviceIoPlugin, NativeUsbDevice } from '$lib/transports/native/device-io';
 import { devicePeqService } from './device-peq-service.svelte';
 
@@ -118,9 +119,14 @@ describe('devicePeqService reading the device', () => {
 	beforeEach(() => {
 		devicePeqStore.forget();
 		eqStore.reset();
+		// The volume warning has its own specs below.
+		settingsStore.writeWarning = false;
 	});
 
-	afterEach(() => devicePeqStore.forget());
+	afterEach(() => {
+		devicePeqStore.forget();
+		settingsStore.writeWarning = true;
+	});
 
 	it('reads the EQ of a device it connects', async () => {
 		const { conn, pull } = device();
@@ -168,5 +174,147 @@ describe('devicePeqService reading the device', () => {
 		await devicePeqService.switchTo('p1');
 		expect(pull).not.toHaveBeenCalled();
 		expect(eqStore.filters[0].gain).toBe(5);
+	});
+});
+
+describe('devicePeqService volume warning', () => {
+	/** A device that can switch presets, connected through the service as a press would. */
+	async function connectDevice(profileSource: 'device' | 'demo' = 'device') {
+		const conn = {
+			...fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
+				canEnable: true,
+				slots: [
+					{ id: 1, name: 'USER1' },
+					{ id: 2, name: 'USER2' }
+				]
+			}),
+			profileSource
+		};
+		vi.spyOn(conn.device, 'pull').mockResolvedValue({ filters: [PEAK], preamp: 0 });
+		vi.spyOn(conn.device, 'currentSlot').mockResolvedValue(1);
+		const push = vi.spyOn(conn.device, 'push');
+		const setEnabled = vi.spyOn(conn.device, 'setEnabled');
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		return { push, setEnabled };
+	}
+
+	const PEAK = { type: 'PK' as const, freq: 1000, gain: -3, q: 1 };
+
+	beforeEach(() => {
+		devicePeqStore.forget();
+		eqStore.reset();
+	});
+
+	afterEach(async () => {
+		await devicePeqService.disconnect();
+		devicePeqStore.forget();
+		settingsStore.autoPushEnabled = true;
+		settingsStore.writeWarning = true;
+	});
+
+	it('asks on connecting with auto-write on, and writes what waited once the user goes on', async () => {
+		const { push } = await connectDevice();
+		expect(devicePeqService.volumeWarning).toBe(true);
+		eqStore.update(0, { gain: -5 });
+		devicePeqService.setAutoWrite(true);
+		await Promise.resolve();
+		expect(push).not.toHaveBeenCalled();
+
+		await devicePeqService.answerVolumeWarning(true);
+		expect(devicePeqService.volumeWarning).toBe(false);
+		expect(push).toHaveBeenCalledOnce();
+	});
+
+	it('asks before a Write with auto-write off, then writes', async () => {
+		settingsStore.autoPushEnabled = false;
+		const { push } = await connectDevice();
+		expect(devicePeqService.volumeWarning).toBe(false);
+
+		eqStore.update(0, { gain: -5 });
+		await devicePeqService.requestWrite();
+		expect(devicePeqService.volumeWarning).toBe(true);
+		expect(push).not.toHaveBeenCalled();
+
+		await devicePeqService.answerVolumeWarning(true);
+		expect(push).toHaveBeenCalledOnce();
+		// Once per connection: the next Write goes straight out.
+		eqStore.update(0, { gain: -6 });
+		await devicePeqService.requestWrite();
+		expect(push).toHaveBeenCalledTimes(2);
+	});
+
+	it('asks before switching presets', async () => {
+		settingsStore.autoPushEnabled = false;
+		const { setEnabled } = await connectDevice();
+		await devicePeqService.switchTo('p2');
+		expect(setEnabled).not.toHaveBeenCalled();
+		await devicePeqService.answerVolumeWarning(true);
+		expect(setEnabled).toHaveBeenCalledWith(true, 2);
+	});
+
+	it('writes nothing on Not now, stops auto-write for the connection, and asks the next one', async () => {
+		const { push } = await connectDevice();
+		eqStore.update(0, { gain: -5 });
+		await devicePeqService.answerVolumeWarning(false);
+		expect(devicePeqService.volumeWarning).toBe(false);
+		expect(devicePeqService.autoWriteOn).toBe(false);
+		expect(settingsStore.autoPushEnabled).toBe(true);
+		expect(push).not.toHaveBeenCalled();
+
+		await devicePeqService.requestWrite();
+		expect(devicePeqService.volumeWarning).toBe(true);
+		await devicePeqService.answerVolumeWarning(false);
+
+		await devicePeqService.disconnect();
+		await connectDevice();
+		expect(devicePeqService.volumeWarning).toBe(true);
+	});
+
+	it('stops asking once told not to show it again', async () => {
+		await connectDevice();
+		await devicePeqService.answerVolumeWarning(true, true);
+		expect(settingsStore.writeWarning).toBe(false);
+		await devicePeqService.disconnect();
+		await connectDevice();
+		expect(devicePeqService.volumeWarning).toBe(false);
+	});
+
+	it('never asks for the demo device', async () => {
+		settingsStore.autoPushEnabled = false;
+		const { push } = await connectDevice('demo');
+		eqStore.update(0, { gain: -5 });
+		await devicePeqService.requestWrite();
+		expect(devicePeqService.volumeWarning).toBe(false);
+		expect(push).toHaveBeenCalledOnce();
+	});
+});
+
+describe('devicePeqService reading the preamp', () => {
+	function connectWith(preamp: number) {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }));
+		vi.spyOn(conn.device, 'pull').mockResolvedValue({
+			filters: [{ type: 'PK', freq: 1000, gain: 6, q: 1 }],
+			preamp
+		});
+		devicePeqStore.setConnected(conn, null);
+	}
+
+	afterEach(() => {
+		devicePeqStore.forget();
+		eqStore.reset();
+	});
+
+	it('follows the bands where the device holds what Auto would write', async () => {
+		connectWith(-6);
+		await devicePeqService.read(true);
+		expect(eqStore.autoPreamp).toBe(true);
+	});
+
+	it("keeps the device's own preamp, fixed, where it differs", async () => {
+		connectWith(-2);
+		await devicePeqService.read(true);
+		expect(eqStore.autoPreamp).toBe(false);
+		expect(eqStore.preamp).toBe(-2);
 	});
 });

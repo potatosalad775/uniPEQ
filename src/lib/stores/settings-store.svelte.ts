@@ -9,6 +9,8 @@ export interface PersistedSettings {
 	theme: ThemeSetting;
 	autoPushEnabled: boolean;
 	autoPushDelayMs: number;
+	/** Ask the user to lower the volume before the first write to each connected device. */
+	writeWarning: boolean;
 	verboseLogging: boolean;
 }
 
@@ -16,6 +18,7 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
 	theme: 'system',
 	autoPushEnabled: true,
 	autoPushDelayMs: 1500,
+	writeWarning: true,
 	verboseLogging: false
 };
 
@@ -44,6 +47,9 @@ export function parseSettings(raw: string | null): PersistedSettings {
 	if (typeof stored.autoPushDelayMs === 'number' && stored.autoPushDelayMs >= 0) {
 		settings.autoPushDelayMs = stored.autoPushDelayMs;
 	}
+	if (typeof stored.writeWarning === 'boolean') {
+		settings.writeWarning = stored.writeWarning;
+	}
 	if (typeof stored.verboseLogging === 'boolean') settings.verboseLogging = stored.verboseLogging;
 	return settings;
 }
@@ -52,6 +58,7 @@ class SettingsStore {
 	theme = $state<ThemeSetting>(DEFAULT_SETTINGS.theme);
 	autoPushEnabled = $state(DEFAULT_SETTINGS.autoPushEnabled);
 	autoPushDelayMs = $state(DEFAULT_SETTINGS.autoPushDelayMs);
+	writeWarning = $state(DEFAULT_SETTINGS.writeWarning);
 	verboseLogging = $state(DEFAULT_SETTINGS.verboseLogging);
 	/** The OS colour-scheme preference, tracked live for `theme: 'system'`. */
 	systemDark = $state(false);
@@ -82,6 +89,7 @@ class SettingsStore {
 					theme: this.theme,
 					autoPushEnabled: this.autoPushEnabled,
 					autoPushDelayMs: this.autoPushDelayMs,
+					writeWarning: this.writeWarning,
 					verboseLogging: this.verboseLogging
 				};
 				logger.verbose = snapshot.verboseLogging;

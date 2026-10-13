@@ -69,7 +69,12 @@ const GO_BACK_MS = 5_000;
 type Snapshot = Pick<LinkEq, 'filters' | 'preamp' | 'autoPreamp'>;
 
 function snapshot(): Snapshot {
-	return { filters: eqStore.filters, preamp: eqStore.preamp, autoPreamp: eqStore.autoPreamp };
+	return {
+		filters: eqStore.filters,
+		// As written: Auto's on the device's grid.
+		preamp: eqConstraintStore.preampValue,
+		autoPreamp: eqStore.autoPreamp
+	};
 }
 
 function same(a: Snapshot, b: Snapshot): boolean {
@@ -299,6 +304,12 @@ class Session {
 			case 'auto-write':
 				devicePeqService.setAutoWrite((args as CommandArgs['auto-write']).on);
 				return { ok: true };
+			case 'consent': {
+				if (!devicePeqService.volumeWarning) return { ok: false, code: 'no-consent' };
+				const { accept, quiet } = args as CommandArgs['consent'];
+				// Going on runs what waited (a Write, a switch): device work, so awake.
+				return deviceCommand(() => devicePeqService.answerVolumeWarning(accept, quiet));
+			}
 			default:
 				return { ok: false, code: 'unsupported' };
 		}
@@ -342,6 +353,7 @@ class Session {
 				clipRisk: store.autoClipRisk
 			},
 			failure: store.failure,
+			consent: devicePeqService.volumeWarning,
 			review: review && {
 				rev: review.rev,
 				changes: review.plan.changes satisfies PlanChange[],

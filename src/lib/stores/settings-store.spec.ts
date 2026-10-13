@@ -14,18 +14,25 @@ describe('parseSettings', () => {
 			language: 'ko',
 			autoPushDelayMs: 800,
 			autoPushEnabled: false,
+			writeWarning: true,
 			verboseLogging: true
 		});
 		expect(parseSettings(stored)).toEqual({
 			theme: 'dark',
 			autoPushDelayMs: 800,
 			autoPushEnabled: false,
+			writeWarning: true,
 			verboseLogging: true
 		});
 	});
 
 	it('keeps defaults for fields of the wrong type', () => {
-		const stored = JSON.stringify({ theme: 'blue', autoPushDelayMs: -1, verboseLogging: 'yes' });
+		const stored = JSON.stringify({
+			theme: 'blue',
+			autoPushDelayMs: -1,
+			writeWarning: 'no',
+			verboseLogging: 'yes'
+		});
 		expect(parseSettings(stored)).toEqual(DEFAULT_SETTINGS);
 	});
 });

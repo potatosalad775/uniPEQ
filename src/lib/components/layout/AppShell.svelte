@@ -7,6 +7,7 @@
 	import { TABS, activeTab } from './tabs';
 	import LinkApprovalDialog from '$lib/components/link/LinkApprovalDialog.svelte';
 	import LinkBatteryDialog from '$lib/components/link/LinkBatteryDialog.svelte';
+	import VolumeWarningDialog from '$lib/components/device/VolumeWarningDialog.svelte';
 	import Toast from './Toast.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -69,3 +70,4 @@
 <Toast />
 <LinkApprovalDialog />
 <LinkBatteryDialog />
+<VolumeWarningDialog />

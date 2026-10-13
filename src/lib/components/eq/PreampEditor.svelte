@@ -18,7 +18,7 @@
 	const control = $derived(eqConstraintStore.preamp);
 	const needed = $derived(derivePreamp(eqStore.filters));
 	const clips = $derived(control.kind === 'slider' && eqStore.preamp > needed + 0.05);
-	const shown = $derived(Math.round(eqStore.preamp * 10) / 10 || 0);
+	const shown = $derived(Math.round(eqConstraintStore.preampValue * 10) / 10 || 0);
 	const id = $props.id();
 
 	function set(value: number, history: boolean | string) {

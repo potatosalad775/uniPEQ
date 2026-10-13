@@ -20,12 +20,15 @@ import {
 } from '$lib/device-peq/push-plan';
 import { syncStatus, type SyncStatus } from '$lib/device-peq/sync-status';
 import type { DeviceCandidate, DeviceConnection } from '$lib/device-peq/types';
+import { derivePreamp } from '$lib/eq/eq-preamp';
 import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
+import { headroomPreamp } from '$lib/eq/preamp-control';
 import * as m from '$lib/paraglide/messages';
 import { appState } from '$lib/platform/app-state.svelte';
 import { hapticError, hapticTick } from '$lib/platform/haptics';
 import { isNative } from '$lib/platform/native';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
 import { eqStore } from '$lib/stores/eq-store.svelte';
 import { noticeStore } from '$lib/stores/notice-store.svelte';
 import { settingsStore } from '$lib/stores/settings-store.svelte';
@@ -49,6 +52,18 @@ type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null
 
 const loadConnect = () => import('$lib/device-peq/connect');
 
+/**
+ * A read preamp in the list: Auto where the device holds what Auto would write, so it keeps
+ * following the bands (and no edit can make the EQ louder than the source); else the device's own
+ * value, fixed, since the device's EQ is the document. A device that reports none keeps the list's.
+ */
+function readPreamp(filters: EqFilter[], preamp: number | undefined): number | 'auto' | undefined {
+	if (preamp === undefined) return undefined;
+	const derived = derivePreamp(filters);
+	const auto = headroomPreamp(derived, eqConstraintStore.preamp);
+	return Math.abs(preamp - auto) < 0.01 || Math.abs(preamp - derived) < 0.01 ? 'auto' : preamp;
+}
+
 class DevicePeqService {
 	/** A connect attempt waiting for the user to pick a profile or (Android) a device. */
 	choice = $state.raw<{ candidates: DeviceCandidate[] } | null>(null);
@@ -67,6 +82,9 @@ class DevicePeqService {
 	#running = false;
 	#again = false;
 	#seen: Seen | null = null;
+	#asking = $state(false);
+	/** What the user asked for when the volume warning came up, run once they go on. */
+	#afterConsent: (() => Promise<void>) | null = null;
 
 	/** The auto-write switch: the saved setting, unless a failed write stopped it on this connection. */
 	get autoWriteOn(): boolean {
@@ -80,6 +98,26 @@ class DevicePeqService {
 	get autoWriting(): boolean {
 		const caps = devicePeqStore.connection?.device.capabilities;
 		return this.autoWriteOn && !!caps?.canWrite && !caps.disconnectOnSave;
+	}
+
+	/**
+	 * Writes to this device wait for the volume warning: a write can pop, drop out or jump in level
+	 * while audio plays, so the user is asked to pause or lower it once per connection. The demo
+	 * device plays nothing.
+	 */
+	get needsConsent(): boolean {
+		const conn = devicePeqStore.connection;
+		return (
+			!!conn &&
+			conn.profileSource !== 'demo' &&
+			settingsStore.writeWarning &&
+			!devicePeqStore.writeConsent
+		);
+	}
+
+	/** The volume warning is up; nothing is written until it is answered (`answerVolumeWarning`). */
+	get volumeWarning(): boolean {
+		return this.#asking && this.needsConsent;
 	}
 
 	/** What the sync bar and the device chip show; null before any device. */
@@ -183,7 +221,10 @@ class DevicePeqService {
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const slot = await conn.device.currentSlot().catch(() => null);
 		devicePeqStore.setConnected(conn, slot);
+		this.#dropAsk();
 		this.install();
+		// Auto-write writes without a press, so its warning comes now, before any edit.
+		if (this.autoWriting) this.#ask();
 		logger.info(`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}`);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
@@ -246,6 +287,7 @@ class DevicePeqService {
 		const conn = devicePeqStore.connection;
 		if (!conn) return;
 		this.#cancelPending();
+		this.#dropAsk();
 		await conn.device.close().catch(() => {});
 		devicePeqStore.setDisconnected();
 	}
@@ -266,8 +308,9 @@ class DevicePeqService {
 			const result = await conn.device.pull(request);
 			const bands = result.filters.filter((f) => f !== null);
 			const filters = bands.map(fromCapsFilter).filter((f) => f !== null);
-			if (fresh) eqStore.open(filters, result.preamp);
-			else eqStore.replace(filters, result.preamp);
+			const preamp = readPreamp(filters, result.preamp);
+			if (fresh) eqStore.open(filters, preamp);
+			else eqStore.replace(filters, preamp);
 			devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
 			const skipped = bands.length - filters.length;
 			devicePeqStore.setStatus(
@@ -292,7 +335,13 @@ class DevicePeqService {
 		if (!conn || !devicePeqStore.writeTarget) return null;
 		const caps = conn.device.capabilities;
 		const plan = (hints?: (Filter | null)[] | null) =>
-			planPush(eqStore.filters, eqStore.preamp, conn.profile, caps, hints ?? undefined);
+			planPush(
+				eqStore.filters,
+				eqConstraintStore.preampValue,
+				conn.profile,
+				caps,
+				hints ?? undefined
+			);
 		const first = plan(devicePeqStore.layout?.hints);
 		if (first.emptySlots === 0 || devicePeqStore.layout) return first;
 		const slot = devicePeqStore.activeSlot;
@@ -313,6 +362,7 @@ class DevicePeqService {
 	 * the list exactly, else after the user reviews the changes in the dialog (`review`).
 	 */
 	async requestWrite(): Promise<void> {
+		if (this.#ask(() => this.requestWrite())) return;
 		const source = { filters: eqStore.filters, preamp: eqStore.preamp };
 		const plan = await this.prepare();
 		if (!plan) return;
@@ -418,6 +468,8 @@ class DevicePeqService {
 			if (!devicePeqStore.hasUnwritten) await this.read(true);
 			return;
 		}
+		// Another preset, or the EQ on or off, changes what plays as much as a write does.
+		if (this.#ask(() => this.switchTo(value))) return;
 		devicePeqStore.isSwitching = true;
 		let switched = false;
 		try {
@@ -453,7 +505,45 @@ class DevicePeqService {
 			return;
 		}
 		this.install();
+		if (this.autoWriting) this.#ask();
 		void this.#flush();
+	}
+
+	/**
+	 * The volume warning's answer. Go on: what was asked for (a Write, a preset switch) runs, and
+	 * auto-write writes what waits; `quiet` stops the warning for later connections. Not now:
+	 * nothing is written, auto-write is off on this connection (as after a failed write), and the
+	 * next Write or switch asks again.
+	 */
+	async answerVolumeWarning(go: boolean, quiet = false): Promise<void> {
+		if (!this.volumeWarning) return;
+		const then = this.#afterConsent;
+		this.#dropAsk();
+		if (!go) {
+			this.#cancelPending();
+			if (this.autoWriting) devicePeqStore.autoStopped = true;
+			return;
+		}
+		devicePeqStore.writeConsent = true;
+		if (quiet) settingsStore.writeWarning = false;
+		await then?.();
+		await this.#flush();
+	}
+
+	/**
+	 * Bring up the volume warning if writes to this device need it, keeping `then` to run once the
+	 * user goes on. Whether it did: the caller stops there.
+	 */
+	#ask(then?: () => Promise<void>): boolean {
+		if (!this.needsConsent) return false;
+		this.#asking = true;
+		if (then) this.#afterConsent = then;
+		return true;
+	}
+
+	#dropAsk(): void {
+		this.#asking = false;
+		this.#afterConsent = null;
 	}
 
 	/**
@@ -493,6 +583,8 @@ class DevicePeqService {
 		if (before.filters === now.filters && before.preamp === now.preamp) return;
 		if (!this.autoWriting) return;
 		this.#cancelPending();
+		// Nothing to count down before the volume warning is answered: going on writes.
+		if (this.needsConsent) return;
 		// A read, or an undo back to what the device has: nothing to write, so nothing to wait for.
 		if (devicePeqStore.inSync === true) return;
 		this.#schedule();
@@ -523,6 +615,7 @@ class DevicePeqService {
 			do {
 				this.#again = false;
 				if (!this.autoWriting || devicePeqStore.needsReconnect) return;
+				if (this.#ask()) return;
 				if (devicePeqStore.isBusy) {
 					// A read, a switch or a button write is under way: try again after it.
 					this.#schedule();

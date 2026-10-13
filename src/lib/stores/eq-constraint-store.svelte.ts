@@ -14,7 +14,7 @@ import {
 	sameFilters,
 	UNCONSTRAINED
 } from '$lib/eq/eq-constraint';
-import { preampControl } from '$lib/eq/preamp-control';
+import { headroomPreamp, preampControl } from '$lib/eq/preamp-control';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 
@@ -49,6 +49,13 @@ class EqConstraintStore {
 	);
 	canAdd = $derived(this.editable && !this.fixedBands);
 	preamp = $derived(preampControl(this.profile, devicePeqStore.capabilities?.writesPreamp ?? null));
+	/**
+	 * The preamp in effect, as a write sends it: Auto's moved down onto the device's grid
+	 * (`headroomPreamp`), so it never gives back headroom; a fixed one as set.
+	 */
+	preampValue = $derived(
+		eqStore.autoPreamp ? headroomPreamp(eqStore.preamp, this.preamp) : eqStore.preamp
+	);
 	/** Whether band `i` may be removed, not only reset: always without a set count, else past it. */
 	canRemove(i: number): boolean {
 		return this.editable && (!this.fixedBands || i >= this.maxBands);

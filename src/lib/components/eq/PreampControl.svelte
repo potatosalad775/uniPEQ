@@ -63,7 +63,8 @@
 			{/if}
 			<!-- The band rows' gain and Q columns. -->
 			<span class="w-[6.5ch] shrink-0 text-right whitespace-nowrap">
-				{formatGain(eqStore.preamp)} <span class="text-xs text-base-content/60">dB</span>
+				{formatGain(eqConstraintStore.preampValue)}
+				<span class="text-xs text-base-content/60">dB</span>
 			</span>
 			<span class="flex w-[6ch] shrink-0 justify-end">
 				{#if clips}

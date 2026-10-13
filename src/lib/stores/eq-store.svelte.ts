@@ -20,8 +20,11 @@ export const COALESCE_MS = 1500;
 
 class EqStore {
 	filters = $state.raw<EqFilter[]>([]);
-	/** The preamp follows the bands (`derivePreamp`): a preset's `pregain: 'auto'`. */
-	autoPreamp = $state(false);
+	/**
+	 * The preamp follows the bands (`derivePreamp`): a preset's `pregain: 'auto'`. On by default,
+	 * so no edit can make the EQ louder than the source.
+	 */
+	autoPreamp = $state(true);
 	/** dB, as read from a device or set by hand; ignored while `autoPreamp`. */
 	manualPreamp = $state(0);
 	/** dB: what a push sends, where the device takes a preamp. */
@@ -118,7 +121,7 @@ class EqStore {
 	 * presets. Nothing before it is undoable, since an undo there would hand the
 	 * device another device's or preset's bands.
 	 */
-	open(filters: EqFilter[], preamp?: number): void {
+	open(filters: EqFilter[], preamp?: number | 'auto'): void {
 		this.replace(filters, preamp);
 		this.history.clear();
 		this.#coalesceKey = null;
@@ -197,7 +200,7 @@ class EqStore {
 	/** For specs: an empty list, no history. */
 	reset(): void {
 		this.filters = [];
-		this.autoPreamp = false;
+		this.autoPreamp = true;
 		this.manualPreamp = 0;
 		this.selected = null;
 		this.history.clear();

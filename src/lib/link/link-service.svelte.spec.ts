@@ -86,6 +86,8 @@ function connect() {
 	devicePeqService.install();
 	const conn = fakeConnection(PROFILE);
 	devicePeqStore.setConnected(conn, null);
+	// The user lowered the volume: writes go out from here.
+	devicePeqStore.writeConsent = true;
 	eqStore.open([pk(100), pk(1000), pk(10000)], 0);
 	devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
 	return conn;
@@ -201,6 +203,25 @@ describe('linkService', () => {
 		await vi.waitFor(() => expect(push).toHaveBeenCalledOnce());
 		expect(devicePeqStore.autoDueAt).toBeNull();
 		expect(devicePeqStore.inSync).toBe(true);
+	});
+
+	it('shows the volume warning to mGT, holds writes, and writes on its answer', async () => {
+		const conn = connect();
+		devicePeqStore.writeConsent = false;
+		const push = vi.spyOn(conn.device, 'push');
+		const joiner = link();
+		const { command, status } = joiner.options.handlers;
+		expect(await command('write', undefined)).toEqual({ ok: true });
+		edit(joiner, [{ op: 'band', i: 0, filter: pk(100, 6) }], { burst: 'g1', settle: true });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(push).not.toHaveBeenCalled();
+		expect(status().consent).toBe(true);
+
+		expect(await command('consent', { accept: true })).toEqual({ ok: true });
+		await vi.waitFor(() => expect(push).toHaveBeenCalled());
+		expect(status().consent).toBe(false);
+		expect(devicePeqStore.inSync).toBe(true);
+		expect(await command('consent', { accept: true })).toEqual({ ok: false, code: 'no-consent' });
 	});
 
 	it('does not write on settle with auto-write off', async () => {

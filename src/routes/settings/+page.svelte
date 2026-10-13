@@ -105,6 +105,15 @@
 			{/snippet}
 		</ListRow>
 		<ListRow
+			label={m.settings_volume_warning()}
+			description={m.settings_volume_warning_hint()}
+			for="volume-warning"
+		>
+			{#snippet trailing()}
+				<Switch id="volume-warning" bind:checked={settingsStore.writeWarning} />
+			{/snippet}
+		</ListRow>
+		<ListRow
 			label={m.settings_auto_delay()}
 			description={m.settings_auto_delay_hint()}
 			disabled={!settingsStore.autoPushEnabled}
