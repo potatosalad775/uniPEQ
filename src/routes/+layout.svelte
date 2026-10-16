@@ -10,7 +10,8 @@
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { appState } from '$lib/platform/app-state.svelte';
 	import { distribution } from '$lib/platform/build';
-	import { installNative, isNative, setSystemBarsDark } from '$lib/platform/native';
+	import { installNative, isNative, launchUrl, setSystemBarsDark } from '$lib/platform/native';
+	import { introStore } from '$lib/stores/intro-store.svelte';
 	import { settingsStore } from '$lib/stores/settings-store.svelte';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 
@@ -22,6 +23,14 @@
 		document.documentElement.lang = getLocale();
 		installNative();
 		appState.install();
+		// The intro on first launch, unless modernGraphTool opened this launch with a link: its
+		// "Link with …?" needs the screen. The intro then waits for the next launch.
+		const byLink = isNative
+			? launchUrl().then(Boolean)
+			: Promise.resolve(new URLSearchParams(location.search).has(WEB_LINK_PARAM));
+		void byLink.then((link) => {
+			if (!link) introStore.showIfNew();
+		});
 		// Web: offline cache and the update prompt. The APK carries its own files.
 		if (!isNative && !import.meta.env.DEV) {
 			void import('$lib/platform/pwa').then((mod) => mod.installServiceWorker());

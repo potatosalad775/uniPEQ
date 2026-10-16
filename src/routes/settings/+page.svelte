@@ -14,6 +14,7 @@
 	import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime';
 	import { buildLabel } from '$lib/platform/build';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
+	import { introStore } from '$lib/stores/intro-store.svelte';
 	import { settingsStore, type ThemeSetting } from '$lib/stores/settings-store.svelte';
 
 	const themeOptions: { value: ThemeSetting; label: string }[] = [
@@ -177,6 +178,15 @@
 		>
 			{#snippet trailing()}
 				<ExternalLink class="size-4" aria-hidden="true" />
+			{/snippet}
+		</ListRow>
+		<ListRow
+			label={m.settings_intro()}
+			description={m.settings_intro_hint()}
+			onclick={() => introStore.show()}
+		>
+			{#snippet trailing()}
+				<ChevronRight class="size-4" aria-hidden="true" />
 			{/snippet}
 		</ListRow>
 		<ListRow

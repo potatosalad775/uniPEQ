@@ -344,6 +344,16 @@ the client bundle's module graph, Android libraries listed by hand and shown onl
 - **Android updates:** Play updates its installs. The sideload APK (`distribution` = `github` in
   `platform/build.ts`) asks GitHub's `releases/latest` at launch and on resume, at most every 6 h
   (`platform/release-updates.ts`, `services/release-check.ts`), and offers the release page.
+- **Unsupported environments:** `platform/environment.ts` decides by capability (the app, or
+  `'hid' in navigator`, which `canConnectUsb` reads) and uses the user agent only to pick the
+  advice: an Android browser is sent to the app, iOS is told it can't work, other desktop browsers
+  are sent to Chrome or Edge. The EQ tab's empty state and the device panel say it on every
+  visit; the demo device stays available.
+- **Intro:** `IntroDialog` (in the shell) opens once per install (`stores/intro-store.svelte.ts`,
+  a versioned seen flag) and from Settings. An unsupported environment gets its advice as the
+  first page, and an Android browser only that page. A launch from a modernGraphTool link skips
+  it, and a link that starts while it's open puts it off to the next launch, so it never covers
+  the approval.
 
 ---
 

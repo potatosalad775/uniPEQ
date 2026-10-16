@@ -18,6 +18,8 @@
 	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
 	import Switch from '$lib/components/atoms/Switch.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { environmentCopy } from '$lib/components/intro/environment-copy';
+	import { ANDROID_DOWNLOAD_URL, environment } from '$lib/platform/environment';
 	import { isNative } from '$lib/platform/native';
 	import {
 		canConnectUsb as canConnect,
@@ -34,6 +36,8 @@
 	const PROFILE_URL = 'https://potatosalad775.github.io/eqcaps/p/';
 	const ISSUES_URL = 'https://github.com/potatosalad775/eqcaps/issues/new';
 
+	/** Why this environment can't reach a device, if it can't. */
+	const notice = environmentCopy(environment);
 	const connection = $derived(devicePeqStore.connection);
 	const caps = $derived(connection?.device.capabilities);
 	/** The picked candidate; each new choice starts on its first one. */
@@ -196,10 +200,20 @@
 				</div>
 			</fieldset>
 		{:else}
-			{#if !canConnect}
-				<p class="text-sm text-base-content/70">{m.device_peq_no_webhid()}</p>
+			{#if notice}
+				<p class="text-sm text-base-content/70">{notice.body}</p>
 			{/if}
 			<div class="flex flex-col gap-2">
+				{#if environment === 'android'}
+					<Button
+						title={m.env_download()}
+						href={ANDROID_DOWNLOAD_URL}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{m.env_download()}
+					</Button>
+				{/if}
 				{#if canConnect}
 					<Button
 						title={m.device_peq_connect_usb()}

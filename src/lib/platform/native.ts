@@ -33,6 +33,16 @@ export function installNative(): void {
 	}
 }
 
+/** The address the app was cold-started with (an intent or App Link); null on the web. */
+export async function launchUrl(): Promise<string | null> {
+	if (!isNative) return null;
+	try {
+		return (await App.getLaunchUrl())?.url ?? null;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Capacitor draws the WebView under the system bars only on WebView 140+ (with
  * `viewport-fit=cover`, which app.html sets; see SystemBars.java). Older WebViews are laid out

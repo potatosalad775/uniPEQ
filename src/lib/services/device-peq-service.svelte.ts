@@ -25,6 +25,7 @@ import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
 import { headroomPreamp } from '$lib/eq/preamp-control';
 import * as m from '$lib/paraglide/messages';
 import { appState } from '$lib/platform/app-state.svelte';
+import { environment } from '$lib/platform/environment';
 import { hapticError, hapticTick } from '$lib/platform/haptics';
 import { isNative } from '$lib/platform/native';
 import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
@@ -43,7 +44,7 @@ import { logger } from './logger';
 export type ConnectKind = 'hid' | 'serial' | 'ble' | 'demo';
 
 /** USB HID: the DeviceIo plugin on Android, WebHID in Chrome and Edge. */
-export const canConnectUsb = isNative || (typeof navigator !== 'undefined' && 'hid' in navigator);
+export const canConnectUsb = environment === 'supported';
 
 type Choice = Extract<ConnectResult, { kind: 'choose' }>;
 

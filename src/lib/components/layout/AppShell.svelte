@@ -8,6 +8,7 @@
 	import LinkApprovalDialog from '$lib/components/link/LinkApprovalDialog.svelte';
 	import LinkBatteryDialog from '$lib/components/link/LinkBatteryDialog.svelte';
 	import VolumeWarningDialog from '$lib/components/device/VolumeWarningDialog.svelte';
+	import IntroDialog from '$lib/components/intro/IntroDialog.svelte';
 	import Toast from './Toast.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -71,3 +72,4 @@
 <LinkApprovalDialog />
 <LinkBatteryDialog />
 <VolumeWarningDialog />
+<IntroDialog />
