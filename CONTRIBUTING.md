@@ -37,21 +37,56 @@ npm run dev                        # http://localhost:5173
 | `npm run check` | Paraglide compile, `svelte-kit sync`, `svelte-check` |
 | `npm run lint` | Prettier check and ESLint; `npm run format` fixes formatting |
 | `npm run build` | Release web build into `dist/`; `-- --mode debug` keeps the debug-only UI |
-| `npm run i18n:check` | Lists keys each `messages/<locale>.json` is missing (or has stale) against `en.json` |
-| `npm run i18n:missing` | Same, and writes `messages/_missing_translations_<locale>.json` stubs pre-filled with the `en` text for translators |
-| `npm run i18n:apply` | Merges edited stubs into `messages/<locale>.json`, deletes them, and regenerates what's still missing; `i18n:apply_force` also imports values left identical to `en` |
-
-To add a language, add its code to `locales` in `project.inlang/settings.json` and create
-`messages/<locale>.json` (`npm run i18n:missing` stubs it from `en`); `npm run i18n:check` fails
-if the two disagree. The settings menu lists every configured locale under its own name, so no
-code changes. The Android app's own strings (the link notification) are the `android_*` keys in
-the same files; `scripts/android-strings.js` writes them into the gitignored
-`res/values*/generated_strings.xml` on `i18n:compile` and every Vite build.
 
 Before a pull request: `npm run check`, `npm run lint` and `npm test`. CI runs the same.
 
 To try unreleased eqcaps changes, install the tarballs from `npm run release -- <version> --pack`
 in eqcaps. Never a `file:` link.
+
+## Translating
+
+Every string the app shows, the Android notification included, is in `messages/<locale>.json`,
+keyed the same as `messages/en.json` (the source). A key a language doesn't have yet shows in
+English, so a partial translation is fine to send.
+
+**Finishing a language.** If `messages/_missing_translations_<locale>.json` exists, it lists what
+that language still lacks, pre-filled with the English text. Replace the values you can, delete
+the ones you can't, and open a pull request with the file. You can also edit
+`messages/<locale>.json` directly instead.
+
+**Adding a language.**
+
+1. Add its code (`de`, `pt-BR`, …) to `locales` in `project.inlang/settings.json`.
+2. Create `messages/<locale>.json` with just
+   `{ "$schema": "https://inlang.com/schema/inlang-message-format" }`.
+3. Run `npm run i18n:missing`, which writes the stub file above with every key, and translate
+   it.
+
+The language menu in Settings picks the new locale up under its own name; no code changes.
+
+**What to keep as is.**
+
+- Placeholders in braces, like `{host}` or `{count}`: move them where your grammar needs them,
+  but don't translate or rename them.
+- Product names: uniPEQ, modernGraphTool, eqcaps.
+- Counts: write a plural as an object of your language's forms (the stub's `@@info` lists them),
+  for example `{ "one": "{count} band", "few": "{count} bands", "other": "{count} bands" }`, or
+  inline as `{count, plural, one {# band} other {# bands}}`.
+- `android_*` keys feed the native Android app, which can't use plurals; keep them plain text.
+
+**For maintainers.**
+
+| Command | What it does |
+|---|---|
+| `npm run i18n:check` | Lists the keys each locale is missing or has stale against `en.json`; fails if `messages/` and `settings.json` list different locales |
+| `npm run i18n:missing` | Same, and writes the `_missing_translations_<locale>.json` stubs |
+| `npm run i18n:apply` | Merges edited stubs into `messages/<locale>.json`, deletes them and writes fresh stubs for what's still missing. Values left identical to `en` are skipped; `i18n:apply_force` imports them too (for names that stay in English) |
+
+Run `npm run i18n:missing` after adding keys to `en.json`, so translators see them. The
+`android_*` keys are written into the gitignored
+`android/app/src/main/res/values*/generated_strings.xml` by `scripts/android-strings.js`, on
+`i18n:compile` and every Vite build. A new one also needs an entry in `ANDROID_STRINGS` there,
+listing its placeholders in the order Java passes them.
 
 ## Android
 
