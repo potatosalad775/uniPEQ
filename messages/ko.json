@@ -1,5 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"app_name": "uniPEQ",
 	"nav_main": "EQ",
 	"nav_presets": "프리셋",
 	"nav_settings": "설정",
