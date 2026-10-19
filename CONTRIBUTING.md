@@ -37,6 +37,9 @@ npm run dev                        # http://localhost:5173
 | `npm run check` | Paraglide compile, `svelte-kit sync`, `svelte-check` |
 | `npm run lint` | Prettier check and ESLint; `npm run format` fixes formatting |
 | `npm run build` | Release web build into `dist/`; `-- --mode debug` keeps the debug-only UI |
+| `npm run i18n:check` | Lists keys each `messages/<locale>.json` is missing (or has stale) against `en.json` |
+| `npm run i18n:missing` | Same, and writes `messages/_missing_translations_<locale>.json` stubs pre-filled with the `en` text for translators |
+| `npm run i18n:apply` | Merges edited stubs into `messages/<locale>.json`, deletes them, and regenerates what's still missing; `i18n:apply_force` also imports values left identical to `en` |
 
 Before a pull request: `npm run check`, `npm run lint` and `npm test`. CI runs the same.
 
