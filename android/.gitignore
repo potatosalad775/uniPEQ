@@ -99,3 +99,6 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Android strings generated from messages/*.json (scripts/android-strings.js)
+app/src/main/res/values*/generated_strings.xml

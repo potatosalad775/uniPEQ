@@ -11,7 +11,7 @@
 	import LicensesSheet from '$lib/components/settings/LicensesSheet.svelte';
 	import LogDialog from '$lib/components/settings/LogDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime';
+	import { getLocale, locales, setLocale, type Locale } from '$lib/paraglide/runtime';
 	import { buildLabel } from '$lib/platform/build';
 	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
 	import { introStore } from '$lib/stores/intro-store.svelte';
@@ -23,11 +23,19 @@
 		{ value: 'dark', label: m.settings_theme_dark() }
 	];
 
-	// Endonyms: each language is listed in its own script, whatever the UI language.
-	const languageOptions: { value: Locale; label: string }[] = [
-		{ value: 'en', label: 'English' },
-		{ value: 'ko', label: '한국어' }
-	];
+	// Languages are the locales in project.inlang/settings.json, each labelled with its endonym so
+	// it reads the same whatever the UI language. CLDR lower-cases some endonyms (русский), so the
+	// first letter is raised to match how a language menu lists them.
+	function localeLabel(locale: Locale): string {
+		try {
+			const name = new Intl.DisplayNames([locale], { type: 'language' }).of(locale) ?? locale;
+			return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+		} catch {
+			return locale;
+		}
+	}
+
+	const languageOptions = locales.map((value) => ({ value, label: localeLabel(value) }));
 
 	// setLocale reloads the page, so this never needs to be reactive.
 	const locale = getLocale();

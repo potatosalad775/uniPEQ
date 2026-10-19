@@ -41,6 +41,13 @@ npm run dev                        # http://localhost:5173
 | `npm run i18n:missing` | Same, and writes `messages/_missing_translations_<locale>.json` stubs pre-filled with the `en` text for translators |
 | `npm run i18n:apply` | Merges edited stubs into `messages/<locale>.json`, deletes them, and regenerates what's still missing; `i18n:apply_force` also imports values left identical to `en` |
 
+To add a language, add its code to `locales` in `project.inlang/settings.json` and create
+`messages/<locale>.json` (`npm run i18n:missing` stubs it from `en`); `npm run i18n:check` fails
+if the two disagree. The settings menu lists every configured locale under its own name, so no
+code changes. The Android app's own strings (the link notification) are the `android_*` keys in
+the same files; `scripts/android-strings.js` writes them into the gitignored
+`res/values*/generated_strings.xml` on `i18n:compile` and every Vite build.
+
 Before a pull request: `npm run check`, `npm run lint` and `npm test`. CI runs the same.
 
 To try unreleased eqcaps changes, install the tarballs from `npm run release -- <version> --pack`

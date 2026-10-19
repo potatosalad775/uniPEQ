@@ -5,6 +5,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import { writeAndroidStrings } from './scripts/android-strings.js';
 import { thirdPartyLicenses } from './scripts/third-party-licenses.ts';
 
 const pkg = JSON.parse(
@@ -26,7 +27,10 @@ export default defineConfig({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
 			strategy: ['localStorage', 'preferredLanguage', 'baseLocale']
-		})
+		}),
+		// Every Android build (`android:sync*`, `npm run android`, CI) starts with a Vite build, so
+		// the native strings are regenerated from messages/*.json before `cap sync` and Gradle.
+		{ name: 'android-strings', apply: 'build', buildStart: writeAndroidStrings }
 	],
 	server: {
 		// Capacitor live reload (`cap run android -l --external`) reaches the dev server over the LAN.

@@ -1,0 +1,19 @@
+{
+	"@@info": [
+		"Keys that exist in <en> but not in <ru>.",
+		"The values below are the en source text — replace them with ru translations.",
+		"You do not have to translate all of them; leave out what you are unsure about and open a PR.",
+		"A maintainer then runs 'npm run i18n:apply' to merge this file into messages/ru.json.",
+		"Anything still missing afterwards simply renders in en at runtime.",
+		"",
+		"Plurals — ru uses the forms: one, few, many, other. \"other\" is required.",
+		"Whole sentence: \"key\": { \"one\": \"{count} band\", \"few\": \"{count} bands\", \"other\": \"...\" }",
+		"  (add \"plural\": \"total\" to count another input instead of {count}).",
+		"Inside a sentence, # is the number: \"Read {count, plural, one {# band} other {# bands}}\"",
+		"An exact number like \"=0\": \"No bands\" beats the forms above."
+	],
+	"android_link_channel": "modernGraphTool link",
+	"android_link_notification": "Linked with {host}",
+	"android_link_notification_device": "Linked with {host} · {device}",
+	"android_link_unlink": "Unlink"
+}

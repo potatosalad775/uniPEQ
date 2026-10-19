@@ -1,11 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <!-- Translatable strings live in messages/<locale>.json (android_* keys); scripts/android-strings.js
+         writes them to generated_strings.xml. -->
     <string name="app_name">uniPEQ</string>
     <string name="title_activity_main">uniPEQ</string>
     <string name="package_name">kr.potatosalad775.unipeq</string>
     <string name="custom_url_scheme">kr.potatosalad775.unipeq</string>
-    <string name="link_channel">modernGraphTool link</string>
-    <string name="link_notification">Linked with %1$s</string>
-    <string name="link_notification_device">Linked with %1$s · %2$s</string>
-    <string name="link_unlink">Unlink</string>
 </resources>

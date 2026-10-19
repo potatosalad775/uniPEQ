@@ -316,5 +316,9 @@
 	"settings_intro_hint": "uniPEQ 기능 및 특징 소개",
 	"intro_url_compatible": "호환 기기 목록",
 	"intro_url_databases": "modernGraphTool을 사용하는 데이터베이스",
-	"intro_url_docs": "uniPEQ 연결 문서"
+	"intro_url_docs": "uniPEQ 연결 문서",
+	"android_link_channel": "modernGraphTool 연결",
+	"android_link_notification": "{host}에 연결됨",
+	"android_link_notification_device": "{host}에 연결됨 · {device}",
+	"android_link_unlink": "링크 해제"
 }

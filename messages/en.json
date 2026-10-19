@@ -316,5 +316,9 @@
 	"settings_intro_hint": "An introduction to uniPEQ and its features",
 	"intro_url_compatible": "Compatible devices",
 	"intro_url_databases": "Databases running modernGraphTool",
-	"intro_url_docs": "uniPEQ link docs"
+	"intro_url_docs": "uniPEQ link docs",
+	"android_link_channel": "modernGraphTool link",
+	"android_link_notification": "Linked with {host}",
+	"android_link_notification_device": "Linked with {host} · {device}",
+	"android_link_unlink": "Unlink"
 }

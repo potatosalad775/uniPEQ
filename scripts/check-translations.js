@@ -3,8 +3,8 @@
  * Reports missing / stale keys in each messages/<locale>.json against the baseLocale (en).
  *
  * Missing keys are NOT a build error — Paraglide compiles them to a fallback on the baseLocale,
- * so a partial translation is fine. This script is contributor visibility only and always
- * exits 0.
+ * so a partial translation is fine and exits 0. It exits 1 only when messages/ and the locales
+ * in project.inlang/settings.json disagree.
  *
  * Usage:
  *   node scripts/check-translations.js            # report only
@@ -21,7 +21,8 @@ import {
 	readJson,
 	writeJson,
 	messageKeys,
-	listLocales
+	listLocales,
+	listConfiguredLocales
 } from './i18n-shared.js';
 import { pluralCategories, toShorthand, exactMatchSupported } from './i18n-plural.js';
 
@@ -32,6 +33,22 @@ const baseKeys = messageKeys(base);
 const baseKeySet = new Set(baseKeys);
 
 const locales = listLocales().filter((l) => l !== BASE_LOCALE);
+
+// A messages file and a settings.json entry are both needed for a locale to ship, so this is
+// the one failure the script reports: with either half alone the language is silently missing
+// or broken.
+const configured = listConfiguredLocales();
+const unregistered = listLocales().filter((l) => !configured.includes(l));
+const fileless = configured.filter((l) => !listLocales().includes(l));
+for (const l of unregistered) {
+	console.error(
+		`${l}: messages/${l}.json exists but project.inlang/settings.json doesn't list it.`
+	);
+}
+for (const l of fileless) {
+	console.error(`${l}: project.inlang/settings.json lists it but messages/${l}.json is missing.`);
+}
+if (unregistered.length > 0 || fileless.length > 0) process.exitCode = 1;
 
 const info = (locale) => [
 	`Keys that exist in <${BASE_LOCALE}> but not in <${locale}>.`,
