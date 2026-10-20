@@ -44,20 +44,44 @@
 	let licensesOpen = $state(false);
 	const themeLabel = $derived(themeOptions.find((o) => o.value === settingsStore.theme)?.label);
 	const languageLabel = languageOptions.find((o) => o.value === locale)?.label;
-	/** The device database the app holds: its data version and how many profiles. */
-	let database = $state<{ version: string; profiles: number } | null>(null);
+	/**
+	 * The device database the app holds: its data version, how many profiles, and when the index
+	 * last came back from the network (null: never, the app is on its built-in copy).
+	 */
+	let database = $state<{ version: string; profiles: number; checkedAt: number | null } | null>(
+		null
+	);
 
+	// Opening Settings asks the network again (the client revalidates on every load), so the time
+	// shown is this visit's check, or the last one that worked if it failed.
 	onMount(() => {
 		let gone = false;
-		void import('#lib/services/eqcaps-client.js')
-			.then((mod) => mod.eqcapsClient().loadIndex())
-			.then((index) => {
-				if (!gone && index) {
-					database = { version: index.dataVersion, profiles: index.profiles.length };
-				}
-			});
+		void import('#lib/services/eqcaps-client.js').then(async (mod) => {
+			const index = await mod.eqcapsClient().loadIndex();
+			// Read after loadIndex settles, so the stamp includes this visit's answer.
+			const checkedAt = await mod.indexCheckedAt();
+			if (!gone && index) {
+				database = { version: index.dataVersion, profiles: index.profiles.length, checkedAt };
+			}
+		});
 		return () => (gone = true);
 	});
+
+	const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+	const timeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
+		['day', 86_400_000],
+		['hour', 3_600_000],
+		['minute', 60_000]
+	];
+
+	/** "5 minutes ago", or "now" under a minute. */
+	function ago(time: number): string {
+		const elapsed = time - Date.now();
+		for (const [unit, size] of timeUnits) {
+			if (Math.abs(elapsed) >= size) return relativeTime.format(Math.round(elapsed / size), unit);
+		}
+		return relativeTime.format(0, 'second');
+	}
 
 	const delaySeconds = $derived((settingsStore.autoPushDelayMs / 1000).toFixed(2));
 </script>
@@ -172,6 +196,12 @@
 					profiles: database.profiles,
 					version: database.version
 				})}
+			/>
+			<ListRow
+				label={m.settings_database_checked()}
+				description={database.checkedAt === null
+					? m.settings_database_never_checked()
+					: ago(database.checkedAt)}
 			/>
 		{/if}
 	</ListSection>

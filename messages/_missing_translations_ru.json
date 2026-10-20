@@ -12,6 +12,8 @@
 		"Inside a sentence, # is the number: \"Read {count, plural, one {# band} other {# bands}}\"",
 		"An exact number like \"=0\": \"No bands\" beats the forms above."
 	],
+	"settings_database_checked": "Last checked online",
+	"settings_database_never_checked": "Never; using the copy built into the app",
 	"android_link_channel": "modernGraphTool link",
 	"android_link_notification": "Linked with {host}",
 	"android_link_notification_device": "Linked with {host} · {device}",

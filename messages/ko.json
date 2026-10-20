@@ -229,6 +229,8 @@
 	"settings_display": "화면",
 	"settings_database_label": "기기 데이터베이스",
 	"settings_database_count": "프로필 {profiles}개 · 데이터 {version}",
+	"settings_database_checked": "마지막 온라인 확인",
+	"settings_database_never_checked": "없음 · 앱에 내장된 데이터 사용 중",
 	"settings_source_hint": "기기 제한값과 프로토콜의 출처",
 	"settings_auto_write_hint": "편집이 잠시 멈추면 EQ를 기기에 씁니다.",
 	"settings_volume_warning": "볼륨 경고",

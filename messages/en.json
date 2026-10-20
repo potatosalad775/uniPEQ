@@ -229,6 +229,8 @@
 	"settings_display": "Display",
 	"settings_database_label": "Device database",
 	"settings_database_count": "{profiles} profiles · data {version}",
+	"settings_database_checked": "Last checked online",
+	"settings_database_never_checked": "Never; using the copy built into the app",
 	"settings_source_hint": "Where device limits and protocols come from",
 	"settings_auto_write_hint": "Write EQ edits to the device after a short pause.",
 	"settings_volume_warning": "Volume warning",
