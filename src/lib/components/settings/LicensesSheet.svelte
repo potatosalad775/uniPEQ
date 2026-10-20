@@ -23,8 +23,7 @@
 		}
 	});
 
-	const title = (n: Notice) =>
-		[n.version ? `${n.name} ${n.version}` : n.name, n.license].filter(Boolean).join(' · ');
+	const title = (n: Notice) => (n.version ? `${n.name} ${n.version}` : n.name);
 </script>
 
 {#snippet licenseText(text: string)}
@@ -48,17 +47,17 @@
 	</div>
 
 	{#if loaded}
-		<Accordion type="single" class="mt-3">
+		<Accordion type="single" class="-mx-2 mt-3">
 			<AccordionItem value="uniPEQ" title={m.settings_licenses_gpl_title()}>
 				{@render licenseText(loaded.license)}
 			</AccordionItem>
 		</Accordion>
 
-		<h3 class="mt-4 mb-1 px-2 text-xs font-semibold tracking-wide text-primary uppercase">
+		<h3 class="mt-4 mb-1 text-xs font-semibold tracking-wide text-primary uppercase">
 			{m.settings_licenses_third_party()}
 		</h3>
 		{#if loaded.notices}
-			<Accordion type="single">
+			<Accordion type="single" class="-mx-2">
 				{#each loaded.notices as notice (`${notice.name}@${notice.version}`)}
 					<AccordionItem value={`${notice.name}@${notice.version}`} title={title(notice)}>
 						{#if notice.note}
@@ -79,7 +78,7 @@
 				{/each}
 			</Accordion>
 		{:else}
-			<p class="px-2 text-sm text-base-content/60">{m.settings_licenses_dev()}</p>
+			<p class="text-sm text-base-content/60">{m.settings_licenses_dev()}</p>
 		{/if}
 	{/if}
 </Sheet>
