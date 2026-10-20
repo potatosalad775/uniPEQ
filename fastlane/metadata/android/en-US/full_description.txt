@@ -1,0 +1,38 @@
+uniPEQ edits the parametric EQ stored inside your audio hardware: USB DACs, dongles, amps, headphones and IEMs. It reads the EQ your device holds, lets you shape it on a graph, and writes it back. The EQ lives on the device, so it keeps working with every app, every source and even other phones or computers.
+
+uniPEQ is a companion app for hardware. It doesn't process audio on your phone, so it won't change how your phone sounds on its own: you need a compatible USB device with a built-in EQ. No device at hand? The built-in demo device simulates a DAC so you can try the editor first. It doesn't affect sound.
+
+EDIT ON A GRAPH
+• Drag bands on the frequency response, pinch to change Q, or type exact frequency, gain and Q values.
+• Peak, low shelf and high shelf filters, plus whatever else your device supports.
+• Preamp with an Auto mode that follows your largest boost to help avoid clipping.
+• Full undo and redo.
+
+MADE FOR YOUR DEVICE
+• The editor follows your device's own limits: how many bands, which filter types and which ranges it accepts.
+• When a setting doesn't fit, uniPEQ tells you which band and why. Fit adjusts it, and uniPEQ always shows exactly what will change before it writes.
+• Choose which of the device's user presets to read and write and, where the device allows it, turn its EQ on or off.
+
+AUTO-WRITE
+• Changes go to the device a moment after you stop editing (adjustable, or off).
+• A status bar always tells you whether what you see is what the device holds.
+• An optional reminder to lower the volume before the first write.
+
+PRESETS
+• Save, search and tag your own presets.
+• Import Equalizer APO text files, or uniPEQ preset files.
+• Export and share as uniPEQ files or EQ APO text.
+• Every preset shows how well it fits the connected device: compatible, needs adjustments, or won't fit.
+
+TUNE WITH MEASUREMENTS
+Link uniPEQ with modernGraphTool, the frequency-response graph tool used by many headphone and IEM measurement databases. Open a database in your phone's browser, pair it with uniPEQ by link or code, and the EQ you build there against a measurement and a target plays on your device as you edit. The link keeps running in the background, with a notification to end it.
+
+COMPATIBLE DEVICES
+uniPEQ supports USB devices whose EQ is described in the open eqcaps database: more than 90 DACs, dongles and IEMs, from CrinEar, FiiO, Moondrop, Tanchjim, Kiwi Ears, Walkplay-based dongles and more. Connect your device directly over USB-C or through an OTG adapter. Bluetooth devices are not supported yet. Is your device missing or showing wrong limits? Report it to the eqcaps project, linked from the app.
+
+FREE AND OPEN SOURCE
+No ads, no account and no analytics. uniPEQ is free software under the GNU GPL v3 or later. Source code: https://github.com/potatosalad775/uniPEQ
+
+Available in English, Korean, Russian and Ukrainian.
+
+Brand names are used only to describe compatibility. uniPEQ is not affiliated with or endorsed by any device manufacturer.
