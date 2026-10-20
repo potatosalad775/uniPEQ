@@ -10,14 +10,14 @@
 <script lang="ts">
 	import { Check, CircleAlert, Link2, LoaderCircle, TriangleAlert } from '@lucide/svelte';
 	import { fade, fly, scale } from 'svelte/transition';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import type { SyncAction } from '$lib/device-peq/sync-status';
-	import { linkStatus, statusLine, type BarStatus } from '$lib/link/link-status';
-	import { linkStore } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { settingsStore } from '$lib/stores/settings-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import type { SyncAction } from '#lib/device-peq/sync-status.js';
+	import { linkStatus, statusLine, type BarStatus } from '#lib/link/link-status.js';
+	import { linkStore } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { settingsStore } from '#lib/stores/settings-store.svelte.js';
 
 	let {
 		onConnect,

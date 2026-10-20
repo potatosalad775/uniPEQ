@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { ChevronDown, ChevronRight, ExternalLink } from '@lucide/svelte';
-	import ListRow from '$lib/components/atoms/ListRow.svelte';
-	import ListSection from '$lib/components/atoms/ListSection.svelte';
-	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
-	import Slider from '$lib/components/atoms/Slider.svelte';
-	import Switch from '$lib/components/atoms/Switch.svelte';
-	import PageBody from '$lib/components/layout/PageBody.svelte';
-	import PageHeader from '$lib/components/layout/PageHeader.svelte';
-	import LicensesSheet from '$lib/components/settings/LicensesSheet.svelte';
-	import LogDialog from '$lib/components/settings/LogDialog.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { getLocale, locales, setLocale, type Locale } from '$lib/paraglide/runtime';
-	import { buildLabel } from '$lib/platform/build';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { introStore } from '$lib/stores/intro-store.svelte';
-	import { settingsStore, type ThemeSetting } from '$lib/stores/settings-store.svelte';
+	import ListRow from '#lib/components/atoms/ListRow.svelte';
+	import ListSection from '#lib/components/atoms/ListSection.svelte';
+	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
+	import Slider from '#lib/components/atoms/Slider.svelte';
+	import Switch from '#lib/components/atoms/Switch.svelte';
+	import PageBody from '#lib/components/layout/PageBody.svelte';
+	import PageHeader from '#lib/components/layout/PageHeader.svelte';
+	import LicensesSheet from '#lib/components/settings/LicensesSheet.svelte';
+	import LogDialog from '#lib/components/settings/LogDialog.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { getLocale, locales, setLocale, type Locale } from '#lib/paraglide/runtime.js';
+	import { buildLabel } from '#lib/platform/build.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { introStore } from '#lib/stores/intro-store.svelte.js';
+	import { settingsStore, type ThemeSetting } from '#lib/stores/settings-store.svelte.js';
 
 	const themeOptions: { value: ThemeSetting; label: string }[] = [
 		{ value: 'system', label: m.settings_theme_system() },
@@ -49,7 +49,7 @@
 
 	onMount(() => {
 		let gone = false;
-		void import('$lib/services/eqcaps-client')
+		void import('#lib/services/eqcaps-client.js')
 			.then((mod) => mod.eqcapsClient().loadIndex())
 			.then((index) => {
 				if (!gone && index) {

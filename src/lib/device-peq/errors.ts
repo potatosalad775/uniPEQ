@@ -1,5 +1,5 @@
 // Adapted from modernGraphTool src/lib/device-peq/errors.ts @ 23ddc4dd.
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 
 /** `BridgeError.code` values, restated so this module doesn't pull the bridge into the bundle. */
 type Code =

@@ -3,9 +3,9 @@
  * installs, and nothing else updates this one. Checks GitHub at launch and when the app comes back
  * into view, at most every few hours (the API allows 60 unauthenticated requests an hour).
  */
-import { newerRelease } from '$lib/services/release-check';
+import { newerRelease } from '#lib/services/release-check.js';
 import { appState } from './app-state.svelte';
-import { updateStore } from '$lib/stores/update-store.svelte';
+import { updateStore } from '#lib/stores/update-store.svelte.js';
 
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
 

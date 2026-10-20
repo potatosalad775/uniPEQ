@@ -4,10 +4,10 @@
 	it (through ModalDialog).
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import type { PlanChange, PushPlan } from '$lib/device-peq/push-plan';
-	import * as m from '$lib/paraglide/messages';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import type { PlanChange, PushPlan } from '#lib/device-peq/push-plan.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	/**
 	 * Shown before a write whenever the device can't hold the EQ on screen as it is: what eqcaps'

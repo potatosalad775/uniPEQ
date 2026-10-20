@@ -1,7 +1,7 @@
-import type { BadgeTone } from '$lib/components/atoms/Badge.svelte';
-import type { PresetFit } from '$lib/device-peq/preset-fit';
-import { PresetError } from '$lib/eq/preset-file';
-import * as m from '$lib/paraglide/messages';
+import type { BadgeTone } from '#lib/components/atoms/Badge.svelte';
+import type { PresetFit } from '#lib/device-peq/preset-fit.js';
+import { PresetError } from '#lib/eq/preset-file.js';
+import * as m from '#lib/paraglide/messages.js';
 
 /** Each warning a load or import came with, after its own message. */
 export function withWarnings(text: string, w: { dropped: number; skipped?: number }): string {

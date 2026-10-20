@@ -2,14 +2,14 @@
 	Save the EQ as it is now as a new preset, with a name and optional tags.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Input from '$lib/components/atoms/Input.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { logger } from '$lib/services/logger';
-	import { noticeStore } from '$lib/stores/notice-store.svelte';
-	import { parseTags } from '$lib/eq/preset-file';
-	import { presetStore } from '$lib/stores/preset-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { logger } from '#lib/services/logger.js';
+	import { noticeStore } from '#lib/stores/notice-store.svelte.js';
+	import { parseTags } from '#lib/eq/preset-file.js';
+	import { presetStore } from '#lib/stores/preset-store.svelte.js';
 	import { describePresetError } from './preset-messages';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();

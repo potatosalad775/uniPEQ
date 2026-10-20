@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import { presetStore } from '$lib/stores/preset-store.svelte';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import { presetStore } from '#lib/stores/preset-store.svelte.js';
 import PresetsPanel from './PresetsPanel.svelte';
 
 function clearPresets() {

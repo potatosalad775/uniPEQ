@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PeqPreset } from '$lib/eq/model';
+import type { PeqPreset } from '#lib/eq/model.js';
 import { LocalPresetStorage, searchPresets } from './preset-storage';
 
 class MemoryStorage implements Storage {

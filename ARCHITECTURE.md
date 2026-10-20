@@ -101,7 +101,7 @@ Rules:
 ```
 src/
 ├── routes/                 # +page.svelte (EQ), presets/, settings/; ssr = false
-├── service-worker.ts       # web build's offline cache (registered by platform/pwa)
+├── service-worker/         # web build's offline cache (registered by platform/pwa)
 └── lib/
     ├── components/
     │   ├── atoms/          # Button, Switch, ListRow, Sheet, Menu, Slider, … (from modernGraphTool)
@@ -328,7 +328,7 @@ the client bundle's module graph, Android libraries listed by hand and shown onl
   APK) for the shell's `UpdatePrompt`.
 
 ### 8.5 Platform shell
-- Tabs are routes (`/`, `/presets`, `/settings`) switched with `replaceState`: no tab history.
+- Tabs are routes (`/`, `/presets`, `/settings`) switched with `goto(…, { replace: true })`: no tab history.
 - Android back is a handler stack (`platform/back-button.ts`): overlays register with `onBack()`;
   the shell sends other tabs home; on home the app goes to the background (`minimizeApp`, not
   `exitApp`), so a connection survives.
@@ -337,7 +337,7 @@ the client bundle's module graph, Android libraries listed by hand and shown onl
 - Haptics on native only: a tick per write, an error buzz on failure.
 - Debug builds (Vite mode ≠ production, `isDebugBuild`) show a DEV / DEBUG badge and the HID spike
   hook. The APK's build type doesn't decide it: debug and release APKs package the same `dist/`.
-- **PWA (web build):** `src/service-worker.ts`, registered by `platform/pwa.ts` on the web only,
+- **PWA (web build):** `src/service-worker/`, registered by `platform/pwa.ts` on the web only,
   precaches the shell, chunks and `static/` per build and serves the cached shell for every
   navigation, so the app runs offline. A newer deploy's worker waits; `UpdatePrompt` offers
   Reload, never automatic, because a reload drops the connection and unwritten edits.

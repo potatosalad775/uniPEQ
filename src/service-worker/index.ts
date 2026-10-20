@@ -1,9 +1,5 @@
-/// <reference types="@sveltejs/kit" />
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
 /**
- * The web build's offline cache. Registered by `$lib/platform/pwa` on the web only: Capacitor
+ * The web build's offline cache. Registered by `#lib/platform/pwa.js` on the web only: Capacitor
  * serves the app from the APK, so the native app has nothing to cache.
  *
  * - The app shell (index.html), the JS and CSS chunks and `static/` are cached when the worker
@@ -16,16 +12,25 @@
  *   device connection and unwritten edits.
  * - The eqcaps CDN is cross-origin and left alone: the client caches it in localStorage itself.
  */
-import { base, build, files, version } from '$service-worker';
+import { version } from '$app/env';
+import { assets, immutable } from '$app/manifest';
+import { resolve } from '$app/paths';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const SHELL_CACHE = `shell-${version}`;
 const FONT_CACHE = 'fonts';
-const SHELL = `${base}/index.html`;
+// The manifest's paths are relative to the base path; the cache and `fetch` see absolute ones.
+const root = resolve('/');
+const SHELL = `${root}index.html`;
 
+const build = immutable.map(({ path }) => root + path);
 const isFont = (path: string) => path.endsWith('.woff2');
-const precached = new Set([SHELL, ...build.filter((path) => !isFont(path)), ...files]);
+const precached = new Set([
+	SHELL,
+	...build.filter((path) => !isFont(path)),
+	...assets.map(({ path }) => root + path)
+]);
 const fonts = new Set(build.filter(isFont));
 
 sw.addEventListener('install', (event) => {
@@ -63,7 +68,7 @@ sw.addEventListener('fetch', (event) => {
 		event.respondWith(fromCache(SHELL_CACHE, url.pathname, request));
 	} else if (fonts.has(url.pathname)) {
 		event.respondWith(fromCache(FONT_CACHE, url.pathname, request));
-	} else if (request.mode === 'navigate' && url.pathname.startsWith(`${base}/`)) {
+	} else if (request.mode === 'navigate' && url.pathname.startsWith(root)) {
 		// SPA: every route is the shell (GitHub Pages answers them with 404.html, the same file).
 		event.respondWith(fromCache(SHELL_CACHE, SHELL, request));
 	}

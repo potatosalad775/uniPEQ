@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
-import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { graphicProfile, hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { graphicProfile, hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
 import BandEditor from './BandEditor.svelte';
 
 describe('BandEditor', () => {

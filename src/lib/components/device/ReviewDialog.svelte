@@ -3,8 +3,8 @@
 	the write was asked for: the device panel's Write, or the sync bar's Write or Review.
 -->
 <script lang="ts">
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 	import PushDialog from './PushDialog.svelte';
 </script>
 

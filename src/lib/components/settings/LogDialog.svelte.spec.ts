@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import { logger } from '$lib/services/logger';
+import { logger } from '#lib/services/logger.js';
 import LogDialog from './LogDialog.svelte';
 
 describe('LogDialog', () => {

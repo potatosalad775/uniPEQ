@@ -4,11 +4,11 @@
 	open, and the Android libraries are listed only in the Android app.
 -->
 <script lang="ts">
-	import Accordion from '$lib/components/atoms/Accordion.svelte';
-	import AccordionItem from '$lib/components/atoms/AccordionItem.svelte';
-	import Sheet from '$lib/components/atoms/Sheet.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { isNative } from '$lib/platform/native';
+	import Accordion from '#lib/components/atoms/Accordion.svelte';
+	import AccordionItem from '#lib/components/atoms/AccordionItem.svelte';
+	import Sheet from '#lib/components/atoms/Sheet.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { isNative } from '#lib/platform/native.js';
 	import type { Notice } from 'virtual:third-party-licenses';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -66,12 +66,15 @@
 							</p>
 						{/if}
 						{#if notice.url}
+							<!-- External: `resolve()` is for app routes. -->
+							<!-- eslint-disable svelte/no-navigation-without-resolve -->
 							<a
 								href={notice.url}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="mx-2 mb-2 block text-xs break-all text-accent underline">{notice.url}</a
 							>
+							<!-- eslint-enable svelte/no-navigation-without-resolve -->
 						{/if}
 						{@render licenseText(notice.text || m.settings_licenses_no_text())}
 					</AccordionItem>

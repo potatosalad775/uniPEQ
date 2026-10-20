@@ -8,12 +8,12 @@
 -->
 <script lang="ts">
 	import { FlaskConical, Usb } from '@lucide/svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import { environmentCopy } from '$lib/components/intro/environment-copy';
-	import * as m from '$lib/paraglide/messages';
-	import { ANDROID_DOWNLOAD_URL, environment } from '$lib/platform/environment';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import { environmentCopy } from '#lib/components/intro/environment-copy.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { ANDROID_DOWNLOAD_URL, environment } from '#lib/platform/environment.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 
 	let {
 		onConnect

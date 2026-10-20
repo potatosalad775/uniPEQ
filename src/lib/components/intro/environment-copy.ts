@@ -1,7 +1,7 @@
 import { Ban, Globe, Smartphone } from '@lucide/svelte';
 import type { Component } from 'svelte';
-import * as m from '$lib/paraglide/messages';
-import type { Environment } from '$lib/platform/environment';
+import * as m from '#lib/paraglide/messages.js';
+import type { Environment } from '#lib/platform/environment.js';
 
 export interface EnvironmentCopy {
 	title: string;

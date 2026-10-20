@@ -6,9 +6,9 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { updateStore } from '$lib/stores/update-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { updateStore } from '#lib/stores/update-store.svelte.js';
 
 	const buttonClass = 'text-neutral-content hover:bg-neutral-content/10';
 </script>

@@ -3,8 +3,8 @@
  * write would run, summed up. (The prototype's "perfect fit / minor changes / lossy fit" badge,
  * now from eqcaps' `fit` instead of its own adaptation engine.)
  */
-import { derivePreamp } from '$lib/eq/eq-preamp';
-import type { PeqPreset } from '$lib/eq/model';
+import { derivePreamp } from '#lib/eq/eq-preamp.js';
+import type { PeqPreset } from '#lib/eq/model.js';
 import type { Profile } from '@potatosalad775/eqcaps-core';
 import { planPush } from './push-plan';
 import type { PeqCapabilities } from './types';

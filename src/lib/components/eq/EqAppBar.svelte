@@ -16,20 +16,20 @@
 		Unlink2,
 		WandSparkles
 	} from '@lucide/svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Menu from '$lib/components/atoms/Menu.svelte';
-	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
-	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
-	import DeviceChip from '$lib/components/device/DeviceChip.svelte';
-	import BuildBadge from '$lib/components/layout/BuildBadge.svelte';
-	import LinkSheet from '$lib/components/link/LinkSheet.svelte';
-	import PresetPickerDialog from '$lib/components/presets/PresetPickerDialog.svelte';
-	import SavePresetDialog from '$lib/components/presets/SavePresetDialog.svelte';
-	import { linkLabel } from '$lib/link/link-status';
-	import { linkStore, loadLinkService } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Menu from '#lib/components/atoms/Menu.svelte';
+	import MenuItem from '#lib/components/atoms/MenuItem.svelte';
+	import MenuSeparator from '#lib/components/atoms/MenuSeparator.svelte';
+	import DeviceChip from '#lib/components/device/DeviceChip.svelte';
+	import BuildBadge from '#lib/components/layout/BuildBadge.svelte';
+	import LinkSheet from '#lib/components/link/LinkSheet.svelte';
+	import PresetPickerDialog from '#lib/components/presets/PresetPickerDialog.svelte';
+	import SavePresetDialog from '#lib/components/presets/SavePresetDialog.svelte';
+	import { linkLabel } from '#lib/link/link-status.js';
+	import { linkStore, loadLinkService } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 
 	let {
 		onDevice

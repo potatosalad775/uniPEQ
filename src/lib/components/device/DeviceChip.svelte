@@ -5,9 +5,9 @@
 -->
 <script lang="ts">
 	import { ChevronDown, Usb } from '@lucide/svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 
 	let { onclick }: { onclick: () => void } = $props();
 

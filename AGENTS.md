@@ -26,7 +26,7 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
   `src/lib/components/atoms/` before raw elements. Files are kebab-case.
 - Files copied from modernGraphTool start with a comment naming the source path and commit.
 - Comments state the rule and its reason in place; don't cite docs sections or numbered decisions.
-- UI strings: Paraglide, `messages/{en,ko}.json`, `import * as m from '$lib/paraglide/messages'`.
+- UI strings: Paraglide, `messages/{en,ko}.json`, `import * as m from '#lib/paraglide/messages.js'`.
   `src/lib/paraglide/` is generated and gitignored.
 - One layout breakpoint, `wide:` (900 px): side rail above, bottom tab bar below. Pad for system
   bars with `pt-(--inset-top)` etc. (from `layout.css`), never raw `env()`.
@@ -44,8 +44,8 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
   Project an edit onto the band's slot with `editFilter` first; only Fit (`fitFilters`) folds the
   whole list onto the device. Limits and `editable` come from `stores/eq-constraint-store.svelte.ts`.
 - Overlays that should close on Android back register with `onBack()` from
-  `$lib/platform/back-button` and remove the handler when they close.
-- Dev-only UI (DEV/DEBUG badge, HID spike hook) checks `isDebugBuild` from `$lib/platform/build`.
+  `#lib/platform/back-button.js` and remove the handler when they close.
+- Dev-only UI (DEV/DEBUG badge, HID spike hook) checks `isDebugBuild` from `#lib/platform/build.js`.
   The demo device is not dev-only: it ships so the app can be tried (and Play-reviewed) without
   hardware.
 
@@ -59,8 +59,6 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 - Component specs load no Tailwind: don't assert layout or computed utility styles there.
 - A spec that hides WebHID must delete `hid` from `Navigator.prototype`: feature detection is
   `'hid' in navigator` (`canConnectUsb`).
-- `$app/paths` `resolve()` needs an empty params arg (`resolve('/presets', {})`) while no route
-  has params (see `components/layout/tabs.ts`).
 - TS strictness: a `Uint8Array` where the DOM wants `BufferSource` / `BodyInit` fails
   (`ArrayBufferLike` vs `ArrayBuffer`); `.slice()` at the DOM boundary.
 - `native/device-io` (a `file:` dependency) stays protocol-free. Its TS typings live in

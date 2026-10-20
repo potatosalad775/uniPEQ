@@ -4,7 +4,7 @@
  */
 import { App } from '@capacitor/app';
 import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
-import type { HidSpikeOptions } from '$lib/transports/native/hid-spike';
+import type { HidSpikeOptions } from '#lib/transports/native/hid-spike.js';
 import { dispatchBack } from './back-button';
 import { isDebugBuild } from './build';
 
@@ -23,12 +23,12 @@ export function installNative(): void {
 		if (!dispatchBack()) void App.minimizeApp();
 	});
 
-	// USB HID spike ($lib/transports/native/hid-spike.ts), driven by
+	// USB HID spike (#lib/transports/native/hid-spike.ts), driven by
 	// scripts/android-hid-spike.mjs. Not UI, and not in a release.
 	if (isDebugBuild) {
 		Object.assign(window, {
 			uniPeqHidSpike: (options?: HidSpikeOptions) =>
-				import('$lib/transports/native/hid-spike').then((m) => m.runHidSpike(options))
+				import('#lib/transports/native/hid-spike.js').then((m) => m.runHidSpike(options))
 		});
 	}
 }

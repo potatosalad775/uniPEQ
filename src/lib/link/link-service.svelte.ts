@@ -37,11 +37,11 @@ import {
 	type LinkStatus,
 	type PlanChange
 } from 'peq-link/client';
-import type { PushPlan } from '$lib/device-peq/push-plan';
-import { editFilter } from '$lib/eq/eq-constraint';
-import type { EqFilter, FilterType } from '$lib/eq/model';
-import * as m from '$lib/paraglide/messages';
-import { appState } from '$lib/platform/app-state.svelte';
+import type { PushPlan } from '#lib/device-peq/push-plan.js';
+import { editFilter } from '#lib/eq/eq-constraint.js';
+import type { EqFilter, FilterType } from '#lib/eq/model.js';
+import * as m from '#lib/paraglide/messages.js';
+import { appState } from '#lib/platform/app-state.svelte.js';
 import {
 	backgroundRestricted,
 	onNativeUnlink,
@@ -49,14 +49,14 @@ import {
 	stopLinkService,
 	updateLinkService,
 	whileAwake
-} from '$lib/platform/link';
-import { isNative } from '$lib/platform/native';
-import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-import { logger } from '$lib/services/logger';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import { noticeStore } from '$lib/stores/notice-store.svelte';
+} from '#lib/platform/link.js';
+import { isNative } from '#lib/platform/native.js';
+import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+import { logger } from '#lib/services/logger.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import { noticeStore } from '#lib/stores/notice-store.svelte.js';
 import { CRASH_MARKER_KEY, linkStore } from './link-store.svelte';
 import { startSelfCheck } from './self-check';
 

@@ -11,9 +11,9 @@
  * holding a different EQ from the one on screen.
  */
 import { complete, fit, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
-import { toCapsFilter } from '$lib/eq/eq-constraint';
-import type { EqFilter } from '$lib/eq/model';
-import { logger } from '$lib/services/logger';
+import { toCapsFilter } from '#lib/eq/eq-constraint.js';
+import type { EqFilter } from '#lib/eq/model.js';
+import { logger } from '#lib/services/logger.js';
 import type { PresetRequest } from './preset';
 import type { PeqCapabilities, PeqDevice } from './types';
 

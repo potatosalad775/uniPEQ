@@ -1,4 +1,4 @@
-import { logger } from '$lib/services/logger';
+import { logger } from '#lib/services/logger.js';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 

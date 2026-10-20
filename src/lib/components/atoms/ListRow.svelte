@@ -71,6 +71,8 @@
 			{/if}
 		</button>
 	{:else if href}
+		<!-- External: `resolve()` is for app routes. -->
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a {href} target="_blank" rel="noopener noreferrer" class="{base} {interactive}">
 			{@render body()}
 			{#if trailing}

@@ -12,20 +12,20 @@
 <script lang="ts">
 	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
-	import Badge from '$lib/components/atoms/Badge.svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ListRow from '$lib/components/atoms/ListRow.svelte';
-	import SelectMenu from '$lib/components/atoms/SelectMenu.svelte';
-	import Switch from '$lib/components/atoms/Switch.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { environmentCopy } from '$lib/components/intro/environment-copy';
-	import { ANDROID_DOWNLOAD_URL, environment } from '$lib/platform/environment';
-	import { isNative } from '$lib/platform/native';
+	import Badge from '#lib/components/atoms/Badge.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ListRow from '#lib/components/atoms/ListRow.svelte';
+	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
+	import Switch from '#lib/components/atoms/Switch.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { environmentCopy } from '#lib/components/intro/environment-copy.js';
+	import { ANDROID_DOWNLOAD_URL, environment } from '#lib/platform/environment.js';
+	import { isNative } from '#lib/platform/native.js';
 	import {
 		canConnectUsb as canConnect,
 		devicePeqService
-	} from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	} from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 
 	let {
 		heading = true
@@ -143,12 +143,15 @@
 </script>
 
 {#snippet link(href: string, text: string)}
+	<!-- External: `resolve()` is for app routes. -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<a
 		{href}
 		target="_blank"
 		rel="noopener noreferrer"
 		class="text-primary underline-offset-4 hover:underline">{text}</a
 	>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 {/snippet}
 
 <section

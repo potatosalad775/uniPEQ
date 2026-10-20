@@ -4,9 +4,9 @@
 	connect attempt has connected, so the EQ is in view again.
 -->
 <script lang="ts">
-	import Sheet from '$lib/components/atoms/Sheet.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import Sheet from '#lib/components/atoms/Sheet.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 	import DevicePanel from './DevicePanel.svelte';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();

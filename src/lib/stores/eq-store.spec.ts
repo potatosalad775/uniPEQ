@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EqFilter } from '$lib/eq/model';
+import type { EqFilter } from '#lib/eq/model.js';
 import { COALESCE_MS, eqStore } from './eq-store.svelte';
 
 const pk = (freq: number, gain: number): EqFilter => ({

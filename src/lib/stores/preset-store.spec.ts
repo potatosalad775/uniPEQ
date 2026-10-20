@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { parseApo } from '$lib/eq/eq-apo';
-import { LocalPresetStorage } from '$lib/services/preset-storage';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { parseApo } from '#lib/eq/eq-apo.js';
+import { LocalPresetStorage } from '#lib/services/preset-storage.js';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 import { PresetStore } from './preset-store.svelte';

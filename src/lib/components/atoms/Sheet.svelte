@@ -9,8 +9,8 @@
 	import { X } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { onBack } from '$lib/platform/back-button';
+	import * as m from '#lib/paraglide/messages.js';
+	import { onBack } from '#lib/platform/back-button.js';
 	import Button from './Button.svelte';
 
 	let {

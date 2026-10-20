@@ -2,10 +2,10 @@
  * Preset persistence. Backend: Web Storage (works on the web and in the Android WebView). The
  * interface is the stable part: swap in Capacitor Preferences/Filesystem without touching callers.
  *
- * Storage holds JSON and doesn't judge it: `parsePreset` (`$lib/eq/preset-file`) checks what comes
+ * Storage holds JSON and doesn't judge it: `parsePreset` (`#lib/eq/preset-file.js`) checks what comes
  * back and migrates schemaVersion 1.
  */
-import type { PeqPreset } from '$lib/eq/model';
+import type { PeqPreset } from '#lib/eq/model.js';
 
 const INDEX_KEY = 'unipeq.presets.index';
 const PRESET_KEY_PREFIX = 'unipeq.preset.';

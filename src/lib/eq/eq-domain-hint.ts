@@ -1,7 +1,7 @@
 // Adapted from modernGraphTool src/lib/utils/eq-domain-hint.ts @ 23ddc4dd: `domainHint` only; the
 // device row has its own limits line.
 import type { Domain } from '@potatosalad775/eqcaps-core';
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 
 /**
  * A domain as a short, localized hint: "20 – 20000 Hz", "-12 – 12 dB, step 0.5",

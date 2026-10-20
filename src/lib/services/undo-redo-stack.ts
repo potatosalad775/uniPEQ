@@ -3,7 +3,7 @@
  * (on slider release, not per tick) so drags coalesce naturally. A snapshot may carry more than
  * `EqState` (the EQ store keeps `autoPreamp` in it); every field is kept.
  */
-import type { EqState } from '$lib/eq/model';
+import type { EqState } from '#lib/eq/model.js';
 
 const MAX_ENTRIES = 100;
 

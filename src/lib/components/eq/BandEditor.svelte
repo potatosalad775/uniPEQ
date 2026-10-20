@@ -11,8 +11,8 @@
 <script lang="ts">
 	import { RotateCcw, Trash2 } from '@lucide/svelte';
 	import { usesGain } from '@potatosalad775/eqcaps-core';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ChipGroup from '$lib/components/atoms/ChipGroup.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ChipGroup from '#lib/components/atoms/ChipGroup.svelte';
 	import {
 		appTypesOf,
 		editFilter,
@@ -20,11 +20,11 @@
 		isPastMaxBands,
 		sameFilters,
 		slotOf
-	} from '$lib/eq/eq-constraint';
-	import type { EqFilter, FilterType } from '$lib/eq/model';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	} from '#lib/eq/eq-constraint.js';
+	import type { EqFilter, FilterType } from '#lib/eq/model.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import BandField from './BandField.svelte';
 	import { TYPE_LABEL } from './type-labels';
 

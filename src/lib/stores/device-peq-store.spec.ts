@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Profile } from '@potatosalad775/eqcaps-core';
-import type { DeviceConnection, PeqCapabilities } from '$lib/device-peq/types';
+import type { DeviceConnection, PeqCapabilities } from '#lib/device-peq/types.js';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 

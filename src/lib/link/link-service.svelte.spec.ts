@@ -2,12 +2,12 @@ import { flushSync } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { webLink, WEB_LINK_PARAM as CLIENT_WEB_LINK_PARAM } from 'peq-link/client';
 import type { Change, EditOp, JoinerOptions } from 'peq-link/client';
-import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import { settingsStore } from '$lib/stores/settings-store.svelte';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import { settingsStore } from '#lib/stores/settings-store.svelte.js';
 import { CRASH_MARKER_KEY, linkStore, WEB_LINK_PARAM } from './link-store.svelte';
 import { linkService } from './link-service.svelte';
 

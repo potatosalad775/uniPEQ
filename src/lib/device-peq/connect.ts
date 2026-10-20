@@ -30,14 +30,17 @@ import {
 	requestHidDevice,
 	requestSerialPort
 } from '@potatosalad775/eqcaps-device-bridge/browser';
-import { eqcapsClient } from '$lib/services/eqcaps-client';
-import { logger } from '$lib/services/logger';
+import { eqcapsClient } from '#lib/services/eqcaps-client.js';
+import { logger } from '#lib/services/logger.js';
 import {
 	DeviceIo,
 	type DeviceIoPlugin,
 	type NativeUsbDevice
-} from '$lib/transports/native/device-io';
-import { listNativeHidDevices, openNativeHid } from '$lib/transports/native/native-hid-transport';
+} from '#lib/transports/native/device-io.js';
+import {
+	listNativeHidDevices,
+	openNativeHid
+} from '#lib/transports/native/native-hid-transport.js';
 import { DEMO_PROFILE, DemoHidTransport, demoDac } from './demo';
 import type { DeviceCandidate, DeviceConnection, ProfileSource } from './types';
 

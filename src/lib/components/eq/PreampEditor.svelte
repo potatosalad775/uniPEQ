@@ -7,12 +7,12 @@
 <script lang="ts">
 	import { TriangleAlert } from '@lucide/svelte';
 	import { project } from '@potatosalad775/eqcaps-core';
-	import ListRow from '$lib/components/atoms/ListRow.svelte';
-	import Switch from '$lib/components/atoms/Switch.svelte';
-	import { derivePreamp } from '$lib/eq/eq-preamp';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import ListRow from '#lib/components/atoms/ListRow.svelte';
+	import Switch from '#lib/components/atoms/Switch.svelte';
+	import { derivePreamp } from '#lib/eq/eq-preamp.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import BandField from './BandField.svelte';
 
 	const control = $derived(eqConstraintStore.preamp);

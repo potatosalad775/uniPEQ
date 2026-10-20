@@ -13,11 +13,11 @@
 <script lang="ts">
 	import { Minus, Plus } from '@lucide/svelte';
 	import { domainBounds, type Domain } from '@potatosalad775/eqcaps-core';
-	import Slider from '$lib/components/atoms/Slider.svelte';
-	import { domainHint } from '$lib/eq/eq-domain-hint';
-	import { linearToLog, logToLinear } from '$lib/eq/log-scale';
-	import { EDIT_STEP, nudge, roundField, shownField, type BandField } from '$lib/eq/nudge';
-	import * as m from '$lib/paraglide/messages';
+	import Slider from '#lib/components/atoms/Slider.svelte';
+	import { domainHint } from '#lib/eq/eq-domain-hint.js';
+	import { linearToLog, logToLinear } from '#lib/eq/log-scale.js';
+	import { EDIT_STEP, nudge, roundField, shownField, type BandField } from '#lib/eq/nudge.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let {
 		field,

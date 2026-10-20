@@ -10,12 +10,12 @@
 <script lang="ts">
 	import { Plus, TriangleAlert } from '@lucide/svelte';
 	import { usesGain } from '@potatosalad775/eqcaps-core';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import { isPastMaxBands, newBand } from '$lib/eq/eq-constraint';
-	import * as m from '$lib/paraglide/messages';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import { isPastMaxBands, newBand } from '#lib/eq/eq-constraint.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import BandEditor from './BandEditor.svelte';
 	import { formatFreq, formatGain, formatQ } from './type-labels';
 

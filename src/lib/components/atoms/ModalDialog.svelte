@@ -6,7 +6,7 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import { onBack } from '$lib/platform/back-button';
+	import { onBack } from '#lib/platform/back-button.js';
 
 	let {
 		open = $bindable(false),

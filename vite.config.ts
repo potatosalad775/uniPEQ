@@ -1,3 +1,4 @@
+import adapter from '@sveltejs/adapter-static';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -12,17 +13,43 @@ const pkg = JSON.parse(
 	readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8')
 );
 
+// One version name per build. SvelteKit defaults it to `Date.now()` at each config load, and a
+// build loads this file more than once (again in the worker that writes the fallback index.html).
+// When two loads straddle a millisecond, index.html and the client chunks disagree on the
+// `__sveltekit_*` global and the page boots blank. Workers inherit process.env, so the first
+// load's value wins everywhere. (Same fix as modernGraphTool.)
+process.env.UNIPEQ_BUILD_VERSION ??= Date.now().toString();
+
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
 	plugins: [
 		tailwindcss(),
-		sveltekit(),
+		sveltekit({
+			// SPA: no prerendered pages, every path falls back to index.html. Capacitor's `webDir` is
+			// this output directory, and its local server also falls back to index.html.
+			adapter: adapter({
+				pages: 'dist',
+				assets: 'dist',
+				fallback: 'index.html',
+				precompress: false
+			}),
+			// The GitHub Pages build sets BASE_PATH (`/uniPEQ`, from actions/configure-pages); the app and
+			// Capacitor serve from the root. Links go through `resolve()` from `$app/paths`, so they follow it.
+			paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` },
+			version: { name: process.env.UNIPEQ_BUILD_VERSION },
+			// src/service-worker/ is registered by #lib/platform/pwa, on the web only: in the
+			// Capacitor app the files are already local.
+			serviceWorker: { register: false },
+			// Options SvelteKit doesn't own go on to vite-plugin-svelte.
+			dynamicCompileOptions: ({ filename }) =>
+				filename.includes('node_modules') ? undefined : { runes: true }
+		}),
 		thirdPartyLicenses(),
 		// Keep these options in sync with the `i18n:compile` script in package.json, which compiles
 		// the same output for `npm run check`: svelte-check does not run Vite, so without it
-		// $lib/paraglide/* has no type declarations on a fresh clone.
+		// #lib/paraglide/* has no type declarations on a fresh clone.
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',

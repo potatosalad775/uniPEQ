@@ -6,11 +6,11 @@
 	Not now. Mounted once in the shell: the tip can come up on any tab.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import { linkStore } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { openAppSettings } from '$lib/platform/link';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import { linkStore } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { openAppSettings } from '#lib/platform/link.js';
 
 	function close(settings: boolean) {
 		linkStore.batteryTip = false;

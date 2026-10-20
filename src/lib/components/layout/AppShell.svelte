@@ -2,13 +2,13 @@
 	import type { Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onBack } from '$lib/platform/back-button';
-	import * as m from '$lib/paraglide/messages';
+	import { onBack } from '#lib/platform/back-button.js';
+	import * as m from '#lib/paraglide/messages.js';
 	import { TABS, activeTab } from './tabs';
-	import LinkApprovalDialog from '$lib/components/link/LinkApprovalDialog.svelte';
-	import LinkBatteryDialog from '$lib/components/link/LinkBatteryDialog.svelte';
-	import VolumeWarningDialog from '$lib/components/device/VolumeWarningDialog.svelte';
-	import IntroDialog from '$lib/components/intro/IntroDialog.svelte';
+	import LinkApprovalDialog from '#lib/components/link/LinkApprovalDialog.svelte';
+	import LinkBatteryDialog from '#lib/components/link/LinkBatteryDialog.svelte';
+	import VolumeWarningDialog from '#lib/components/device/VolumeWarningDialog.svelte';
+	import IntroDialog from '#lib/components/intro/IntroDialog.svelte';
 	import Toast from './Toast.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -21,7 +21,7 @@
 	$effect(() =>
 		onBack(() => {
 			if (current === TABS[0]) return false;
-			void goto(TABS[0].href, { replaceState: true });
+			void goto(TABS[0].href, { replace: true });
 			return true;
 		})
 	);

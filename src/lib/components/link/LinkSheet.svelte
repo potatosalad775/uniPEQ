@@ -4,11 +4,11 @@
 	names its server. Works on the web too, e.g. from a second desktop browser.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Input from '$lib/components/atoms/Input.svelte';
-	import Sheet from '$lib/components/atoms/Sheet.svelte';
-	import { loadLinkService } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
+	import Sheet from '#lib/components/atoms/Sheet.svelte';
+	import { loadLinkService } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 

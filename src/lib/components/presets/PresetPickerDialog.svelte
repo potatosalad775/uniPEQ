@@ -5,17 +5,17 @@
 -->
 <script lang="ts">
 	import { Search } from '@lucide/svelte';
-	import Badge from '$lib/components/atoms/Badge.svelte';
-	import Input from '$lib/components/atoms/Input.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import type { PresetFit } from '$lib/device-peq/preset-fit';
-	import * as m from '$lib/paraglide/messages';
-	import { logger } from '$lib/services/logger';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { noticeStore } from '$lib/stores/notice-store.svelte';
-	import { searchPresets } from '$lib/services/preset-storage';
-	import { presetStore } from '$lib/stores/preset-store.svelte';
+	import Badge from '#lib/components/atoms/Badge.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import type { PresetFit } from '#lib/device-peq/preset-fit.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { logger } from '#lib/services/logger.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { noticeStore } from '#lib/stores/notice-store.svelte.js';
+	import { searchPresets } from '#lib/services/preset-storage.js';
+	import { presetStore } from '#lib/stores/preset-store.svelte.js';
 	import { describePresetError, fitBadge, withWarnings } from './preset-messages';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();

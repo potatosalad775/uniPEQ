@@ -7,22 +7,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Copy, EllipsisVertical, FileUp, Search, SquarePen, Trash } from '@lucide/svelte';
-	import Badge from '$lib/components/atoms/Badge.svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Input from '$lib/components/atoms/Input.svelte';
-	import Menu from '$lib/components/atoms/Menu.svelte';
-	import MenuItem from '$lib/components/atoms/MenuItem.svelte';
-	import MenuSeparator from '$lib/components/atoms/MenuSeparator.svelte';
-	import type { PresetFit } from '$lib/device-peq/preset-fit';
-	import * as m from '$lib/paraglide/messages';
-	import { saveTextFile } from '$lib/platform/save-file';
-	import type { PresetIndexEntry } from '$lib/services/preset-storage';
-	import { logger } from '$lib/services/logger';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
-	import { searchPresets } from '$lib/services/preset-storage';
-	import { presetStore } from '$lib/stores/preset-store.svelte';
+	import Badge from '#lib/components/atoms/Badge.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
+	import Menu from '#lib/components/atoms/Menu.svelte';
+	import MenuItem from '#lib/components/atoms/MenuItem.svelte';
+	import MenuSeparator from '#lib/components/atoms/MenuSeparator.svelte';
+	import type { PresetFit } from '#lib/device-peq/preset-fit.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { saveTextFile } from '#lib/platform/save-file.js';
+	import type { PresetIndexEntry } from '#lib/services/preset-storage.js';
+	import { logger } from '#lib/services/logger.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
+	import { searchPresets } from '#lib/services/preset-storage.js';
+	import { presetStore } from '#lib/stores/preset-store.svelte.js';
 	import EditPresetDialog from './EditPresetDialog.svelte';
 	import { describePresetError, fitBadge, withWarnings } from './preset-messages';
 

@@ -5,11 +5,11 @@
 	the shell: a write can be asked for from any tab.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 
 	let quiet = $state(false);
 </script>

@@ -10,12 +10,12 @@
 -->
 <script lang="ts">
 	import { ChevronDown, TriangleAlert, Volume2 } from '@lucide/svelte';
-	import Badge from '$lib/components/atoms/Badge.svelte';
-	import Sheet from '$lib/components/atoms/Sheet.svelte';
-	import { derivePreamp } from '$lib/eq/eq-preamp';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import Badge from '#lib/components/atoms/Badge.svelte';
+	import Sheet from '#lib/components/atoms/Sheet.svelte';
+	import { derivePreamp } from '#lib/eq/eq-preamp.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import PreampEditor from './PreampEditor.svelte';
 	import { formatGain } from './type-labels';
 

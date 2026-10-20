@@ -6,8 +6,8 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
-	import * as m from '$lib/paraglide/messages';
-	import { noticeStore } from '$lib/stores/notice-store.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { noticeStore } from '#lib/stores/notice-store.svelte.js';
 	import UpdatePrompt from './UpdatePrompt.svelte';
 </script>
 

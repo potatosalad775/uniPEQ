@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page as browserPage } from 'vitest/browser';
 import { createRawSnippet } from 'svelte';
-import { dispatchBack } from '$lib/platform/back-button';
+import { dispatchBack } from '#lib/platform/back-button.js';
 import AppShell from './AppShell.svelte';
 
 const location = vi.hoisted(() => ({ route: { id: '/presets' as string | null } }));
@@ -41,7 +41,7 @@ describe('AppShell', () => {
 		const { unmount } = await render(AppShell, { children: body });
 
 		expect(dispatchBack()).toBe(true);
-		expect(goto).toHaveBeenCalledWith('/', { replaceState: true });
+		expect(goto).toHaveBeenCalledWith('/', { replace: true });
 		unmount();
 	});
 

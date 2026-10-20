@@ -1,10 +1,10 @@
 /**
- * The web build's service worker (src/service-worker.ts): offline use, and an update prompt when a
+ * The web build's service worker (src/service-worker/): offline use, and an update prompt when a
  * newer build is deployed. Not on native (Capacitor serves the app from the APK) or in `vite dev`.
  */
 import { resolve } from '$app/paths';
-import { logger } from '$lib/services/logger';
-import { updateStore } from '$lib/stores/update-store.svelte';
+import { logger } from '#lib/services/logger.js';
+import { updateStore } from '#lib/stores/update-store.svelte.js';
 
 /** How often an open page asks for a newer build, besides each time it comes back into view. */
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -16,7 +16,10 @@ export async function installServiceWorker(): Promise<void> {
 
 	let registration: ServiceWorkerRegistration;
 	try {
-		registration = await serviceWorker.register(`${resolve('/', {})}service-worker.js`);
+		// SvelteKit bundles the worker as an ES module.
+		registration = await serviceWorker.register(`${resolve('/')}service-worker.js`, {
+			type: 'module'
+		});
 	} catch (error) {
 		logger.warn('Service worker:', String(error));
 		return;

@@ -6,11 +6,11 @@
 -->
 <script lang="ts">
 	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Sheet from '$lib/components/atoms/Sheet.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Sheet from '#lib/components/atoms/Sheet.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import { TYPE_LABEL } from './type-labels';
 	import BandEditor from './BandEditor.svelte';
 

@@ -3,12 +3,12 @@
  * read back goes through `parsePreset`, so a prototype install's schemaVersion 1 presets load as
  * v2; they are stored as v2 the next time they are saved.
  */
-import { presetFit, type PresetFit } from '$lib/device-peq/preset-fit';
-import type { PeqCapabilities } from '$lib/device-peq/types';
-import { formatApo } from '$lib/eq/eq-apo';
-import { padToBandCount } from '$lib/eq/eq-constraint';
-import { derivePreamp } from '$lib/eq/eq-preamp';
-import type { PeqPreset } from '$lib/eq/model';
+import { presetFit, type PresetFit } from '#lib/device-peq/preset-fit.js';
+import type { PeqCapabilities } from '#lib/device-peq/types.js';
+import { formatApo } from '#lib/eq/eq-apo.js';
+import { padToBandCount } from '#lib/eq/eq-constraint.js';
+import { derivePreamp } from '#lib/eq/eq-preamp.js';
+import type { PeqPreset } from '#lib/eq/model.js';
 import {
 	createPreset,
 	editedPreset,
@@ -17,12 +17,12 @@ import {
 	presetJson,
 	type ImportedPreset,
 	type ParsedPreset
-} from '$lib/eq/preset-file';
+} from '#lib/eq/preset-file.js';
 import {
 	presetStorage,
 	type PresetIndexEntry,
 	type PresetStorage
-} from '$lib/services/preset-storage';
+} from '#lib/services/preset-storage.js';
 import type { Profile } from '@potatosalad775/eqcaps-core';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';

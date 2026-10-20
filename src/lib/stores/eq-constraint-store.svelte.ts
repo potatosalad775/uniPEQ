@@ -13,8 +13,8 @@ import {
 	maxBandsOf,
 	sameFilters,
 	UNCONSTRAINED
-} from '$lib/eq/eq-constraint';
-import { headroomPreamp, preampControl } from '$lib/eq/preamp-control';
+} from '#lib/eq/eq-constraint.js';
+import { headroomPreamp, preampControl } from '#lib/eq/preamp-control.js';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
 

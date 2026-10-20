@@ -1,6 +1,6 @@
-import type { FilterType } from '$lib/eq/model';
-import { shownField } from '$lib/eq/nudge';
-import * as m from '$lib/paraglide/messages';
+import type { FilterType } from '#lib/eq/model.js';
+import { shownField } from '#lib/eq/nudge.js';
+import * as m from '#lib/paraglide/messages.js';
 
 /** Each eqcaps filter type by name ("Peak", "Low shelf", …). The codes themselves stay as badges. */
 export const TYPE_LABEL: Record<FilterType, () => string> = {

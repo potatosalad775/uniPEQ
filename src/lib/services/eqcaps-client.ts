@@ -10,7 +10,7 @@ import {
 import type { DataBundle } from '@potatosalad775/eqcaps-core';
 import { logger } from './logger';
 // As text, parsed on first use: a JSON import would make TypeScript infer the whole bundle's type.
-import snapshotText from '$lib/data/eqcaps-bundle.json?raw';
+import snapshotText from '#lib/data/eqcaps-bundle.json?raw';
 
 /**
  * The eqcaps database client: EQ constraint profiles for hardware, matched to a connected device

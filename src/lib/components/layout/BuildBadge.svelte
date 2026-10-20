@@ -3,8 +3,8 @@
 	which one it is. Nothing in a release.
 -->
 <script lang="ts">
-	import Badge from '$lib/components/atoms/Badge.svelte';
-	import { buildLabel } from '$lib/platform/build';
+	import Badge from '#lib/components/atoms/Badge.svelte';
+	import { buildLabel } from '#lib/platform/build.js';
 </script>
 
 {#if buildLabel}

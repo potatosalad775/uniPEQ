@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IndexEntry, Profile } from '@potatosalad775/eqcaps-core';
 import type { HidTransport, StreamTransport } from '@potatosalad775/eqcaps-device-bridge';
-import type { DeviceIoPlugin, NativeUsbDevice } from '$lib/transports/native/device-io';
+import type { DeviceIoPlugin, NativeUsbDevice } from '#lib/transports/native/device-io.js';
 
 const browser = vi.hoisted(() => ({
 	requestHidDevice: vi.fn(),
@@ -24,7 +24,7 @@ const client = vi.hoisted(() => ({
 	loadProfile: vi.fn(),
 	matchDevice: vi.fn()
 }));
-vi.mock('$lib/services/eqcaps-client', () => ({ eqcapsClient: () => client }));
+vi.mock('#lib/services/eqcaps-client.js', () => ({ eqcapsClient: () => client }));
 
 const { connectHid, connectNativeHid, connectSerial, guessedProfile } = await import('./connect');
 

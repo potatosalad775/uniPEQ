@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EqState } from '$lib/eq/model';
+import type { EqState } from '#lib/eq/model.js';
 import { UndoRedoStack } from './undo-redo-stack';
 
 const state = (gain: number): EqState => ({

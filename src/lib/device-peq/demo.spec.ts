@@ -6,10 +6,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateProfile } from '@potatosalad775/eqcaps-core';
 import type { Filter } from '@potatosalad775/eqcaps-core';
-import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
+import { fromCapsFilter, type EqFilter } from '#lib/eq/model.js';
 
 vi.mock('@potatosalad775/eqcaps-device-bridge/browser', () => ({}));
-vi.mock('$lib/services/eqcaps-client', () => ({ eqcapsClient: () => ({}) }));
+vi.mock('#lib/services/eqcaps-client.js', () => ({ eqcapsClient: () => ({}) }));
 
 const { connectDemo } = await import('./connect');
 const { DEMO_PROFILE, DemoDac, DemoHidTransport, resetDemoDac } = await import('./demo');

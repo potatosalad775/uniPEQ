@@ -5,8 +5,8 @@
  * says it's linked. The battery tip is a dialog (`LinkBatteryDialog`), not a line.
  */
 import type { JoinerState } from 'peq-link/client';
-import type { SyncStatus } from '$lib/device-peq/sync-status';
-import * as m from '$lib/paraglide/messages';
+import type { SyncStatus } from '#lib/device-peq/sync-status.js';
+import * as m from '#lib/paraglide/messages.js';
 
 export interface BarStatus extends SyncStatus {
 	/** A link line: the link icon in place of the tone's. */

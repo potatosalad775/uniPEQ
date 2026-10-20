@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SyncStatus } from '$lib/device-peq/sync-status';
+import type { SyncStatus } from '#lib/device-peq/sync-status.js';
 import { linkStatus, statusLine, type LinkInput } from './link-status';
 
 const link = (l: Partial<LinkInput>): LinkInput => ({

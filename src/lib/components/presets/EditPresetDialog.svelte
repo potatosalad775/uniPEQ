@@ -3,12 +3,12 @@
 	`onClose` (cancel, Escape, back) and after `onSave`.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import Input from '$lib/components/atoms/Input.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import type { PresetIndexEntry } from '$lib/services/preset-storage';
-	import * as m from '$lib/paraglide/messages';
-	import { parseTags } from '$lib/eq/preset-file';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import type { PresetIndexEntry } from '#lib/services/preset-storage.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { parseTags } from '#lib/eq/preset-file.js';
 
 	let {
 		entry,

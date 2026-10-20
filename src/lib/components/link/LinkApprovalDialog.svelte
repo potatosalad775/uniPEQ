@@ -6,10 +6,10 @@
 	tab.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import { linkStore, loadLinkService } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import { linkStore, loadLinkService } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	const approval = $derived(linkStore.approval);
 	const host = $derived(approval?.host ?? '');

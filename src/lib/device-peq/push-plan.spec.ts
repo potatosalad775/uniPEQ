@@ -1,8 +1,8 @@
 // Adapted from modernGraphTool src/lib/device-peq/push-plan.spec.ts @ 23ddc4dd.
 import { describe, expect, it, vi } from 'vitest';
 import type { Filter } from '@potatosalad775/eqcaps-core';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import type { EqFilter } from '$lib/eq/model';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import type { EqFilter } from '#lib/eq/model.js';
 import { needsConfirmation, needsReview, planPush, readLayout } from './push-plan';
 import type { PeqDevice } from './types';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import type { EqFilter } from '$lib/eq/model';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import type { EqFilter } from '#lib/eq/model.js';
 import { presetFit } from './preset-fit';
 
 const profile = hardwareProfile('h', {

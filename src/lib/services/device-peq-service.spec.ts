@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeConnection } from '$lib/device-peq/__fixtures__/connection';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import { settingsStore } from '$lib/stores/settings-store.svelte';
-import type { DeviceIoPlugin, NativeUsbDevice } from '$lib/transports/native/device-io';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import { settingsStore } from '#lib/stores/settings-store.svelte.js';
+import type { DeviceIoPlugin, NativeUsbDevice } from '#lib/transports/native/device-io.js';
 import { devicePeqService } from './device-peq-service.svelte';
 
 const connect = vi.hoisted(() => ({
@@ -12,8 +12,8 @@ const connect = vi.hoisted(() => ({
 	connectNativeHid: vi.fn(async (): Promise<unknown> => ({ kind: 'cancelled' }))
 }));
 
-vi.mock('$lib/platform/native', () => ({ isNative: true }));
-vi.mock('$lib/device-peq/connect', () => connect);
+vi.mock('#lib/platform/native.js', () => ({ isNative: true }));
+vi.mock('#lib/device-peq/connect.js', () => connect);
 
 const DAC: NativeUsbDevice = {
 	deviceName: '/dev/bus/usb/001/002',

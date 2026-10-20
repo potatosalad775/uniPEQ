@@ -4,16 +4,16 @@
 	import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 	import './layout.css';
 	import { onMount } from 'svelte';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { WEB_LINK_PARAM } from '$lib/link/link-store.svelte';
-	import { getLocale } from '$lib/paraglide/runtime';
-	import { appState } from '$lib/platform/app-state.svelte';
-	import { distribution } from '$lib/platform/build';
-	import { installNative, isNative, launchUrl, setSystemBarsDark } from '$lib/platform/native';
-	import { introStore } from '$lib/stores/intro-store.svelte';
-	import { settingsStore } from '$lib/stores/settings-store.svelte';
-	import AppShell from '$lib/components/layout/AppShell.svelte';
+	import { WEB_LINK_PARAM } from '#lib/link/link-store.svelte.js';
+	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { appState } from '#lib/platform/app-state.svelte.js';
+	import { distribution } from '#lib/platform/build.js';
+	import { installNative, isNative, launchUrl, setSystemBarsDark } from '#lib/platform/native.js';
+	import { introStore } from '#lib/stores/intro-store.svelte.js';
+	import { settingsStore } from '#lib/stores/settings-store.svelte.js';
+	import AppShell from '#lib/components/layout/AppShell.svelte';
 
 	let { children } = $props();
 
@@ -33,30 +33,30 @@
 		});
 		// Web: offline cache and the update prompt. The APK carries its own files.
 		if (!isNative && !import.meta.env.DEV) {
-			void import('$lib/platform/pwa').then((mod) => mod.installServiceWorker());
+			void import('#lib/platform/pwa.js').then((mod) => mod.installServiceWorker());
 		}
 		// Sideloaded APK: notices of newer GitHub releases. Play updates its own installs.
 		if (isNative && distribution === 'github') {
-			void import('$lib/platform/release-updates').then((mod) => mod.installReleaseUpdates());
+			void import('#lib/platform/release-updates.js').then((mod) => mod.installReleaseUpdates());
 		}
 		// Revalidate the eqcaps index in the background, so a connect finds it ready.
-		void import('$lib/services/eqcaps-client').then((mod) => mod.eqcapsClient().loadIndex());
+		void import('#lib/services/eqcaps-client.js').then((mod) => mod.eqcapsClient().loadIndex());
 		// Android: plugging a device in connects it, unplugging it disconnects.
 		if (isNative) {
-			void import('$lib/services/device-peq-service.svelte').then((mod) =>
+			void import('#lib/services/device-peq-service.svelte.js').then((mod) =>
 				mod.devicePeqService.watchUsb()
 			);
 			// The modernGraphTool link: the room a cold start was opened with, and later links.
-			void import('$lib/link/link-store.svelte').then((mod) => mod.loadLinkService());
+			void import('#lib/link/link-store.svelte.js').then((mod) => mod.loadLinkService());
 		} else if (new URLSearchParams(location.search).has(WEB_LINK_PARAM)) {
 			// Web, opened by modernGraphTool's "Open uniPEQ": join the room in the address.
-			void import('$lib/link/link-store.svelte')
+			void import('#lib/link/link-store.svelte.js')
 				.then((mod) => mod.loadLinkService())
 				.then((service) => {
 					const rest = service.openAddress(location.href);
 					// This page's own address minus `link`, not a route: `resolve()` has nothing to add.
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
-					if (rest) replaceState(rest, page.state);
+					if (rest) goto(rest, { shallow: true, replace: true, state: page.state });
 				});
 		}
 	});

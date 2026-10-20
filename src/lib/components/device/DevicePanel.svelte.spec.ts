@@ -2,17 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import type { Profile } from '@potatosalad775/eqcaps-core';
-import { resetDemoDac } from '$lib/device-peq/demo';
-import type { DeviceConnection, PeqCapabilities, PeqDevice } from '$lib/device-peq/types';
-import { hardwareProfile } from '$lib/eq/__fixtures__/profiles';
-import { settingsStore } from '$lib/stores/settings-store.svelte';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import BandList from '$lib/components/eq/BandList.svelte';
+import { resetDemoDac } from '#lib/device-peq/demo.js';
+import type { DeviceConnection, PeqCapabilities, PeqDevice } from '#lib/device-peq/types.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
+import { settingsStore } from '#lib/stores/settings-store.svelte.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import BandList from '#lib/components/eq/BandList.svelte';
 import DevicePanel from './DevicePanel.svelte';
 import ReviewDialog from './ReviewDialog.svelte';
 import SyncBar from './SyncBar.svelte';
-import { devicePeqService } from '$lib/services/device-peq-service.svelte';
+import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
 
 // The volume warning has its own specs (device-peq-service); here writes go straight out.
 beforeEach(() => {

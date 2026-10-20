@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import { linkStore, type LinkApproval } from '$lib/link/link-store.svelte';
+import { linkStore, type LinkApproval } from '#lib/link/link-store.svelte.js';
 import LinkBatteryDialog from './LinkBatteryDialog.svelte';
 
 describe('LinkBatteryDialog', () => {

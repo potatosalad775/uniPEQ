@@ -88,7 +88,7 @@ jobs:
 
       - run: npm ci
 
-      # BASE_PATH is the site's path (`/uniPEQ`, or empty on a custom domain); svelte.config.js
+      # BASE_PATH is the site's path (`/uniPEQ`, or empty on a custom domain); vite.config.ts
       # reads it.
       - run: npm run build
         env:

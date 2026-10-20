@@ -5,12 +5,12 @@
  *
  * Arrays are replaced, never mutated (`$state.raw`), so "did the list change" is an identity check.
  * The store doesn't know the device's limits: callers project edits first (`editFilter` in
- * `$lib/eq/eq-constraint`), and nothing here ever folds the list onto a profile on its own
+ * `#lib/eq/eq-constraint.js`), and nothing here ever folds the list onto a profile on its own
  * (device-peq invariant 3).
  */
-import { derivePreamp } from '$lib/eq/eq-preamp';
-import { eqFiltersEqual, type EqFilter, type EqState } from '$lib/eq/model';
-import { UndoRedoStack } from '$lib/services/undo-redo-stack';
+import { derivePreamp } from '#lib/eq/eq-preamp.js';
+import { eqFiltersEqual, type EqFilter, type EqState } from '#lib/eq/model.js';
+import { UndoRedoStack } from '#lib/services/undo-redo-stack.js';
 
 /** What undo restores: the list, the preamp as set by hand, and whether it follows the bands. */
 export type EqSnapshot = EqState & { autoPreamp: boolean };

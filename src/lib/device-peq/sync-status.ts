@@ -6,7 +6,7 @@
  * write under way, an auto-write waiting to fire, a device that needs reconnecting, and the
  * Write button for manual mode.
  */
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 import { panelStatus, type PanelStatusInput } from './panel-status';
 
 /** `busy`: a read or write is under way; `pending`: an auto-write is waiting to fire. */

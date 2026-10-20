@@ -10,7 +10,7 @@ declare global {
 	const __APP_VERSION__: string;
 
 	interface ImportMetaEnv {
-		/** `github` for the sideloaded APK; see `distribution` in $lib/platform/build. */
+		/** `github` for the sideloaded APK; see `distribution` in #lib/platform/build.js. */
 		readonly VITE_DISTRIBUTION?: string;
 	}
 }

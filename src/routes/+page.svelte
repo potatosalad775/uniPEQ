@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { MediaQuery } from 'svelte/reactivity';
-	import DevicePanel from '$lib/components/device/DevicePanel.svelte';
-	import DeviceSheet from '$lib/components/device/DeviceSheet.svelte';
-	import ReviewDialog from '$lib/components/device/ReviewDialog.svelte';
-	import SyncBar from '$lib/components/device/SyncBar.svelte';
-	import BandList from '$lib/components/eq/BandList.svelte';
-	import BandSheet from '$lib/components/eq/BandSheet.svelte';
-	import EqAppBar from '$lib/components/eq/EqAppBar.svelte';
-	import EqEmptyState from '$lib/components/eq/EqEmptyState.svelte';
-	import EqGraph from '$lib/components/eq/EqGraph.svelte';
-	import PreampControl from '$lib/components/eq/PreampControl.svelte';
-	import { canConnectUsb, devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
-	import PageBody from '$lib/components/layout/PageBody.svelte';
+	import DevicePanel from '#lib/components/device/DevicePanel.svelte';
+	import DeviceSheet from '#lib/components/device/DeviceSheet.svelte';
+	import ReviewDialog from '#lib/components/device/ReviewDialog.svelte';
+	import SyncBar from '#lib/components/device/SyncBar.svelte';
+	import BandList from '#lib/components/eq/BandList.svelte';
+	import BandSheet from '#lib/components/eq/BandSheet.svelte';
+	import EqAppBar from '#lib/components/eq/EqAppBar.svelte';
+	import EqEmptyState from '#lib/components/eq/EqEmptyState.svelte';
+	import EqGraph from '#lib/components/eq/EqGraph.svelte';
+	import PreampControl from '#lib/components/eq/PreampControl.svelte';
+	import { canConnectUsb, devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
+	import PageBody from '#lib/components/layout/PageBody.svelte';
 
 	/** The `wide:` breakpoint (layout.css): the band editor opens in the list, not in a sheet. */
 	const wide = new MediaQuery('min-width: 56.25rem');

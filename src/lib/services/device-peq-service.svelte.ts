@@ -8,36 +8,36 @@
  * The screens keep only what needs them: the review dialog and the controls.
  */
 import { untrack } from 'svelte';
-import type { ConnectResult } from '$lib/device-peq/connect';
-import { describeDeviceError, errorCode, isConnectionLost } from '$lib/device-peq/errors';
-import { readRequest } from '$lib/device-peq/preset';
+import type { ConnectResult } from '#lib/device-peq/connect.js';
+import { describeDeviceError, errorCode, isConnectionLost } from '#lib/device-peq/errors.js';
+import { readRequest } from '#lib/device-peq/preset.js';
 import {
 	needsConfirmation,
 	needsReview,
 	planPush,
 	readLayout,
 	type PushPlan
-} from '$lib/device-peq/push-plan';
-import { syncStatus, type SyncStatus } from '$lib/device-peq/sync-status';
-import type { DeviceCandidate, DeviceConnection } from '$lib/device-peq/types';
-import { derivePreamp } from '$lib/eq/eq-preamp';
-import { fromCapsFilter, type EqFilter } from '$lib/eq/model';
-import { headroomPreamp } from '$lib/eq/preamp-control';
-import * as m from '$lib/paraglide/messages';
-import { appState } from '$lib/platform/app-state.svelte';
-import { environment } from '$lib/platform/environment';
-import { hapticError, hapticTick } from '$lib/platform/haptics';
-import { isNative } from '$lib/platform/native';
-import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-import { eqStore } from '$lib/stores/eq-store.svelte';
-import { noticeStore } from '$lib/stores/notice-store.svelte';
-import { settingsStore } from '$lib/stores/settings-store.svelte';
+} from '#lib/device-peq/push-plan.js';
+import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
+import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
+import { derivePreamp } from '#lib/eq/eq-preamp.js';
+import { fromCapsFilter, type EqFilter } from '#lib/eq/model.js';
+import { headroomPreamp } from '#lib/eq/preamp-control.js';
+import * as m from '#lib/paraglide/messages.js';
+import { appState } from '#lib/platform/app-state.svelte.js';
+import { environment } from '#lib/platform/environment.js';
+import { hapticError, hapticTick } from '#lib/platform/haptics.js';
+import { isNative } from '#lib/platform/native.js';
+import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+import { eqStore } from '#lib/stores/eq-store.svelte.js';
+import { noticeStore } from '#lib/stores/notice-store.svelte.js';
+import { settingsStore } from '#lib/stores/settings-store.svelte.js';
 import {
 	DeviceIo,
 	type DeviceIoPlugin,
 	type NativeUsbDevice
-} from '$lib/transports/native/device-io';
+} from '#lib/transports/native/device-io.js';
 import type { Filter } from '@potatosalad775/eqcaps-core';
 import { logger } from './logger';
 
@@ -51,7 +51,7 @@ type Choice = Extract<ConnectResult, { kind: 'choose' }>;
 /** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */
 type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null };
 
-const loadConnect = () => import('$lib/device-peq/connect');
+const loadConnect = () => import('#lib/device-peq/connect.js');
 
 /**
  * A read preamp in the list: Auto where the device holds what Auto would write, so it keeps

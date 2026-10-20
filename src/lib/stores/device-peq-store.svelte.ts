@@ -8,9 +8,9 @@
  * the device never got (`unwritten`), and it can't be edited while disconnected (`canEdit`). Bands
  * that don't fit are flagged, never refitted: Fit is the user's call.
  */
-import { readRequest, writeRequest, type PresetRequest } from '$lib/device-peq/preset';
-import type { DeviceConnection, PeqCapabilities } from '$lib/device-peq/types';
-import { eqFiltersEqual, type EqFilter } from '$lib/eq/model';
+import { readRequest, writeRequest, type PresetRequest } from '#lib/device-peq/preset.js';
+import type { DeviceConnection, PeqCapabilities } from '#lib/device-peq/types.js';
+import { eqFiltersEqual, type EqFilter } from '#lib/eq/model.js';
 import type { Filter, Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 import { eqStore } from './eq-store.svelte';

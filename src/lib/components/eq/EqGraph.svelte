@@ -14,8 +14,8 @@
 -->
 <script lang="ts">
 	import { usesGain } from '@potatosalad775/eqcaps-core';
-	import { combinedResponseDb, logFreqGrid } from '$lib/eq/biquad';
-	import { editFilter, flatBand, newBand, slotOf } from '$lib/eq/eq-constraint';
+	import { combinedResponseDb, logFreqGrid } from '#lib/eq/biquad.js';
+	import { editFilter, flatBand, newBand, slotOf } from '#lib/eq/eq-constraint.js';
 	import {
 		dbAt,
 		dbRange,
@@ -31,12 +31,12 @@
 		xOf,
 		yOf,
 		type Plot
-	} from '$lib/eq/graph-scale';
-	import type { EqFilter } from '$lib/eq/model';
-	import { nudge, roundField } from '$lib/eq/nudge';
-	import * as m from '$lib/paraglide/messages';
-	import { eqConstraintStore } from '$lib/stores/eq-constraint-store.svelte';
-	import { eqStore } from '$lib/stores/eq-store.svelte';
+	} from '#lib/eq/graph-scale.js';
+	import type { EqFilter } from '#lib/eq/model.js';
+	import { nudge, roundField } from '#lib/eq/nudge.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
+	import { eqStore } from '#lib/stores/eq-store.svelte.js';
 	import { formatDb, formatHz, formatQ } from './type-labels';
 
 	/** A move shorter than this is a tap. */

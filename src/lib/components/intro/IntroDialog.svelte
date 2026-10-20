@@ -19,16 +19,16 @@
 	import type { Component } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page as appPage } from '$app/state';
-	import Button from '$lib/components/atoms/Button.svelte';
-	import { TABS, activeTab } from '$lib/components/layout/tabs';
-	import { linkStore } from '$lib/link/link-store.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { onBack } from '$lib/platform/back-button';
-	import { ANDROID_DOWNLOAD_URL, environment } from '$lib/platform/environment';
-	import { isNative } from '$lib/platform/native';
-	import { devicePeqService } from '$lib/services/device-peq-service.svelte';
-	import { devicePeqStore } from '$lib/stores/device-peq-store.svelte';
-	import { introStore } from '$lib/stores/intro-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import { TABS, activeTab } from '#lib/components/layout/tabs.js';
+	import { linkStore } from '#lib/link/link-store.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { onBack } from '#lib/platform/back-button.js';
+	import { ANDROID_DOWNLOAD_URL, environment } from '#lib/platform/environment.js';
+	import { isNative } from '#lib/platform/native.js';
+	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
+	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+	import { introStore } from '#lib/stores/intro-store.svelte.js';
 	import { environmentCopy } from './environment-copy';
 
 	interface Page {
@@ -99,7 +99,7 @@
 	function tryDemo() {
 		close();
 		if (activeTab(appPage.route.id ?? '/') !== TABS[0]) {
-			void goto(TABS[0].href, { replaceState: true });
+			void goto(TABS[0].href, { replace: true });
 		}
 		void devicePeqService.connect('demo');
 	}
@@ -158,6 +158,8 @@
 					<ul class="flex flex-col items-start">
 						{#each current.links as link (link.href)}
 							<li>
+								<!-- External: `resolve()` is for app routes. -->
+								<!-- eslint-disable svelte/no-navigation-without-resolve -->
 								<a
 									href={link.href}
 									target="_blank"
@@ -167,6 +169,7 @@
 									{link.label}
 									<ExternalLink class="size-3.5" aria-hidden="true" />
 								</a>
+								<!-- eslint-enable svelte/no-navigation-without-resolve -->
 							</li>
 						{/each}
 					</ul>

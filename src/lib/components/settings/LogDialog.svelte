@@ -4,12 +4,12 @@
 	Refresh.
 -->
 <script lang="ts">
-	import Button from '$lib/components/atoms/Button.svelte';
-	import ModalDialog from '$lib/components/atoms/ModalDialog.svelte';
-	import * as m from '$lib/paraglide/messages';
-	import { saveTextFile } from '$lib/platform/save-file';
-	import { logger } from '$lib/services/logger';
-	import { noticeStore } from '$lib/stores/notice-store.svelte';
+	import Button from '#lib/components/atoms/Button.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
+	import * as m from '#lib/paraglide/messages.js';
+	import { saveTextFile } from '#lib/platform/save-file.js';
+	import { logger } from '#lib/services/logger.js';
+	import { noticeStore } from '#lib/stores/notice-store.svelte.js';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 

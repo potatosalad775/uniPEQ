@@ -1,7 +1,7 @@
 /**
  * USB HID spike, a raw check that the plugin's claim works on a phone: find a USB HID device the
  * bridge knows by vendor id, open it over the native transport and run the real eqcaps handler's
- * pull. Not UI: $lib/platform/native.ts exposes it as `window.uniPeqHidSpike` in native debug
+ * pull. Not UI: #lib/platform/native.ts exposes it as `window.uniPeqHidSpike` in native debug
  * builds, driven by scripts/android-hid-spike.mjs or a devtools console.
  */
 import { guessProtocol, openDevice } from '@potatosalad775/eqcaps-device-bridge';
