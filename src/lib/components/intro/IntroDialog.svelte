@@ -140,7 +140,7 @@
 				wide:inset-auto wide:top-1/2 wide:left-1/2 wide:min-h-[26rem] wide:w-11/12 wide:max-w-md wide:-translate-x-1/2 wide:-translate-y-1/2 wide:rounded-2xl wide:bg-base-200 wide:px-6 wide:pt-8 wide:pb-5 wide:shadow-2xl"
 		>
 			<div
-				class="flex min-h-0 flex-1 flex-col justify-center gap-4 overflow-y-auto wide:justify-start"
+				class="flex min-h-0 flex-1 flex-col justify-center gap-4 overflow-y-auto overscroll-y-contain wide:justify-start"
 			>
 				<span
 					class="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"

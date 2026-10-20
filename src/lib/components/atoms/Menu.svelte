@@ -44,7 +44,7 @@
 			{align}
 			sideOffset={4}
 			collisionPadding={8}
-			class="z-50 max-h-(--bits-floating-available-height) min-w-52 overflow-y-auto rounded-xl border border-base-content/10 bg-base-100 p-1 shadow-xl {className}"
+			class="z-50 max-h-(--bits-floating-available-height) min-w-52 overflow-y-auto overscroll-y-contain rounded-xl border border-base-content/10 bg-base-100 p-1 shadow-xl {className}"
 		>
 			{@render children()}
 		</DropdownMenu.Content>

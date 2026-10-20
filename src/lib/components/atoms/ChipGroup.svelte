@@ -34,7 +34,7 @@
 		}
 	}
 	aria-label={label}
-	class="-mx-4 flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-4 py-0.5 {className}"
+	class="-mx-4 flex scrollbar-none gap-1.5 overflow-x-auto overscroll-x-contain px-4 py-0.5 {className}"
 >
 	{#each options as option (option.value)}
 		<ToggleGroup.Item

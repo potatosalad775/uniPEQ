@@ -51,6 +51,11 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 
 ## Gotchas
 
+- Android WebView only stretches an inner scroller at its edge if `html` is not
+  `overscroll-behavior: none` (it stays `contain`) and the scroller has `overscroll-{y,x}-contain`
+  on the axis it scrolls; with `auto`, a pull that starts at the edge passes to the root, which
+  can't move. Give every new scroller one (only its own axis, so a chip row doesn't swallow
+  vertical swipes).
 - Component specs load no Tailwind: don't assert layout or computed utility styles there.
 - A spec that hides WebHID must delete `hid` from `Navigator.prototype`: feature detection is
   `'hid' in navigator` (`canConnectUsb`).

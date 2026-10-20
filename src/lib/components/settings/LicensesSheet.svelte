@@ -29,7 +29,7 @@
 
 {#snippet licenseText(text: string)}
 	<pre
-		class="mx-2 mb-2 overflow-x-auto rounded-md bg-base-200 p-2 font-mono text-[11px] whitespace-pre text-base-content/80 select-text">{text}</pre>
+		class="mx-2 mb-2 overflow-x-auto overscroll-x-contain rounded-md bg-base-200 p-2 font-mono text-[11px] whitespace-pre text-base-content/80 select-text">{text}</pre>
 {/snippet}
 
 <Sheet bind:open title={m.settings_licenses()}>

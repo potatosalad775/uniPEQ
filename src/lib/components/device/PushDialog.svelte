@@ -67,7 +67,9 @@
 	description={m.device_peq_push_intro()}
 >
 	{#if plan}
-		<ul class="flex-1 space-y-1 overflow-y-auto text-sm text-base-content/80 tabular-nums">
+		<ul
+			class="flex-1 space-y-1 overflow-y-auto overscroll-y-contain text-sm text-base-content/80 tabular-nums"
+		>
 			{#each plan.changes as change, i (i)}
 				<li>{describe(change)}</li>
 			{/each}

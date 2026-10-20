@@ -75,7 +75,9 @@
 				class="fixed inset-x-0 bottom-0 z-50 mx-auto w-full wide:bottom-4 wide:max-w-lg wide:rounded-2xl {panel} {className}"
 			>
 				{@render header(Dialog.Title)}
-				<div class="-mx-4 min-h-0 overflow-y-auto px-4">{@render children()}</div>
+				<div class="-mx-4 min-h-0 overflow-y-auto overscroll-y-contain px-4">
+					{@render children()}
+				</div>
 			</Dialog.Content>
 		</Dialog.Portal>
 	</Dialog.Root>
@@ -87,6 +89,6 @@
 		class="fixed inset-x-0 bottom-0 z-30 {panel} {className}"
 	>
 		{@render header(null)}
-		<div class="-mx-4 min-h-0 overflow-y-auto px-4">{@render children()}</div>
+		<div class="-mx-4 min-h-0 overflow-y-auto overscroll-y-contain px-4">{@render children()}</div>
 	</div>
 {/if}

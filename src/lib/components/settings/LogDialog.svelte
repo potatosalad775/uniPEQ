@@ -45,7 +45,7 @@
 
 <ModalDialog bind:open title={m.settings_log_title({ count })} class="max-w-2xl">
 	<pre
-		class="mt-1 min-h-32 flex-1 overflow-auto rounded-md bg-base-100 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-base-content/80 select-text">{text ||
+		class="mt-1 min-h-32 flex-1 overflow-auto overscroll-y-contain rounded-md bg-base-100 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-base-content/80 select-text">{text ||
 			m.settings_log_empty()}</pre>
 	<div class="mb-1 flex flex-row gap-2">
 		<Button

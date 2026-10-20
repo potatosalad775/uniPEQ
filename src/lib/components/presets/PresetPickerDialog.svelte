@@ -67,7 +67,7 @@
 			</Input>
 		{/if}
 		<ul
-			class="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto"
+			class="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
 			aria-label={m.presets_list_label()}
 		>
 			{#each shown as entry (entry.id)}

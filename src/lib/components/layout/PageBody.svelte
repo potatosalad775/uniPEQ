@@ -23,10 +23,12 @@
 	scrolls its own panes), so a page that scrolls says so here. Gutters on both edges keep a classic
 	scrollbar from shifting the content when it appears, and the padding gives their width back, so
 	the content sits 16 px in on both sides, in line with the header, scrolling or not.
+	`overscroll-y-contain` (as on every scroller) keeps a pull that starts at an end on this box, so
+	Android WebView stretches it; with `auto` the gesture passes on to the root, which can't move.
 -->
 <div
 	bind:this={el}
-	class="min-h-0 flex-1 scrollbar-gutter-both overflow-y-auto"
+	class="min-h-0 flex-1 scrollbar-gutter-both overflow-y-auto overscroll-y-contain"
 	style:--gutter="{gutter}px"
 >
 	<div class="px-[max(0px,calc(--spacing(4)-var(--gutter)))] {className}">

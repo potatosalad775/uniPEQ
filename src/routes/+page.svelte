@@ -70,13 +70,13 @@
 					<EqGraph />
 				</div>
 				{#if wide.current}
-					<div class="max-h-[60%] shrink-0 overflow-y-auto rounded-xl">
+					<div class="max-h-[60%] shrink-0 overflow-y-auto overscroll-y-contain rounded-xl">
 						<DevicePanel />
 					</div>
 				{/if}
 			{:else}
 				<div class="min-h-0 flex-1">
-					<div class="h-full overflow-y-auto wide:rounded-xl wide:bg-base-100">
+					<div class="h-full overflow-y-auto overscroll-y-contain wide:rounded-xl wide:bg-base-100">
 						<EqEmptyState onConnect={onDevice} />
 					</div>
 				</div>

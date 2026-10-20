@@ -114,7 +114,9 @@ select,
 }
 
 html {
-	overscroll-behavior: none;
+	/* Not `none`: in Android WebView that also turns off the stretch on inner scrollers. `contain`
+	   still keeps the root from moving, as the shell never scrolls it. */
+	overscroll-behavior: contain;
 	touch-action: manipulation;
 	height: 100dvh;
 	-webkit-tap-highlight-color: transparent;
