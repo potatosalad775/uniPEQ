@@ -49,28 +49,46 @@ Every string the app shows, the Android notification included, is in `messages/<
 keyed the same as `messages/en.json` (the source). A key a language doesn't have yet shows in
 English, so a partial translation is fine to send.
 
-**Finishing a language.** If `messages/_missing_translations_<locale>.json` exists, it lists what
-that language still lacks, pre-filled with the English text. Replace the values you can, delete
-the ones you can't, and open a pull request with the file. You can also edit
-`messages/<locale>.json` directly instead.
+**In the browser, with no code (recommended).**
+[Open uniPEQ in Fink](https://fink.inlang.com/?repo=potatosalad775/uniPEQ&project=project.inlang),
+a free translation editor that turns your edits into a pull request. You need a GitHub account and
+the [Inlang GitHub App](https://github.com/apps/inlang/installations/new) installed on your own
+account, so Fink can push to your fork.
 
-**Adding a language.**
+1. Under **Translate into**, pick your language, then filter **To do** to see what it's missing.
+2. When you're done, choose **Fork**, then **Review** and **Push**, then **Open pull request**,
+   and submit it on GitHub.
 
-1. Add its code (`de`, `pt-BR`, …) to `locales` in `project.inlang/settings.json`.
+To add a language that isn't listed, choose **Fork** first, then add its code (`de`, `pt-BR`, …) in
+Fink's **Settings** tab: settings edits don't carry over into a fork. Its file is created when you
+push its first translations, and the language menu in Settings picks it up under its own name.
+Fink's own guides cover [forks and pull requests](https://fink.inlang.com/docs/branches-forks-and-pull-requests)
+and [plurals](https://fink.inlang.com/docs/plurals-and-selects).
+
+Fink may label the `android_*` keys **Not used in code**, because the native Android app reads them
+instead of the web code. They are used: translate them, and never delete them.
+
+**In a text editor (offline).** If `messages/_missing_translations_<locale>.json` exists, it lists
+what that language still lacks, pre-filled with the English text. Replace the values you can,
+delete the ones you can't, and open a pull request with the file. You can also edit
+`messages/<locale>.json` directly instead. To add a language this way:
+
+1. Add its code to `locales` in `project.inlang/settings.json`.
 2. Create `messages/<locale>.json` with just
    `{ "$schema": "https://inlang.com/schema/inlang-message-format" }`.
 3. Run `npm run i18n:missing`, which writes the stub file above with every key, and translate
    it.
-
-The language menu in Settings picks the new locale up under its own name; no code changes.
 
 **What to keep as is.**
 
 - Placeholders in braces, like `{host}` or `{count}`: move them where your grammar needs them,
   but don't translate or rename them.
 - Product names: uniPEQ, modernGraphTool, eqcaps.
-- Counts: write a plural as an object of your language's forms (the stub's `@@info` lists them),
-  for example `{ "one": "{count} band", "few": "{count} bands", "other": "{count} bands" }`, or
+- Messages themselves: don't add, delete or rename them (in Fink or by hand). That comes with a
+  code change.
+- Counts: in Fink, choose **Split by {count}** when your language needs more forms than English.
+  In a stub file, write a plural as an object of your language's forms (the stub's `@@info`
+  lists them), for example `{ "one": "{count} band", "few": "{count} bands", "other": "{count} bands" }`, or
   inline as `{count, plural, one {# band} other {# bands}}`.
 - `android_*` keys feed the native Android app, which can't use plurals; keep them plain text.
 
@@ -82,8 +100,12 @@ The language menu in Settings picks the new locale up under its own name; no cod
 | `npm run i18n:missing` | Same, and writes the `_missing_translations_<locale>.json` stubs |
 | `npm run i18n:apply` | Merges edited stubs into `messages/<locale>.json`, deletes them and writes fresh stubs for what's still missing. Values left identical to `en` are skipped; `i18n:apply_force` imports them too (for names that stay in English) |
 
-Run `npm run i18n:missing` after adding keys to `en.json`, so translators see them. The
-`android_*` keys are written into the gitignored
+Run `npm run i18n:missing` after adding keys to `en.json`, so translators see them, and after
+merging a Fink pull request, so the stubs stop listing what it translated. A Fink PR touches only
+the edited messages in `messages/<locale>.json` (plus `project.inlang/settings.json` for a new
+language) and needs no `i18n:apply`.
+
+The `android_*` keys are written into the gitignored
 `android/app/src/main/res/values*/generated_strings.xml` by `scripts/android-strings.js`, on
 `i18n:compile` and every Vite build. A new one also needs an entry in `ANDROID_STRINGS` there,
 listing its placeholders in the order Java passes them.

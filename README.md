@@ -56,6 +56,19 @@ USB HID devices are supported. Serial and Bluetooth devices aren't yet.
 > [eqcaps](https://github.com/potatosalad775/eqcaps/issues), not here. The device panel links there
 > too. Issues with the app itself belong in [uniPEQ's issues](https://github.com/potatosalad775/uniPEQ/issues).
 
+## Contributing
+
+uniPEQ is built in the open, and you don't need to write code to help.
+
+- **Translate it.** [Open it in Fink](https://fink.inlang.com/?repo=potatosalad775/uniPEQ&project=project.inlang)
+  to fix a translation or add your own language from your browser. All you need is a GitHub
+  account, and partial translations are welcome: anything left untranslated shows in English.
+  See [Translating](CONTRIBUTING.md#translating).
+- **Report a device** that's missing, won't connect, or shows the wrong limits to
+  [eqcaps](https://github.com/potatosalad775/eqcaps/issues). Every device it learns works in uniPEQ.
+- **Report a bug or suggest a feature** in [uniPEQ's issues](https://github.com/potatosalad775/uniPEQ/issues).
+- **Send code.** Pull requests are welcome; [Development](#development) below gets you started.
+
 ## Development
 
 SvelteKit 2 (static SPA) + Svelte 5 + Tailwind CSS 4 in Capacitor 8. Node.js 20.19 or newer.
