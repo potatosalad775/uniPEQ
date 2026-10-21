@@ -33,6 +33,8 @@
 		class?: string;
 	} = $props();
 
+	let content = $state<HTMLElement | null>(null);
+
 	$effect(() => {
 		if (!open) return;
 		return onBack(() => {
@@ -71,8 +73,15 @@
 	<Dialog.Root bind:open>
 		<Dialog.Portal>
 			<Dialog.Overlay class="fixed inset-0 z-40 animate-fade-in bg-black/40" />
+			<!-- Focus starts on the sheet itself, not its close button: a focus() moved by script
+				after a tap can match :focus-visible, which rang the button on touch. -->
 			<Dialog.Content
-				class="fixed inset-x-0 bottom-0 z-50 mx-auto w-full wide:bottom-4 wide:max-w-lg wide:rounded-2xl {panel} {className}"
+				bind:ref={content}
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					content?.focus();
+				}}
+				class="fixed inset-x-0 bottom-0 z-50 mx-auto w-full outline-none wide:bottom-4 wide:max-w-lg wide:rounded-2xl {panel} {className}"
 			>
 				{@render header(Dialog.Title)}
 				<div class="-mx-4 min-h-0 overflow-y-auto overscroll-y-contain px-4">

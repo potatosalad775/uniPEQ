@@ -24,6 +24,8 @@
 		class?: string;
 	} = $props();
 
+	let content = $state<HTMLElement | null>(null);
+
 	$effect(() => {
 		if (!open) return;
 		return onBack(() => {
@@ -36,8 +38,15 @@
 <Dialog.Root bind:open>
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40" />
+		<!-- Focus starts on the dialog itself, not its first button: a focus() moved by script
+			after a tap can match :focus-visible, which rang the button on touch. -->
 		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 flex max-h-[85dvh] w-11/12 max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-xl bg-base-200 p-6 shadow-2xl {className}"
+			bind:ref={content}
+			onOpenAutoFocus={(event) => {
+				event.preventDefault();
+				content?.focus();
+			}}
+			class="fixed top-1/2 left-1/2 z-50 flex max-h-[85dvh] w-11/12 max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-xl bg-base-200 p-6 shadow-2xl outline-none {className}"
 		>
 			<Dialog.Title class="text-lg font-semibold text-base-content">{title}</Dialog.Title>
 			{#if description}
