@@ -1,5 +1,10 @@
 {
 	"@@info": [
+		"Prefer translating in your browser? Fink edits messages/ru.json directly — no code or git:",
+		"  https://fink.inlang.com/?repo=potatosalad775/uniPEQ&project=project.inlang",
+		"  Walkthrough: https://github.com/potatosalad775/uniPEQ/blob/main/CONTRIBUTING.md#translating",
+		"This file is the offline alternative.",
+		"",
 		"Keys that exist in <en> but not in <ru>.",
 		"The values below are the en source text — replace them with ru translations.",
 		"You do not have to translate all of them; leave out what you are unsure about and open a PR.",

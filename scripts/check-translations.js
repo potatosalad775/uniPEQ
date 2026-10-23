@@ -51,6 +51,11 @@ for (const l of fileless) {
 if (unregistered.length > 0 || fileless.length > 0) process.exitCode = 1;
 
 const info = (locale) => [
+	`Prefer translating in your browser? Fink edits messages/${locale}.json directly — no code or git:`,
+	`  https://fink.inlang.com/?repo=potatosalad775/uniPEQ&project=project.inlang`,
+	`  Walkthrough: https://github.com/potatosalad775/uniPEQ/blob/main/CONTRIBUTING.md#translating`,
+	`This file is the offline alternative.`,
+	``,
 	`Keys that exist in <${BASE_LOCALE}> but not in <${locale}>.`,
 	`The values below are the ${BASE_LOCALE} source text — replace them with ${locale} translations.`,
 	`You do not have to translate all of them; leave out what you are unsure about and open a PR.`,
