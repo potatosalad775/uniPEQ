@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     The splash screen's icon: the mark of resources/icon.svg (two T's back to back, in its frame
-    turned 45° and scaled by 1/√2), without the icon's white square and grid. A splash icon without
+    turned 45° and scaled by 1/√2), without the icon's gradient square. A splash icon without
     a background is 288 dp, and only its centre 192 dp circle shows; the mark is drawn 2.5× the
     icon's dp, about 125 dp across.
 -->

@@ -155,9 +155,11 @@ Windows), or open `android/` in Android Studio.
 
 - `npm run data:snapshot` refreshes `src/lib/data/eqcaps-bundle.json`, the eqcaps data used only on
   an offline first launch. Run it before a release, not per build; don't edit or format the file.
-- `npm run icons` renders `resources/icon.svg` into `static/favicon.png`,
-  `static/apple-touch-icon.png` and `resources/play-store-icon.png` (512 px, Play listing).
-  Launcher mipmaps are separate. The Android splash is `res/drawable/splash_icon.xml` (the mark as
+- `npm run icons` renders `resources/icon.svg` into the web icons in `static/`,
+  `resources/play-store-icon.png` (512 px, Play listing) and the launcher mipmaps
+  (`res/mipmap-*`); the adaptive icon's background layer is `res/drawable/ic_launcher_background.xml`,
+  the same gradient as a vector. Keep the background plain: Play rejected a listing icon with a
+  faint construction grid as unclear. The Android splash is `res/drawable/splash_icon.xml` (the mark as
   a vector, drawn by hand from `icon.svg`) on `splash_background` (`values` / `values-night`, the
   app's base-100), via core-splashscreen's `AppTheme.NoActionBarLaunch` on every API level.
 
