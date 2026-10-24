@@ -120,7 +120,14 @@ npm run android                    # debug web build, cap sync, assembleDebug, i
 npm run android -- --serial <id>   # pick a device when several are connected (`adb devices`)
 npm run android -- --skip-web      # reuse the last web build (only native code changed)
 npm run android -- --no-launch     # install without starting
+npm run android -- --release       # the signed release APK instead (needs android/key.properties)
+npm run android -- --sideload      # the GitHub sideload APK (own app id, installs beside the others)
 ```
+
+Debug and release builds share the app id but not the signing key, so Android won't update one
+with the other: `adb uninstall kr.potatosalad775.unipeq` (wipes its data) before switching. The
+script stops with that hint rather than uninstalling for you. `android:release` below only builds;
+`android --release` builds and installs.
 
 By hand: `npm run android:sync:debug` (debug-mode web build + `cap sync android`; plain
 `android:sync` is the release web build), then `android/gradlew assembleDebug` (`gradlew.bat` on
@@ -189,7 +196,7 @@ The tag must match `package.json`.
 ### Local release builds
 
 ```sh
-npm run android:release                  # signed .aab for Play
+npm run android:release                  # signed .aab for Play (builds only; install: npm run android -- --release)
 npm run android:release -- --apk         # also a signed APK (upload key, local testing only)
 npm run android:release -- --sideload    # the GitHub sideload APK
 npm run android:release -- --skip-web    # reuse dist/ (must be a release build of the same kind)

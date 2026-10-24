@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-// Builds the debug app and installs it on a connected phone or emulator, in one step:
+// Builds the app and installs it on a connected phone or emulator, in one step:
 // web build → `cap sync android` → Gradle `assembleDebug` → `adb install -r` → launch.
 //
-//   npm run android -- [--serial <id>] [--skip-web] [--no-launch]
+//   npm run android -- [--release | --sideload] [--serial <id>] [--skip-web] [--no-launch]
 //
+//   --release      the signed release APK instead of the debug one (built by android-release.mjs
+//                  --apk, so it needs android/key.properties). Same app id as debug but another
+//                  key: uninstall one before installing the other.
+//   --sideload     the GitHub sideload APK (android-release.mjs --sideload): its own app id, so it
+//                  installs beside the debug or Play app
 //   --serial <id>  the adb device to use when several are connected (`adb devices` lists them)
-//   --skip-web     reuse the last web build in dist/ (only native code changed)
+//   --skip-web     reuse the last web build in dist/ (only native code changed; for --release and
+//                  --sideload it must be a release build of the same kind)
 //   --no-launch    install without starting the app
 //
 // Needs the Android SDK (ANDROID_HOME, ANDROID_SDK_ROOT or android/local.properties) and adb.
@@ -27,6 +33,13 @@ const flag = (name) => {
 	return i >= 0 ? args[i + 1] : undefined;
 };
 let serial = flag('serial') ?? process.env.ANDROID_SERIAL;
+const release = has('release');
+const sideload = has('sideload');
+if (release && sideload) {
+	console.error('✖ Pick one of --release and --sideload.');
+	process.exit(1);
+}
+const appId = sideload ? `${APP_ID}.sideload` : APP_ID;
 
 function sdkDir() {
 	const fromEnv = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
@@ -103,19 +116,50 @@ if (!serial) {
 }
 console.log(`Device: ${serial} (${adb('shell', 'getprop', 'ro.product.model')})`);
 
-// Debug mode: the demo device and the DEBUG badge, as in `npm run dev` (src/lib/platform/build.ts).
-if (!has('skip-web')) step('Web build', 'npm', ['run', 'build', '--', '--mode', 'debug']);
-step('Capacitor sync', 'npx', ['cap', 'sync', 'android']);
-step('Gradle assembleDebug', windows ? 'gradlew.bat' : './gradlew', ['assembleDebug'], {
-	cwd: join(root, 'android')
-});
+const skipWeb = has('skip-web') ? ['--skip-web'] : [];
+const apkDir = join(root, 'android', 'app', 'build', 'outputs', 'apk');
+let apk;
+if (release || sideload) {
+	// One recipe for release builds: android-release.mjs checks the key and picks the web build.
+	step('Release build', 'node', [
+		join(root, 'scripts', 'android-release.mjs'),
+		sideload ? '--sideload' : '--apk',
+		...skipWeb
+	]);
+	apk = join(apkDir, 'release', 'app-release.apk');
+} else {
+	// Debug mode: the demo device and the DEBUG badge, as in `npm run dev` (src/lib/platform/build.ts).
+	if (!skipWeb.length) step('Web build', 'npm', ['run', 'build', '--', '--mode', 'debug']);
+	step('Capacitor sync', 'npx', ['cap', 'sync', 'android']);
+	step('Gradle assembleDebug', windows ? 'gradlew.bat' : './gradlew', ['assembleDebug'], {
+		cwd: join(root, 'android')
+	});
+	apk = join(apkDir, 'debug', 'app-debug.apk');
+}
 
-const apk = join(root, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
-step('Install', adbPath, ['-s', serial, 'install', '-r', apk]);
+console.log('\n▶ Install');
+const install = spawnSync(adbPath, ['-s', serial, 'install', '-r', apk], { encoding: 'utf8' });
+process.stdout.write(install.stdout ?? '');
+process.stderr.write(install.stderr ?? '');
+if (install.status !== 0) {
+	// Debug and release share the app id but not the key; adb won't replace one with the other.
+	// Uninstalling wipes the app's data, so that stays the user's call.
+	if (`${install.stdout}${install.stderr}`.includes('INSTALL_FAILED_UPDATE_INCOMPATIBLE')) {
+		console.error(
+			`\n✖ ${appId} is already installed with another signing key (debug and release share the\n` +
+				`  app id). Uninstall it first, which deletes its data:\n` +
+				`  adb -s ${serial} uninstall ${appId}`
+		);
+	} else {
+		console.error('\n✖ Install failed');
+	}
+	process.exit(install.status ?? 1);
+}
 
 if (!has('no-launch')) {
-	adb('shell', 'am', 'start', '-n', `${APP_ID}/.MainActivity`);
-	console.log(`\n✔ Installed and started ${APP_ID} on ${serial}`);
+	// The activity class keeps the base package; only the sideload app id differs.
+	adb('shell', 'am', 'start', '-n', `${appId}/${APP_ID}.MainActivity`);
+	console.log(`\n✔ Installed and started ${appId} on ${serial}`);
 } else {
-	console.log(`\n✔ Installed ${APP_ID} on ${serial}`);
+	console.log(`\n✔ Installed ${appId} on ${serial}`);
 }

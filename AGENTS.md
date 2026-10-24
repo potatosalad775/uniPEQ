@@ -11,8 +11,9 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 - `npm run dev` · `npm test` (`*.spec.ts` in node, `*.svelte.spec.ts` in Chromium) ·
   `npm run check` · `npm run lint` (`npm run format` fixes). Run check, lint and test before a commit.
 - `npm run build` is a release build; `-- --mode debug` keeps the debug-only UI.
-- `npm run android [-- --serial <id> --skip-web --no-launch]` builds, installs and starts the debug
-  app on the connected adb device. `JAVA_HOME` doesn't matter (Gradle pins Azul Zulu 21; see
+- `npm run android [-- --release|--sideload --serial <id> --skip-web --no-launch]` builds, installs
+  and starts the app (debug by default) on the connected adb device; `android:release` only builds
+  the signed `.aab`/APKs. `JAVA_HOME` doesn't matter (Gradle pins Azul Zulu 21; see
   CONTRIBUTING).
 - `npm run release -- patch|minor|major` cuts a release; CI builds everything from the tag.
   Version lives in `package.json` only.
