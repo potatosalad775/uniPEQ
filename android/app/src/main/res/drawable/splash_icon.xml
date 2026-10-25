@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The splash screen's icon: the mark of resources/icon.svg (two T's back to back, in its frame
-    turned 45° and scaled by 1/√2), without the icon's gradient square. A splash icon without
-    a background is 288 dp, and only its centre 192 dp circle shows; the mark is drawn 2.5× the
-    icon's dp, about 125 dp across.
+    The splash screen's icon: the mark of resources/icon.svg without its blue square, in
+    splash_mark (the app's primary for each theme, so it holds up on splash_background). A splash
+    icon without a background is 288 dp, and only its centre 192 dp circle shows; the mark's 248
+    units on its 512 grid are drawn at half size, 124 dp across.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="288dp"
     android:height="288dp"
     android:viewportWidth="288"
@@ -14,24 +13,20 @@
     <group
         android:translateX="144"
         android:translateY="144"
-        android:scaleX="2.5"
-        android:scaleY="2.5">
+        android:scaleX="0.5"
+        android:scaleY="0.5">
         <group
-            android:rotation="-45"
-            android:scaleX="0.70710678"
-            android:scaleY="0.70710678">
-            <path android:pathData="M5,-25H15V-5H35V5H15V25H5ZM-5,-25H-15V-5H-35V5H-15V25H-5Z">
-                <aapt:attr name="android:fillColor">
-                    <gradient
-                        android:type="linear"
-                        android:startX="-35"
-                        android:startY="0"
-                        android:endX="35"
-                        android:endY="0"
-                        android:startColor="#7FD4FF"
-                        android:endColor="#4EADFF" />
-                </aapt:attr>
-            </path>
+            android:translateX="-256"
+            android:translateY="-256">
+            <path
+                android:fillColor="@color/splash_mark"
+                android:pathData="M132,132H168V268C168,298 185.5,311 203,324C220.5,337 236,340 236,380H132Z" />
+            <path
+                android:fillColor="@color/splash_mark"
+                android:pathData="M380,132H344V268C344,298 326.5,311 309,324C291.5,337 276,340 276,380H380Z" />
+            <path
+                android:fillColor="@color/splash_mark"
+                android:pathData="M238,132h36v120h-36z" />
         </group>
     </group>
 </vector>

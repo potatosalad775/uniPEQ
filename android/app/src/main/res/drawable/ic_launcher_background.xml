@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The adaptive icon's background: the diagonal gradient of resources/icon.svg's #background,
-    running corner to corner across the 72 dp the launcher shows of this 108 dp layer and clamped
-    beyond it.
+    The adaptive icon's background: the gradient of resources/icon.svg's #background, laid over the
+    72 dp the launcher shows of this 108 dp layer and clamped beyond it.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -16,10 +15,10 @@
                 android:type="linear"
                 android:startX="18"
                 android:startY="18"
-                android:endX="90"
+                android:endX="61.2"
                 android:endY="90"
-                android:startColor="#F4FAFF"
-                android:endColor="#CDE5FF" />
+                android:startColor="#1177E7"
+                android:endColor="#004EBF" />
         </aapt:attr>
     </path>
 </vector>

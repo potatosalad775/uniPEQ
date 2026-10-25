@@ -1,29 +1,26 @@
 <!--
-	uniPEQ icon, the source of every raster icon. The viewBox is the 72 dp that an adaptive icon shows of its 108 dp layer, centred on 0. The mark is drawn in a frame turned 45°,
-	in units of 1/√2 dp: `a` runs bottom-left → top-right, `b` top-left → bottom-right.
+	uniPEQ icon, the source of every raster icon. The viewBox is the 72 dp that an adaptive icon shows
+	of its 108 dp layer, centred on 0. The mark is drawn on a 512 grid (the box 132–380) and scaled
+	into it.
 	Rendered by scripts/render-icons.mjs into the favicon, the touch icon, the web app icons, the
 	Play Store icon and the Android launcher mipmaps (which drop #background for the adaptive
 	icon's foreground layer; res/drawable/ic_launcher_background.xml repeats the gradient).
-	The background stays an opaque, plain gradient: Play rejected a listing icon whose faint
-	construction grid read as an unfinished template.
+	The mark is our own: Play rejects a listing icon that shows another brand (the Capacitor logo
+	this replaced) or reads as an unfinished template.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-36 -36 72 72" width="512" height="512">
 	<defs>
-		<linearGradient id="background-fill" gradientUnits="userSpaceOnUse" x1="-36" y1="-36" x2="36" y2="36">
-			<stop offset="0" stop-color="#f4faff" />
-			<stop offset="1" stop-color="#cde5ff" />
-		</linearGradient>
-		<linearGradient id="mark" gradientUnits="userSpaceOnUse" x1="-35" y1="0" x2="35" y2="0">
-			<stop offset="0" stop-color="#7fd4ff" />
-			<stop offset="1" stop-color="#4eadff" />
+		<!-- The app's light primary, a touch lighter at the top-left and deeper at the bottom. -->
+		<linearGradient id="background-fill" gradientUnits="userSpaceOnUse" x1="-36" y1="-36" x2="7.2" y2="36">
+			<stop offset="0" stop-color="#1177e7" />
+			<stop offset="1" stop-color="#004ebf" />
 		</linearGradient>
 	</defs>
 	<rect id="background" x="-36" y="-36" width="72" height="72" fill="url(#background-fill)" />
-	<g transform="matrix(0.5 -0.5 0.5 0.5 0 0)">
-		<!-- Two T's back to back: stems 10 wide and 50 long, crossbars reaching 35 from the centre. -->
-		<path
-			fill="url(#mark)"
-			d="M5-25H15V-5H35V5H15V25H5ZM-5-25H-15V-5H-35V5H-15V25H-5Z"
-		/>
+	<g transform="scale(0.140625) translate(-256 -256)" fill="#fff">
+		<!-- Two walls curving into a base with a gap, around a contact: a plug that is also a "u". -->
+		<path d="M132 132H168V268C168 298 185.5 311 203 324C220.5 337 236 340 236 380H132Z" />
+		<path d="M380 132H344V268C344 298 326.5 311 309 324C291.5 337 276 340 276 380H380Z" />
+		<rect x="238" y="132" width="36" height="120" />
 	</g>
 </svg>

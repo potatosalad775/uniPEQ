@@ -2,4 +2,6 @@
 <resources>
     <!-- The app's dark base-100, as src/app.html's dark theme-color. -->
     <color name="splash_background">#1D232A</color>
+    <!-- The splash icon's mark: the app's dark primary. -->
+    <color name="splash_mark">#79BDFF</color>
 </resources>
