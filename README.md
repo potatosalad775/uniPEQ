@@ -26,9 +26,11 @@ uniPEQ reads the EQ a device holds, lets you edit it on a graph, and writes it b
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Web app**           | <https://unipeq.com> <br><sub>Chromium-based browser (Chrome, Edge…) required. Installable as a PWA.</sub>                   |
 | **Android app**       | APK from [GitHub Releases](https://github.com/potatosalad775/uniPEQ/releases/latest).                                        |
-| **Google Play**       | Coming soon.                                                                                                                 |
+| **Google Play**       | [<img alt="Get it on Google Play" height="70" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" />][PLAYSTORE]                                            |
 
 No hardware at hand? Pick the **demo device** on the EQ tab to try everything without one.
+
+[PLAYSTORE]: https://play.google.com/store/apps/details?id=kr.potatosalad775.unipeq
 
 ### Supported browsers and platforms
 
@@ -79,8 +81,8 @@ npm run dev        # http://localhost:5173
 npm run android    # build, install and start the debug app on a connected phone
 ```
 
-Setup, tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md). How the
-app is built: [ARCHITECTURE.md](ARCHITECTURE.md).
+Setup, tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md). 
+How the app is built: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## License
 
