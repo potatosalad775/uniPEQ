@@ -32,11 +32,17 @@ export interface PanelStatusInput {
 	/** Read or Write can't reach the preset Device EQ shows from where the device is. */
 	unreachable: boolean;
 	inSync: boolean | null;
+	/** A control set so that the device doesn't apply its EQ (upsampling, say), by its label. */
+	eqOffBy?: string | null;
 }
 
-/** Most urgent first: a failure, then what blocks a write, then whether the device has the list. */
+/**
+ * Most urgent first: a failure, a device that doesn't apply its EQ at all, then what blocks a
+ * write, then whether the device has the list.
+ */
 export function panelStatus(s: PanelStatusInput): PanelStatus | null {
 	if (s.message && s.messageIsError) return { tone: 'error', text: s.message };
+	if (s.eqOffBy) return { tone: 'warning', text: m.device_control_eq_off({ control: s.eqOffBy }) };
 	if (s.autoWriting && s.autoPaused) {
 		return { tone: 'warning', text: m.device_peq_auto_paused(), action: 'review' };
 	}

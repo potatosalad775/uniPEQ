@@ -11,7 +11,7 @@
 import { readRequest, writeRequest, type PresetRequest } from '#lib/device-peq/preset.js';
 import type { DeviceConnection, PeqCapabilities } from '#lib/device-peq/types.js';
 import { eqFiltersEqual, type EqFilter } from '#lib/eq/model.js';
-import type { Filter, Profile } from '@potatosalad775/eqcaps-core';
+import { eqDisabledBy, type Control, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 import { eqStore } from './eq-store.svelte';
 
@@ -94,6 +94,15 @@ class DevicePeqStore {
 	 * needs a fresh one. The connection itself is kept for its name and `reopen`.
 	 */
 	needsReconnect = $state(false);
+	/**
+	 * The device's controls as last read, by id: null for one it doesn't have now. Empty until read,
+	 * and for a device without controls.
+	 */
+	controlValues = $state.raw<Record<string, number | null>>({});
+	/** The device's firmware version, when it says. */
+	firmware = $state<string | null>(null);
+	/** A control is being written. */
+	isControlling = $state(false);
 
 	get isConnected(): boolean {
 		return this.connection !== null;
@@ -108,7 +117,24 @@ class DevicePeqStore {
 	}
 
 	get isBusy(): boolean {
-		return this.isConnecting || this.isReading || this.isWriting || this.isSwitching;
+		return (
+			this.isConnecting ||
+			this.isReading ||
+			this.isWriting ||
+			this.isSwitching ||
+			this.isControlling
+		);
+	}
+
+	/** The controls the device has now, in the profile's order. */
+	get controls(): Control[] {
+		const all = this.connection?.device.capabilities.controls ?? [];
+		return all.filter((c) => typeof this.controlValues[c.id] === 'number');
+	}
+
+	/** The controls whose current value stops the device applying its EQ (upsampling, say). */
+	get eqOffBy(): Control[] {
+		return eqDisabledBy(this.controls, this.controlValues);
 	}
 
 	get deviceName(): string | null {
@@ -238,6 +264,8 @@ class DevicePeqStore {
 		this.deviceSlot = currentSlot;
 		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
 		this.eqEnabled = enabled ?? (onBypass ? false : currentSlot !== null ? true : null);
+		this.controlValues = {};
+		this.firmware = null;
 		this.synced = null;
 		this.#baseline = this.#snapshot();
 		this.layout = null;
@@ -293,9 +321,12 @@ class DevicePeqStore {
 		this.isReading = false;
 		this.isWriting = false;
 		this.isSwitching = false;
+		this.isControlling = false;
 		this.activeSlot = null;
 		this.deviceSlot = null;
 		this.eqEnabled = null;
+		this.controlValues = {};
+		this.firmware = null;
 		this.synced = null;
 		this.layout = null;
 		this.autoPaused = false;

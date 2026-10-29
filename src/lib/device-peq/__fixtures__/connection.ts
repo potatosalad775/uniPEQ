@@ -24,6 +24,8 @@ export function fakeConnection(
 				slots: [],
 				disconnectOnSave: false,
 				experimental: false,
+				readsFirmware: false,
+				controls: [],
 				...capabilities
 			},
 			pull: async () => ({ filters: [], preamp: 0 }),
@@ -31,6 +33,9 @@ export function fakeConnection(
 			currentSlot: async () => null,
 			eqEnabled: async () => null,
 			setEnabled: async () => {},
+			firmware: async () => null,
+			readControls: async () => ({}),
+			writeControl: async () => ({ reconnect: false }),
 			close: async () => {}
 		},
 		connectionType: 'hid',

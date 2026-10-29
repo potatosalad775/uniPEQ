@@ -244,6 +244,20 @@ Writing:
   the list stays on screen read-only (it can still be saved as a preset) and the sync bar offers
   Connect. Editing against an absent device would build changes it never confirmed.
 
+Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode, …):
+- **Read on connecting and reopening,** with the firmware, only for a device that has controls;
+  a failed read leaves them unshown and the EQ works without them. Reading and writing the EQ never
+  touches them.
+- **Written only when the user changes one** (`devicePeqService.setControl`; a slider when let
+  go), then all are read again: one control can decide which others exist (the DS3's USB mode
+  hides its DAC filter and shows its game mode). `DeviceControls` in the device panel shows only
+  the ones the device has now, named by `role` (`device-peq/controls.ts`).
+- **A control that restarts the device** (`reconnect`) asks first, then is followed as a save
+  that restarts: the device is closed, waited for and reopened, or the sync bar offers Reconnect.
+- **A value that stops the EQ applying** (`disablesEq`, the DS3's upsampling) is said under the
+  control and in the sync bar, above everything but a failure. The app doesn't change it back on
+  its own: controls are written only on the user's change.
+
 ---
 
 ## 6. EQ model and constraints

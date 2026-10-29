@@ -46,7 +46,9 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 			{ id: 10, name: 'BYPASS', bypass: true }
 		],
 		disconnectOnSave: false,
-		experimental: false
+		experimental: false,
+		readsFirmware: false,
+		controls: []
 	};
 	return {
 		device: {
@@ -63,6 +65,9 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 			currentSlot: vi.fn(),
 			eqEnabled: vi.fn(),
 			setEnabled: vi.fn(async () => {}),
+			firmware: vi.fn(async () => null),
+			readControls: vi.fn(async () => ({})),
+			writeControl: vi.fn(async () => ({ reconnect: false })),
 			close: vi.fn(async () => {})
 		},
 		connectionType: 'hid',

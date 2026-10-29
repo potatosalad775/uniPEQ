@@ -29,6 +29,8 @@ function connection(
 		slots: KA17_SLOTS,
 		disconnectOnSave: false,
 		experimental: false,
+		readsFirmware: false,
+		controls: [],
 		...over
 	};
 	return {
@@ -39,6 +41,9 @@ function connection(
 			currentSlot: vi.fn(),
 			eqEnabled: vi.fn(),
 			setEnabled: vi.fn(),
+			firmware: vi.fn(),
+			readControls: vi.fn(),
+			writeControl: vi.fn(),
 			close: vi.fn()
 		},
 		connectionType: 'hid',

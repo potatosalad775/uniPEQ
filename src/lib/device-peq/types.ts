@@ -37,6 +37,8 @@ export type PeqCapabilities = Pick<
 	| 'slots'
 	| 'disconnectOnSave'
 	| 'experimental'
+	| 'readsFirmware'
+	| 'controls'
 >;
 
 /**
@@ -57,6 +59,18 @@ export interface PeqDevice {
 	/** Whether the EQ is on (`readsEnabled`); null when the protocol or device doesn't say. */
 	eqEnabled(): Promise<boolean | null>;
 	setEnabled(enabled: boolean, slot?: number): Promise<void>;
+	/** The firmware version (`readsFirmware`), read once; null when the device doesn't say. */
+	firmware(): Promise<string | null>;
+	/**
+	 * Every control in `capabilities.controls` by id; null for one the device doesn't have now (its
+	 * firmware range or the control it depends on). Pull and push never touch controls.
+	 */
+	readControls(): Promise<Record<string, number | null>>;
+	/**
+	 * Writes a control the user changed, and reads it back; `reconnect` when the control restarts
+	 * the device (no read-back then). Refuses a value the profile doesn't list.
+	 */
+	writeControl(id: string, value: number): Promise<{ reconnect: boolean }>;
 	close(): Promise<void>;
 }
 

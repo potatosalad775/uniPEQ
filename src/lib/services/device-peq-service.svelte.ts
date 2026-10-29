@@ -18,6 +18,7 @@ import {
 	readLayout,
 	type PushPlan
 } from '#lib/device-peq/push-plan.js';
+import { controlLabel } from '#lib/device-peq/controls.js';
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
 import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
 import { derivePreamp } from '#lib/eq/eq-preamp.js';
@@ -47,6 +48,13 @@ export type ConnectKind = 'hid' | 'serial' | 'ble' | 'demo';
 export const canConnectUsb = environment === 'supported';
 
 type Choice = Extract<ConnectResult, { kind: 'choose' }>;
+
+/** The status line while a restarting device is waited for, once it is back, and if it isn't. */
+interface RestartMessages {
+	waiting: string;
+	back: string;
+	manual: string;
+}
 
 /** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */
 type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null };
@@ -165,7 +173,8 @@ class DevicePeqService {
 			unreachable:
 				(!!caps?.canWrite && !builtIn && !store.writeTarget) ||
 				(!!caps?.canRead && !store.readTarget),
-			inSync: store.inSync
+			inSync: store.inSync,
+			eqOffBy: store.eqOffBy[0] ? controlLabel(store.eqOffBy[0]) : null
 		});
 	}
 
@@ -248,6 +257,7 @@ class DevicePeqService {
 		logger.info(
 			`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}, EQ ${enabled ?? '?'}`
 		);
+		await this.#readControls(conn);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
@@ -261,7 +271,68 @@ class DevicePeqService {
 		devicePeqStore.setConnected(again, slot, enabled);
 		devicePeqStore.writeConsent = consent;
 		logger.info(`reopened ${again.name}, slot ${slot}, EQ ${enabled ?? '?'}`);
+		await this.#readControls(again);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
+	}
+
+	/**
+	 * The device's controls, and its firmware for the device facts: only for a device with controls,
+	 * since a firmware read costs a timeout on one that doesn't answer (the bridge reads it once,
+	 * and controls that depend on it already have). A failed read leaves them unshown; the EQ works
+	 * without them.
+	 */
+	async #readControls(conn: DeviceConnection): Promise<void> {
+		const caps = conn.device.capabilities;
+		if (caps.controls.length === 0) return;
+		try {
+			const values = await conn.device.readControls();
+			const firmware = caps.readsFirmware ? await conn.device.firmware() : null;
+			if (devicePeqStore.connection !== conn) return;
+			devicePeqStore.controlValues = values;
+			devicePeqStore.firmware = firmware;
+			logger.info(`controls ${JSON.stringify(values)}, firmware ${firmware ?? '?'}`);
+		} catch (e) {
+			logger.warn('reading the controls failed:', e instanceof Error ? e.message : String(e));
+		}
+	}
+
+	/**
+	 * Set a control the user changed. The others are read again after it, since one can decide
+	 * which others exist (the DS3's USB mode). A control that restarts the device (`reconnect`) is
+	 * followed by reopening it, as after a save; the panel asks before it.
+	 */
+	async setControl(id: string, value: number): Promise<void> {
+		const conn = devicePeqStore.connection;
+		const control = conn?.device.capabilities.controls.find((c) => c.id === id);
+		if (!conn || !control || devicePeqStore.isBusy) return;
+		devicePeqStore.isControlling = true;
+		devicePeqStore.setStatus(null);
+		let restarts = false;
+		try {
+			restarts = (await conn.device.writeControl(id, value)).reconnect;
+			logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
+			if (!restarts) devicePeqStore.controlValues = await conn.device.readControls();
+		} catch (e) {
+			this.fail(e, 'control');
+			hapticError();
+			// Show what the device holds, whatever the write did.
+			if (!devicePeqStore.needsReconnect) {
+				const values = await conn.device.readControls().catch(() => null);
+				if (values && devicePeqStore.connection === conn) devicePeqStore.controlValues = values;
+			}
+		} finally {
+			devicePeqStore.isControlling = false;
+		}
+		if (!restarts) return;
+		await conn.device.close().catch(() => {});
+		if (devicePeqStore.connection !== conn) return;
+		devicePeqStore.needsReconnect = true;
+		const name = controlLabel(control);
+		await this.#awaitRestart(conn, {
+			waiting: m.device_control_restarting({ control: name }),
+			back: m.device_control_restarted({ control: name }),
+			manual: m.device_control_restart_reconnect({ control: name })
+		});
 	}
 
 	/** After the device dropped (or restarted to save): find it again without a chooser. */
@@ -475,7 +546,11 @@ class DevicePeqService {
 				// Unless the user disconnected while it wrote.
 				if (devicePeqStore.connection === conn) {
 					devicePeqStore.needsReconnect = true;
-					void this.#awaitRestart(conn, count);
+					void this.#awaitRestart(conn, {
+						waiting: m.device_peq_status_saved_reconnecting(),
+						back: m.device_peq_status_saved_reconnected({ count }),
+						manual: m.device_peq_status_saved_reconnect()
+					});
 				}
 			} else {
 				// Written to a listed preset while the device sits on a built-in one: switch to it,
@@ -512,21 +587,21 @@ class DevicePeqService {
 	}
 
 	/**
-	 * A device that restarted to save is reopened as soon as it is back. Not back within
+	 * A device that restarted (to save, or for a control) is reopened as soon as it is back. Not back within
 	 * `RESTART_WAIT_MS`, or no longer granted to the site (which only the chooser, on a click, can
 	 * fix), the sync bar offers Reconnect. The log says when the device went and came back, and
 	 * whether the browser said so, to tell those two apart.
 	 */
-	async #awaitRestart(conn: DeviceConnection, count: number): Promise<void> {
+	async #awaitRestart(conn: DeviceConnection, say: RestartMessages): Promise<void> {
 		if (!conn.reopen) {
-			devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+			devicePeqStore.setStatus(say.manual);
 			return;
 		}
 		const start = performance.now();
 		const since = () => Math.round(performance.now() - start);
 		const seen: string[] = [];
 		devicePeqStore.isConnecting = true;
-		devicePeqStore.setStatus(m.device_peq_status_saved_reconnecting());
+		devicePeqStore.setStatus(say.waiting);
 		let again: DeviceConnection | null = null;
 		try {
 			again = await conn.reopen({
@@ -534,7 +609,7 @@ class DevicePeqService {
 				onEvent: (event) => seen.push(`${event} at ${since()} ms`)
 			});
 		} catch (e) {
-			logger.warn('reopen after save failed:', e instanceof Error ? e.message : String(e));
+			logger.warn('reopen after a restart failed:', e instanceof Error ? e.message : String(e));
 		}
 		const events = seen.length > 0 ? seen.join(', ') : 'no connect or disconnect event';
 		// Disconnected meanwhile: what came back is no longer wanted.
@@ -545,17 +620,15 @@ class DevicePeqService {
 			return;
 		}
 		if (!again) {
-			logger.warn(`${conn.name} not back ${since()} ms after saving (${events})`);
+			logger.warn(`${conn.name} not back ${since()} ms after restarting (${events})`);
 			devicePeqStore.isConnecting = false;
-			devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+			devicePeqStore.setStatus(say.manual);
 			return;
 		}
-		logger.info(`${conn.name} back ${since()} ms after saving (${events})`);
+		logger.info(`${conn.name} back ${since()} ms after restarting (${events})`);
 		try {
 			await this.#finishReopen(again);
-			if (!devicePeqStore.statusIsError) {
-				devicePeqStore.setStatus(m.device_peq_status_saved_reconnected({ count }));
-			}
+			if (!devicePeqStore.statusIsError) devicePeqStore.setStatus(say.back);
 		} catch (e) {
 			this.fail(e, 'reconnect');
 		} finally {

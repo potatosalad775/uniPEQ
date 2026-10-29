@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { ds3Connection } from '#lib/device-peq/__fixtures__/ds3.js';
 import type { DeviceConnection, ReopenWait } from '#lib/device-peq/types.js';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
@@ -465,5 +466,114 @@ describe('devicePeqService after a save that restarts the device', () => {
 		expect(reopen).toHaveBeenLastCalledWith();
 		expect(devicePeqStore.connection).toBe(again);
 		expect(connect.connectNativeHid).toHaveBeenCalledOnce();
+	});
+});
+
+describe('devicePeqService device controls', () => {
+	async function connectDs3(values?: Record<string, number>, firmware?: string) {
+		const ds3 = ds3Connection(values, firmware);
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: ds3.conn });
+		await devicePeqService.connect('hid');
+		return ds3;
+	}
+
+	beforeEach(() => {
+		devicePeqStore.forget();
+		eqStore.reset();
+		settingsStore.writeWarning = false;
+	});
+
+	afterEach(async () => {
+		await devicePeqService.disconnect();
+		devicePeqStore.forget();
+		settingsStore.writeWarning = true;
+	});
+
+	it('reads the controls the device has now, and its firmware', async () => {
+		await connectDs3();
+		expect(devicePeqStore.firmware).toBe('1.6.10');
+		expect(devicePeqStore.controls.map((c) => c.id)).toEqual([
+			'uacMode',
+			'filterMode',
+			'upsample',
+			'volume',
+			'led'
+		]);
+		await connectDs3(undefined, '1.4.6');
+		expect(devicePeqStore.controls.map((c) => c.id)).not.toContain('upsample');
+	});
+
+	it('reads nothing more of a device without controls', async () => {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), { readsFirmware: true });
+		const firmware = vi.spyOn(conn.device, 'firmware');
+		const readControls = vi.spyOn(conn.device, 'readControls');
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		expect(firmware).not.toHaveBeenCalled();
+		expect(readControls).not.toHaveBeenCalled();
+		expect(devicePeqStore.controls).toEqual([]);
+	});
+
+	it('writes a control, then reads them all again', async () => {
+		const { conn } = await connectDs3();
+		const write = vi.spyOn(conn.device, 'writeControl');
+		await devicePeqService.setControl('volume', 30);
+		expect(write).toHaveBeenCalledWith('volume', 30);
+		expect(devicePeqStore.controlValues.volume).toBe(30);
+		expect(devicePeqStore.isBusy).toBe(false);
+	});
+
+	it('says when a control stops the EQ applying', async () => {
+		await connectDs3();
+		expect(devicePeqService.sync?.text ?? '').not.toContain("doesn't apply its EQ");
+		await devicePeqService.setControl('upsample', 1);
+		expect(devicePeqStore.eqOffBy.map((c) => c.id)).toEqual(['upsample']);
+		expect(devicePeqService.sync).toMatchObject({
+			tone: 'warning',
+			text: "The device doesn't apply its EQ with this Upsampling setting."
+		});
+	});
+
+	it('reports a failed write and shows what the device holds', async () => {
+		const { conn } = await connectDs3();
+		vi.spyOn(conn.device, 'writeControl').mockRejectedValue(new Error('no answer'));
+		await devicePeqService.setControl('led', 0);
+		expect(devicePeqStore.statusIsError).toBe(true);
+		expect(devicePeqStore.controlValues.led).toBe(1);
+		expect(devicePeqStore.isBusy).toBe(false);
+	});
+
+	it('reopens a device that restarts for a control, and reads its controls there', async () => {
+		const { conn } = await connectDs3();
+		const close = vi.spyOn(conn.device, 'close');
+		const again = ds3Connection({ uacMode: 1, gameMode: 0, volume: 24, led: 1 });
+		const reopen = vi.fn(async (_wait?: ReopenWait) => again.conn);
+		conn.reopen = reopen;
+
+		await devicePeqService.setControl('uacMode', 1);
+		expect(close).toHaveBeenCalled();
+		expect(reopen).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 5000 }));
+		expect(devicePeqStore.connection).toBe(again.conn);
+		expect(devicePeqStore.needsReconnect).toBe(false);
+		expect(devicePeqStore.controls.map((c) => c.id)).toEqual([
+			'uacMode',
+			'gameMode',
+			'volume',
+			'led'
+		]);
+		expect(devicePeqStore.statusMessage).toBe(
+			'Changed USB mode. The device restarted and is connected again.'
+		);
+	});
+
+	it('offers Reconnect when a device that restarted for a control is not found', async () => {
+		const { conn } = await connectDs3();
+		conn.reopen = vi.fn(async () => null);
+		await devicePeqService.setControl('uacMode', 1);
+		expect(devicePeqStore.needsReconnect).toBe(true);
+		expect(devicePeqService.sync).toMatchObject({
+			text: 'Changed USB mode. The device restarted; reconnect to carry on.',
+			actions: ['reconnect']
+		});
 	});
 });

@@ -19,6 +19,15 @@ describe('panelStatus', () => {
 		expect(status({})).toBeNull();
 	});
 
+	it('warns that the device ignores its EQ above all but a failure', () => {
+		const off = { eqOffBy: 'Upsampling', inSync: true, autoWriting: true, autoPaused: true };
+		expect(status(off)).toEqual({
+			tone: 'warning',
+			text: "The device doesn't apply its EQ with this Upsampling setting."
+		});
+		expect(status({ ...off, message: 'Lost it', messageIsError: true })?.tone).toBe('error');
+	});
+
 	it('puts a failure above everything else', () => {
 		expect(
 			status({

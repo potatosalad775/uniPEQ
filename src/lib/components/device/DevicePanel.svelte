@@ -5,9 +5,9 @@
 	inspector and to its wrong-constraint form, list rows with the switch trailing and hints as
 	supporting text, Device EQ as a select menu, the connection facts inline rather than in a
 	popover; the status line moved to the EQ tab's sync bar (with the review dialog, now
-	`devicePeqService.review`). On a phone this is the
-	device sheet's body. The demo device (offered in every build) shows as simulated,
-	without a status or eqcaps links: eqcaps doesn't list its profile.
+	`devicePeqService.review`); the device's own settings (`DeviceControls`) and its firmware. On a
+	phone this is the device sheet's body. The demo device (offered in every build) shows as
+	simulated, without a status or eqcaps links: eqcaps doesn't list its profile.
 -->
 <script lang="ts">
 	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
@@ -17,6 +17,7 @@
 	import ListRow from '#lib/components/atoms/ListRow.svelte';
 	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
 	import Switch from '#lib/components/atoms/Switch.svelte';
+	import DeviceControls from './DeviceControls.svelte';
 	import * as m from '#lib/paraglide/messages.js';
 	import { environmentCopy } from '#lib/components/intro/environment-copy.js';
 	import { ANDROID_DOWNLOAD_URL, environment } from '#lib/platform/environment.js';
@@ -264,7 +265,10 @@
 		<div class="flex items-start justify-between gap-2">
 			<div class="min-w-0">
 				<p class="truncate font-medium">{connection.name}</p>
-				<p class="text-xs text-base-content/60 touch:text-sm">{limitsSummary}</p>
+				<p class="text-xs text-base-content/60 touch:text-sm">
+					{limitsSummary}{#if devicePeqStore.firmware}
+						· {m.device_peq_firmware({ version: devicePeqStore.firmware })}{/if}
+				</p>
 				<p class="mt-1.5 flex flex-wrap gap-1">
 					{#if statusBadge}
 						<Badge tone={statusBadge.tone}>{statusBadge.text}</Badge>
@@ -435,6 +439,8 @@
 					</Button>
 				{/if}
 			</div>
+
+			<DeviceControls />
 		{/if}
 	{/if}
 </section>

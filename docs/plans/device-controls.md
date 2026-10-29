@@ -58,19 +58,22 @@ this bridge drives), `readControls()` (null for a control absent now: firmware r
 UAC 2.0, firmware ≥ 1.4.9, `disablesEq: [1]`), gameMode (choice, UAC 1.0 only, reconnects),
 gainMode (choice L/H), volume (range 0–60), led (toggle).
 
-**Plumbing.**
+**Plumbing.** Done 2026-10-30.
 
-- [ ] `types.ts`: `PeqCapabilities` gains `controls` and `readsFirmware`; `PeqDevice` gains
+- [x] `types.ts`: `PeqCapabilities` gains `controls` and `readsFirmware`; `PeqDevice` gains
       `readControls`, `writeControl`, `firmware`.
-- [ ] `connect.ts`: `readFirmware()` already reads the firmware to tell profiles apart; keep it on
-      the `DeviceConnection`, so it isn't read twice, and show it in the device facts.
-- [ ] Store: `controlValues: Record<string, number | null>`, `firmware`.
-- [ ] Service: read the controls on connect and reopen (only when there are any); `setControl(id,
-      value)` under the same busy flag as reads and writes; read all controls again after each
-      write, since `when` changes which exist (UAC swaps Filter and Upsample for GAME).
+- [x] Firmware: not carried over from `connect.ts` after all. The bridge reads it once per opened
+      device, and `readControls()` already needs it for firmware-ranged controls, so
+      `device.firmware()` after it costs nothing more. Read only for a device with controls (a
+      device that doesn't answer costs a timeout); shown after the limits in the device row.
+- [x] Store: `controlValues`, `firmware`, `isControlling` (in `isBusy`); `controls` (present
+      now) and `eqOffBy` getters.
+- [x] Service: `#readControls` on connect and reopen; `setControl(id, value)` re-reads all after
+      a write, and after a failed one; `#awaitRestart` takes its status messages, shared by a save
+      and a control that restarts the device.
 
-**UI** (in `DevicePanel`: the side rail when wide, the device sheet on a phone). A "Device
-settings" section after the EQ rows, in the data's order, Android patterns only:
+**UI** (in `DevicePanel`, after Read and Write: the side rail when wide, the device sheet on a
+phone). `DeviceControls.svelte`, a "Device settings" section in the data's order:
 
 | Kind | Shown as | DS3 |
 | --- | --- | --- |
@@ -78,23 +81,35 @@ settings" section after the EQ rows, in the data's order, Android patterns only:
 | choice | `ListRow` as a `SelectMenu` trigger (as Device EQ) | UAC, Filter, GAME, Gain |
 | range | `ListRow` with a `Slider` | Volume |
 
-- [ ] A control that reads null isn't shown.
-- [ ] Row labels by `role` through Paraglide (`device_control_volume`, …, en and ko), falling back
-      to `control.name`; value names as the data gives them ("Fast Linear").
-- [ ] Volume writes once on release, never per drag step (write only on a user change). Fosi's
-      app warns above 50; that isn't in the data. Decide: add it to eqcaps, or leave it out.
-- [ ] `disablesEq` (Upsample on): supporting text on the row, and a sync-bar status line (the one
-      status line). Fosi's app turns upsampling off when the EQ goes on, and the reverse: offer
-      the same.
-- [ ] `reconnect` controls (UAC, GAME): confirm first (the device restarts, audio drops).
-- [ ] UAC changes the USB identity: UAC 2.0 is `152a:889b`, UAC 1.0 is `20b1:80d5`. `reopenHid`
-      and `reopenNative` look for the same vid/pid/name, so they won't find it; on the web the new
-      identity isn't granted either. After the write: `needsReconnect`, try `reopen` against each
-      of the profile's `match.usb` entries, else the chooser (Connect gives the user activation).
-- [ ] The demo device (FiiO protocol) has no controls, so the feature can't be tried without
-      hardware. Decide: give the demo profile a few, or not.
-- [ ] Specs: the panel shows only present controls; a write re-reads; a reconnect control asks
-      first.
+- [x] A control that reads null isn't shown.
+- [x] Row labels by `role` (`device-peq/controls.ts`, en and ko), falling back to `control.name`;
+      value names as the data gives them ("Fast Linear").
+- [x] Volume writes once on release, never per drag step; the slider holds its value until the
+      read-back. Decided 2026-10-29: no loudness warning. Fosi's app warns above 50, but that limit
+      isn't in the data, and the app doesn't hard-code device facts. `VolumeWarningDialog` stays
+      what it is (a write can pop mid-playback). If eqcaps ever marks a range control's warning
+      level, it shows as supporting text on the row.
+- [x] `disablesEq` (Upsample on): supporting text on the row, and a sync-bar warning ranked under
+      only a failure. Not done on purpose: turning upsampling off when the EQ goes on, as Fosi's
+      app does. Controls are written only on the user's change; the warning says what to change.
+- [x] `reconnect` controls (UAC, GAME): a confirm dialog first; then closed, waited for and
+      reopened as after a save, or Reconnect.
+- Decided 2026-10-29: the demo device gets no controls. It is there to try the EQ without
+  hardware; the section just doesn't show for it, and specs cover the UI with a fake DS3
+  (`__fixtures__/ds3.ts`, which applies `when` and firmware as the bridge does).
+- [x] Specs: service (reads, writes, re-reads, failure, restart and reopen, not found), component
+      (present controls only, switch, choice, slider on release, confirm, EQ-off warning),
+      `panelStatus` ranking.
+- [ ] Try it on the DS3: every control in UAC 2.0; GAME in UAC 1.0; Upsample's warning.
+
+**Step 5: UAC changes the USB identity.** UAC 2.0 is `152a:889b`, UAC 1.0 is `20b1:80d5`.
+`reopenHid` and `reopenNative` look for the same vid/pid/name, so after a UAC switch they don't
+find it, and the sync bar offers Reconnect, which can't find it either (the panel then offers
+Connect, through the chooser). GAME keeps the identity, so its restart already reopens.
+
+- [ ] After a `reconnect` control: try `reopen` against each of the profile's `match.usb`
+      entries, else the chooser (Connect gives the user activation). On the web the new identity
+      isn't granted until the chooser has offered it once.
 
 ## 3. Button sizes
 
@@ -135,8 +150,8 @@ settings" section after the EQ rows, in the data's order, Android patterns only:
 1. Active preset in eqcaps, dev tarball. Done.
 2. Active preset in uniPEQ. Done; to try on the DS3.
 3. Button rule and fixes. Done; to look at on a device.
-4. Controls plumbing and UI. ← next
-5. The UAC reconnect path.
+4. Controls plumbing and UI. Done; to try on the DS3.
+5. The UAC reconnect path. ← next
 
 Before a commit, `package.json` goes from the `file:` tarballs back to an npm version (eqcaps
 released), as AGENTS.md says.
