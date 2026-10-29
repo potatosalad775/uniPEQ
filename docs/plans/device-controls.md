@@ -121,16 +121,21 @@ settings" section after the EQ rows, in the data's order, Android patterns only:
 
 **Plan.**
 
-- [ ] Apply it: the two dialog footers, `EqAppBar`'s overrides, Disconnect, the two ✕s.
-- [ ] Decide: a spec that flags `<Button class=…>` with `p-`/`px-`/`py-`/`h-`/`text-`.
-- [ ] Add the rule to AGENTS.md.
+- [x] Apply it: the two dialog footers (`md`), `EqAppBar`'s overrides (now `icon-sm`: 32 px on
+      desktop rather than 36, 40 px on touch as before), Disconnect (`sm`), the two ✕s (`icon-xs`:
+      32 px on touch, was about 20).
+- [x] `atoms/button-sizes.spec.ts` flags a `Button` whose literal `class` sets padding, height or
+      text size.
+- [x] Add the rule to AGENTS.md.
+- [ ] Look at it on a phone and on desktop: the app bar, a toast, the push and edit-preset
+      dialogs.
 
 ## Order
 
 1. Active preset in eqcaps, dev tarball. Done.
 2. Active preset in uniPEQ. Done; to try on the DS3.
-3. Button rule and fixes. ← next
-4. Controls plumbing and UI.
+3. Button rule and fixes. Done; to look at on a device.
+4. Controls plumbing and UI. ← next
 5. The UAC reconnect path.
 
 Before a commit, `package.json` goes from the `file:` tarballs back to an npm version (eqcaps

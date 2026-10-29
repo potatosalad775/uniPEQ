@@ -46,14 +46,15 @@
 					{m.update_download()}
 				</Button>
 			{/if}
-			<button
-				type="button"
-				class="shrink-0 rounded p-0.5 opacity-80 hover:opacity-100"
-				aria-label={m.notice_dismiss()}
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				class="{buttonClass} shrink-0 opacity-80 hover:opacity-100"
+				title={m.notice_dismiss()}
 				onclick={() => updateStore.dismiss()}
 			>
 				<X class="size-4" aria-hidden="true" />
-			</button>
+			</Button>
 		</div>
 	{/if}
 </div>

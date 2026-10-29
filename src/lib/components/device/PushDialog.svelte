@@ -90,15 +90,10 @@
 		{/if}
 	{/if}
 	{#snippet footer()}
-		<Button
-			title={m.device_peq_push_cancel()}
-			variant="ghost"
-			size="sm"
-			onclick={() => (open = false)}
-		>
+		<Button title={m.device_peq_push_cancel()} variant="ghost" onclick={() => (open = false)}>
 			{m.device_peq_push_cancel()}
 		</Button>
-		<Button title={m.device_peq_push_confirm()} variant="primary" size="sm" onclick={confirm}>
+		<Button title={m.device_peq_push_confirm()} variant="primary" onclick={confirm}>
 			{m.device_peq_push_confirm()}
 		</Button>
 	{/snippet}

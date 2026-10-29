@@ -280,6 +280,7 @@
 			<Button
 				title={m.device_peq_disconnect()}
 				variant="destructive"
+				size="sm"
 				class="mt-1 shrink-0"
 				onclick={() => devicePeqService.disconnect()}
 			>

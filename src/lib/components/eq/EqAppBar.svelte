@@ -83,7 +83,6 @@
 		title={m.eq_undo()}
 		size="icon-sm"
 		variant="ghost"
-		class="p-2"
 		disabled={!eqConstraintStore.editable || !eqStore.canUndo}
 		onclick={() => eqStore.undo()}
 	>
@@ -93,7 +92,6 @@
 		title={m.eq_redo()}
 		size="icon-sm"
 		variant="ghost"
-		class="p-2"
 		disabled={!eqConstraintStore.editable || !eqStore.canRedo}
 		onclick={() => eqStore.redo()}
 	>
@@ -105,7 +103,7 @@
 				{...props}
 				title={linkStore.active && linkState ? `${m.eq_more()} · ${linkState}` : m.eq_more()}
 				size="icon-sm"
-				class="relative p-2"
+				class="relative"
 				variant="ghost"
 			>
 				<EllipsisVertical class="size-5" aria-hidden="true" />

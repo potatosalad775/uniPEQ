@@ -34,6 +34,13 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 - Touch sizing is the `touch:` variant (`pointer: coarse`), not a width. On phones follow Android
   patterns: `ListRow`/`ListSection` with the control trailing, `SelectMenu` for one-of-N, `Menu`
   for overflow, `Sheet` for panels, supporting text not popovers.
+- Button sizes go by role, so the same role matches everywhere: `md` for dialog footer and panel
+  actions, `sm` for actions inline in a row, bar or list (sync bar, Reconnect, row actions),
+  `icon-sm` for app-bar and sheet-header icons, `icon-xs` for a dismiss ✕ in a toast. A `Button`'s
+  `class` is layout and colour only, never padding, height or text size (`button-sizes.spec.ts`
+  checks); a new size goes into `Button.svelte`. A raw `<button>` is only for a row-shaped hit
+  area (`ListRow`, band rows, picker items, `DeviceChip`). Settings are `ListRow`s with a trailing
+  control, not buttons.
 - Devices: protocols, limits and device data are eqcaps' job (`../eqcaps`); a protocol bug or a
   missing device is fixed there. `src/lib/device-peq/` keeps the read/write invariants in
   ARCHITECTURE §5 (fit before every write, never retarget, the device's EQ is the document, one

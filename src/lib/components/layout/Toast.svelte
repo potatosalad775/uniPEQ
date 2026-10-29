@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
+	import Button from '#lib/components/atoms/Button.svelte';
 	import * as m from '#lib/paraglide/messages.js';
 	import { noticeStore } from '#lib/stores/notice-store.svelte.js';
 	import UpdatePrompt from './UpdatePrompt.svelte';
@@ -23,14 +24,16 @@
 				{noticeStore.isError ? 'bg-error text-error-content' : 'bg-neutral text-neutral-content'}"
 			>
 				<p class="min-w-0 flex-1">{noticeStore.text}</p>
-				<button
-					type="button"
-					class="shrink-0 rounded p-0.5 opacity-80 hover:opacity-100"
-					aria-label={m.notice_dismiss()}
+				<!-- In the message's colours, which differ for an error. -->
+				<Button
+					title={m.notice_dismiss()}
+					variant="ghost"
+					size="icon-xs"
+					class="-my-0.5 -mr-1.5 shrink-0 text-inherit opacity-80 hover:bg-current/10 hover:opacity-100"
 					onclick={() => noticeStore.clear()}
 				>
 					<X class="size-4" aria-hidden="true" />
-				</button>
+				</Button>
 			</div>
 		{/if}
 	</div>

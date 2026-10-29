@@ -50,16 +50,10 @@
 		/>
 	</form>
 	{#snippet footer()}
-		<Button title={m.device_peq_push_cancel()} variant="ghost" size="sm" onclick={onClose}>
+		<Button title={m.device_peq_push_cancel()} variant="ghost" onclick={onClose}>
 			{m.device_peq_push_cancel()}
 		</Button>
-		<Button
-			title={m.presets_save()}
-			size="sm"
-			type="submit"
-			form="edit-preset-form"
-			disabled={!name.trim()}
-		>
+		<Button title={m.presets_save()} type="submit" form="edit-preset-form" disabled={!name.trim()}>
 			{m.presets_save()}
 		</Button>
 	{/snippet}
