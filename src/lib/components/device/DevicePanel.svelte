@@ -337,7 +337,11 @@
 
 		{#if devicePeqStore.needsReconnect}
 			<div class="flex items-center justify-between gap-2">
-				<p class="text-sm text-base-content/70">{m.device_peq_reconnect_prompt()}</p>
+				<p class="text-sm text-base-content/70">
+					{devicePeqStore.isConnecting
+						? m.device_peq_reconnecting()
+						: m.device_peq_reconnect_prompt()}
+				</p>
 				<Button
 					title={m.device_peq_reconnect()}
 					size="sm"

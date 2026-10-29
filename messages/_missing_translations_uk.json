@@ -17,6 +17,9 @@
 		"Inside a sentence, # is the number: \"Read {count, plural, one {# band} other {# bands}}\"",
 		"An exact number like \"=0\": \"No bands\" beats the forms above."
 	],
+	"device_peq_reconnecting": "Reconnecting…",
+	"device_peq_status_saved_reconnecting": "Saved. The device restarts after saving; reconnecting…",
+	"device_peq_status_saved_reconnected": "Wrote {count} band(s). The device restarted to save and is connected again.",
 	"settings_database_checked": "Last checked online",
 	"settings_database_never_checked": "Never; using the copy built into the app",
 	"android_link_channel": "modernGraphTool link",

@@ -15,7 +15,8 @@ const browser = vi.hoisted(() => ({
 	requestHidDevice: vi.fn(),
 	requestSerialPort: vi.fn(),
 	requestBleDevice: vi.fn(),
-	grantedHidDevice: vi.fn()
+	grantedHidDevice: vi.fn(),
+	waitForGrantedHidDevice: vi.fn()
 }));
 vi.mock('@potatosalad775/eqcaps-device-bridge/browser', () => browser);
 
@@ -195,6 +196,27 @@ describe('connectHid', () => {
 			productName: 'Protocol Micro'
 		});
 	});
+
+	it('waits for a device restarting to save, skipping its old handle, every time', async () => {
+		const e = entry('tanchjim-fola');
+		browser.requestHidDevice.mockResolvedValue(hid(0x31b2, 0x1123, 'TANCHJIM-FOLA'));
+		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		const result = await connectHid();
+		if (result.kind !== 'connected') throw new Error('expected a connection');
+
+		browser.waitForGrantedHidDevice.mockResolvedValue(hid(0x31b2, 0x1123, 'TANCHJIM-FOLA'));
+		const onEvent = vi.fn();
+		const again = await result.connection.reopen?.({ timeoutMs: 5000, onEvent });
+		expect(browser.waitForGrantedHidDevice).toHaveBeenCalledWith(
+			{ vendorId: 0x31b2, productId: 0x1123, productName: 'TANCHJIM-FOLA' },
+			{ timeoutMs: 5000, ignoreCurrent: true, reuseAfterMs: 1500, onEvent }
+		);
+		// Reopened, it can be reopened again after the next save.
+		const third = await again?.reopen?.({ timeoutMs: 5000 });
+		expect(third?.profileId).toBe('tanchjim-fola');
+		expect(browser.waitForGrantedHidDevice).toHaveBeenCalledTimes(2);
+		expect(browser.grantedHidDevice).not.toHaveBeenCalled();
+	});
 });
 
 describe('connectSerial', () => {
@@ -345,5 +367,54 @@ describe('connectNativeHid', () => {
 		expect(done.kind === 'connected' && done.connection.profileSource).toBe('guess');
 		expect(done.kind === 'connected' && done.connection.usbDeviceName).toBe('/dev/bus/usb/001/002');
 		expect(p.requestPermission).not.toHaveBeenCalled();
+	});
+
+	it('reopens a device restarting to save when it attaches at a new path', async () => {
+		const e = entry('crinear-protocol-micro');
+		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		const old = usb({ hasPermission: true });
+		const p = plugin([old]);
+		let attached: ((e: { device: NativeUsbDevice }) => void) | undefined;
+		const remove = vi.fn(async () => {});
+		p.addListener.mockImplementation(async (_event: string, l: typeof attached) => {
+			attached = l;
+			return { remove };
+		});
+		const result = await connectNativeHid(p);
+		if (result.kind !== 'connected') throw new Error('expected a connection');
+
+		const onEvent = vi.fn();
+		const reopening = result.connection.reopen?.({ timeoutMs: 5000, onEvent });
+		// The old path, still listed for a moment, is not the device back.
+		await vi.waitFor(() => expect(p.list).toHaveBeenCalledTimes(2));
+		expect(p.open).toHaveBeenCalledOnce();
+		attached?.({ device: usb({ productName: 'Keyboard', deviceName: '/dev/bus/usb/001/004' }) });
+		attached?.({ device: usb({ deviceName: '/dev/bus/usb/001/003' }) });
+		const again = await reopening;
+		expect(p.requestPermission).toHaveBeenCalledWith({ deviceName: '/dev/bus/usb/001/003' });
+		expect(again?.usbDeviceName).toBe('/dev/bus/usb/001/003');
+		expect(again?.reopen).toBeDefined();
+		expect(onEvent).toHaveBeenCalledWith('connect');
+		expect(remove).toHaveBeenCalled();
+	});
+
+	it('gives up on a device that does not come back in time', async () => {
+		vi.useFakeTimers();
+		try {
+			const e = entry('crinear-protocol-micro');
+			client.matchDevice.mockResolvedValue({
+				best: match(e),
+				matches: [match(e)],
+				ambiguous: false
+			});
+			const p = plugin([usb({ hasPermission: true })]);
+			const result = await connectNativeHid(p);
+			if (result.kind !== 'connected') throw new Error('expected a connection');
+			const reopening = result.connection.reopen?.({ timeoutMs: 5000 });
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(await reopening).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

@@ -225,8 +225,13 @@ Writing:
   Write or preset switch, which runs once they go on. A linked modernGraphTool shows it too
   (`status.consent`) and either side answers. Not now writes nothing and stops auto-write on that
   connection. Not for the demo device; a setting silences it.
-- **Manual-save mode:** a device with `disconnectOnSave` gets no auto-write, only Write, then
-  Reconnect.
+- **Manual-save mode:** a device with `disconnectOnSave` gets no auto-write, only Write. It
+  restarts to save, so the write closes it and waits up to 5 s for it to come back (on the web the
+  bridge's `waitForGrantedHidDevice`, skipping the old handle unless it is still there after 1.5 s,
+  as the FOLA's is on macOS; on Android the next attach, while
+  its detach is ignored), then reopens it with the volume warning still answered. Not back in time,
+  or no longer granted to the site, the sync bar offers Reconnect, which may need the chooser. The
+  log records when the device went and came back.
 - **Review** is `devicePeqService.review`, shown by `ReviewDialog`; the sync bar's Write and the
   device panel share it.
 - **No editing while disconnected:** `devicePeqStore.canEdit` (connected, not waiting to

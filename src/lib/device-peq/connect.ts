@@ -28,7 +28,9 @@ import {
 	grantedHidDevice,
 	requestBleDevice,
 	requestHidDevice,
-	requestSerialPort
+	requestSerialPort,
+	waitForGrantedHidDevice,
+	type HidIdentity
 } from '@potatosalad775/eqcaps-device-bridge/browser';
 import { eqcapsClient } from '#lib/services/eqcaps-client.js';
 import { logger } from '#lib/services/logger.js';
@@ -42,7 +44,7 @@ import {
 	openNativeHid
 } from '#lib/transports/native/native-hid-transport.js';
 import { DEMO_PROFILE, DemoHidTransport, demoDac } from './demo';
-import type { DeviceCandidate, DeviceConnection, ProfileSource } from './types';
+import type { DeviceCandidate, DeviceConnection, ProfileSource, ReopenWait } from './types';
 
 export type BridgeConnectionType = 'hid' | 'serial' | 'ble';
 
@@ -173,7 +175,7 @@ function connection(
 	transportKind: BridgeConnectionType,
 	transport: Transport,
 	r: Resolved,
-	reopen?: () => Promise<DeviceConnection | null>
+	reopen?: DeviceConnection['reopen']
 ): DeviceConnection {
 	const device = openDevice(transport, r.protocol, {
 		profile: { bandCount: r.profile.bandCount },
@@ -204,7 +206,7 @@ async function identify(opts: {
 	open: (protocol: Protocol) => Promise<Transport>;
 	close: () => Promise<void>;
 	pickFrom: IndexEntry[];
-	reopen?: (r: Resolved) => () => Promise<DeviceConnection | null>;
+	reopen?: (r: Resolved) => DeviceConnection['reopen'];
 }): Promise<ConnectResult> {
 	const { best, matches, ambiguous } = await eqcapsClient().matchDevice(opts.identity);
 
@@ -278,16 +280,44 @@ export async function connectHid(): Promise<ConnectResult> {
 		open: async () => transport,
 		close: () => transport.close().catch(() => {}),
 		pickFrom: [],
-		reopen: (r) => async () => {
-			if (!usb?.productId || usb.productName === undefined) return null;
-			const again = await grantedHidDevice({
-				vendorId: parseInt(usb.vendorId, 16),
-				productId: parseInt(usb.productId, 16),
-				productName: usb.productName
-			});
-			return again ? connection('hid', again, r) : null;
+		reopen: (r) => {
+			if (!usb?.productId || usb.productName === undefined) return undefined;
+			return reopenHid(
+				{
+					vendorId: parseInt(usb.vendorId, 16),
+					productId: parseInt(usb.productId, 16),
+					productName: usb.productName
+				},
+				r
+			);
 		}
 	});
+}
+
+/**
+ * How long after a save the old WebHID handle, if the browser never dropped it, is taken as the
+ * device back, ms. The FOLA on macOS keeps its HID interface through the restart, and its old
+ * handle opens again; this gives a device that does drop it time to go first.
+ */
+const REUSE_HANDLE_MS = 1500;
+
+/**
+ * Finds a granted WebHID device again, and gives the connection it comes back as the same
+ * `reopen`, so a device that restarts on every save can be reopened after each one.
+ */
+function reopenHid(identity: HidIdentity, r: Resolved): NonNullable<DeviceConnection['reopen']> {
+	const reopen = async (wait?: ReopenWait) => {
+		const again = wait
+			? await waitForGrantedHidDevice(identity, {
+					timeoutMs: wait.timeoutMs,
+					ignoreCurrent: true,
+					reuseAfterMs: REUSE_HANDLE_MS,
+					...(wait.onEvent ? { onEvent: wait.onEvent } : {})
+				})
+			: await grantedHidDevice(identity);
+		return again ? connection('hid', again, r, reopen) : null;
+	};
+	return reopen;
 }
 
 /**
@@ -381,19 +411,70 @@ async function openNative(
 		open: async () => transport,
 		close: () => transport.close().catch(() => {}),
 		pickFrom: [],
-		reopen: (r) => async () => {
-			const again = (await listNativeHidDevices(plugin)).find(
-				(d) =>
-					d.vendorId === device.vendorId &&
-					d.productId === device.productId &&
-					d.productName === device.productName
-			);
-			if (!again?.hasPermission) return null;
-			const conn = connection('hid', await openNativeHid(again, plugin), r);
-			return { ...conn, usbDeviceName: again.deviceName };
-		}
+		reopen: (r) => reopenNative(device, r, plugin)(device.deviceName)
 	});
 	return withDeviceName(result, device.deviceName);
+}
+
+/**
+ * Finds an attached device again by vendor id, product id and product name. Android grants USB
+ * permission per attach, so a device back from a restart asks for it again. `reopenNative(…)(path)`
+ * is the `reopen` of the connection at `path`; the connection it reopens gets its own.
+ */
+function reopenNative(match: NativeUsbDevice, r: Resolved, plugin?: DeviceIoPlugin) {
+	const same = (d: NativeUsbDevice) =>
+		d.vendorId === match.vendorId &&
+		d.productId === match.productId &&
+		d.productName === match.productName;
+	const open = async (d: NativeUsbDevice): Promise<DeviceConnection | null> => {
+		if (!d.hasPermission) {
+			const { granted } = await (plugin ?? DeviceIo).requestPermission({
+				deviceName: d.deviceName
+			});
+			if (!granted) return null;
+		}
+		const transport = await openNativeHid({ ...d, hasPermission: true }, plugin);
+		const conn = connection('hid', transport, r, reopenFrom(d.deviceName));
+		return { ...conn, usbDeviceName: d.deviceName };
+	};
+	const reopenFrom =
+		(current: string) =>
+		async (wait?: ReopenWait): Promise<DeviceConnection | null> => {
+			if (!wait) {
+				const now = (await listNativeHidDevices(plugin)).find(same);
+				return now ? open(now) : null;
+			}
+			// The device restarting comes back at a new path; the old one may still be listed.
+			const back = await nativeAttach(
+				(d) => same(d) && d.deviceName !== current,
+				wait.timeoutMs,
+				plugin
+			);
+			if (back) wait.onEvent?.('connect');
+			return back ? open(back) : null;
+		};
+	return reopenFrom;
+}
+
+/** The first attached device `match` takes, listed now or attached within `timeoutMs`; else null. */
+async function nativeAttach(
+	match: (d: NativeUsbDevice) => boolean,
+	timeoutMs: number,
+	plugin?: DeviceIoPlugin
+): Promise<NativeUsbDevice | null> {
+	let done = (_d: NativeUsbDevice | null) => {};
+	const found = new Promise<NativeUsbDevice | null>((resolve) => (done = resolve));
+	// Listening before listing, so an attach in between isn't missed.
+	const handle = await (plugin ?? DeviceIo).addListener('deviceAttached', ({ device }) => {
+		if (match(device)) done(device);
+	});
+	const timer = setTimeout(() => done(null), timeoutMs);
+	const listed = (await listNativeHidDevices(plugin)).find(match);
+	if (listed) done(listed);
+	const device = await found;
+	clearTimeout(timer);
+	await handle.remove();
+	return device;
 }
 
 /** Tags the connection a result comes to, now or after a pick, with the plugin's device path. */

@@ -76,8 +76,12 @@ export interface DeviceConnection {
 	profileId: string | null;
 	/** What the device reported about itself, for an issue report. */
 	identity: DeviceIdentity;
-	/** Re-open the same device without a chooser, after it dropped (USB HID only). */
-	reopen?: () => Promise<DeviceConnection | null>;
+	/**
+	 * Re-open the same device without a chooser, after it dropped (USB HID only). With `wait`, for
+	 * a device restarting to save: the handle it had is skipped, and it gets until the timeout to
+	 * come back. Null if it isn't there (or, on the web, no longer granted).
+	 */
+	reopen?: (wait?: ReopenWait) => Promise<DeviceConnection | null>;
 	/** Android: the plugin's path for the device (changes on every replug), to tell its detach. */
 	usbDeviceName?: string;
 }
@@ -89,4 +93,11 @@ export interface DeviceConnection {
 export interface DeviceCandidate {
 	id: string;
 	label: string;
+}
+
+/** How `reopen` waits for a device that restarts to save. */
+export interface ReopenWait {
+	timeoutMs: number;
+	/** The browser (or Android) saw the device leave or come back, or kept it; for the log. */
+	onEvent?: (event: 'connect' | 'disconnect' | 'gone' | 'reused') => void;
 }

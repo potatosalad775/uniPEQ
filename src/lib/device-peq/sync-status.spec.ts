@@ -7,6 +7,7 @@ const BASE: SyncInput = {
 	reading: false,
 	writing: false,
 	needsReconnect: false,
+	reconnecting: false,
 	autoDueAt: null,
 	canWrite: true,
 	canRead: true,
@@ -103,5 +104,11 @@ describe('syncStatus', () => {
 			text: 'Saved. Reconnect.',
 			actions: ['reconnect']
 		});
+	});
+
+	it('offers no Reconnect while the device is being reopened', () => {
+		expect(
+			status({ needsReconnect: true, reconnecting: true, message: 'Saved. Reconnecting…' })
+		).toEqual({ tone: 'busy', text: 'Saved. Reconnecting…' });
 	});
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import type { DeviceConnection, ReopenWait } from '#lib/device-peq/types.js';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 import { eqStore } from '#lib/stores/eq-store.svelte.js';
@@ -316,5 +317,132 @@ describe('devicePeqService reading the preamp', () => {
 		await devicePeqService.read(true);
 		expect(eqStore.autoPreamp).toBe(false);
 		expect(eqStore.preamp).toBe(-2);
+	});
+});
+
+describe('devicePeqService after a save that restarts the device', () => {
+	const PEAK = { type: 'PK' as const, freq: 1000, gain: -3, q: 1 };
+	const USB = { vendorId: '0x3302', productId: '0xc20f', productName: 'Protocol Micro' };
+
+	/** A device that drops the connection on every save, as KT Micro chips do. */
+	function restarting() {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
+			disconnectOnSave: true,
+			slots: [{ id: 1, name: 'USER1' }]
+		});
+		conn.identity = { usb: USB };
+		vi.spyOn(conn.device, 'pull').mockResolvedValue({ filters: [PEAK], preamp: 0 });
+		vi.spyOn(conn.device, 'currentSlot').mockResolvedValue(1);
+		vi.spyOn(conn.device, 'push').mockResolvedValue({ reconnect: true });
+		return conn;
+	}
+
+	/** `conn.reopen`, answered when the spec says. */
+	function deferReopen(conn: DeviceConnection) {
+		let answer = (_c: DeviceConnection | null) => {};
+		const reopen = vi.fn(
+			(_wait?: ReopenWait) => new Promise<DeviceConnection | null>((resolve) => (answer = resolve))
+		);
+		conn.reopen = reopen;
+		return { reopen, answer: (c: DeviceConnection | null) => answer(c) };
+	}
+
+	async function connectAndWrite(conn: DeviceConnection) {
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		eqStore.update(0, { gain: -5 });
+		await devicePeqService.requestWrite();
+		await devicePeqService.answerVolumeWarning(true);
+	}
+
+	beforeEach(() => {
+		devicePeqStore.forget();
+		eqStore.reset();
+		settingsStore.autoPushEnabled = false;
+	});
+
+	afterEach(async () => {
+		await devicePeqService.disconnect();
+		devicePeqStore.forget();
+		settingsStore.autoPushEnabled = true;
+	});
+
+	it('waits for the device and reopens it, keeping the volume warning answered', async () => {
+		const conn = restarting();
+		const { reopen, answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+
+		expect(reopen).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 5000 }));
+		expect(devicePeqStore.needsReconnect).toBe(true);
+		expect(devicePeqService.sync).toMatchObject({ tone: 'busy' });
+		expect(devicePeqService.sync?.actions).toBeUndefined();
+
+		const again = restarting();
+		answer(again);
+		await vi.waitFor(() => expect(devicePeqStore.connection).toBe(again));
+		await vi.waitFor(() => expect(devicePeqStore.isBusy).toBe(false));
+		expect(devicePeqStore.needsReconnect).toBe(false);
+		expect(devicePeqStore.writeConsent).toBe(true);
+		expect(devicePeqStore.statusMessage).toContain('connected again');
+	});
+
+	it('offers Reconnect when the device is not back in time', async () => {
+		const conn = restarting();
+		const { answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+		answer(null);
+		await vi.waitFor(() => expect(devicePeqStore.isConnecting).toBe(false));
+		expect(devicePeqStore.connection).toBe(conn);
+		expect(devicePeqService.sync).toMatchObject({ tone: 'warning', actions: ['reconnect'] });
+	});
+
+	it('closes what comes back after the user disconnected', async () => {
+		const conn = restarting();
+		const { answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+		await devicePeqService.disconnect();
+		const again = restarting();
+		const close = vi.spyOn(again.device, 'close');
+		answer(again);
+		await vi.waitFor(() => expect(close).toHaveBeenCalled());
+		expect(devicePeqStore.connection).toBeNull();
+		expect(devicePeqStore.isConnecting).toBe(false);
+	});
+
+	it('on Android, keeps the device that detaches before the saving write returns', async () => {
+		const conn = { ...restarting(), usbDeviceName: DAC.deviceName };
+		vi.spyOn(conn.device, 'push').mockImplementation(async () => {
+			await devicePeqService.usbDetached(DAC.deviceName);
+			return { reconnect: true };
+		});
+		const { reopen, answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+		expect(devicePeqStore.connection).toBe(conn);
+		expect(reopen).toHaveBeenCalledOnce();
+
+		const again = restarting();
+		answer(again);
+		await vi.waitFor(() => expect(devicePeqStore.connection).toBe(again));
+		await vi.waitFor(() => expect(devicePeqStore.isBusy).toBe(false));
+	});
+
+	it('on Android, keeps the device through its detach and reopens it when it attaches', async () => {
+		const conn = { ...restarting(), usbDeviceName: DAC.deviceName };
+		const { reopen, answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+		answer(null);
+		await vi.waitFor(() => expect(devicePeqStore.isConnecting).toBe(false));
+
+		await devicePeqService.usbDetached(DAC.deviceName);
+		expect(devicePeqStore.connection).toBe(conn);
+
+		await devicePeqService.usbAttached({ ...DAC, productName: 'Keyboard' });
+		expect(reopen).toHaveBeenCalledOnce();
+		const again = restarting();
+		reopen.mockResolvedValueOnce(again);
+		await devicePeqService.usbAttached({ ...DAC, deviceName: '/dev/bus/usb/001/003' });
+		expect(reopen).toHaveBeenLastCalledWith();
+		expect(devicePeqStore.connection).toBe(again);
+		expect(connect.connectNativeHid).toHaveBeenCalledOnce();
 	});
 });

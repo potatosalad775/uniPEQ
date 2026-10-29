@@ -51,6 +51,12 @@ type Choice = Extract<ConnectResult, { kind: 'choose' }>;
 /** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */
 type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null };
 
+/**
+ * How long a device that restarts to save gets to come back before Reconnect is offered, ms: a
+ * USB re-enumeration takes a second or two, and a grant the browser dropped never comes back.
+ */
+const RESTART_WAIT_MS = 5000;
+
 const loadConnect = () => import('#lib/device-peq/connect.js');
 
 /**
@@ -133,6 +139,7 @@ class DevicePeqService {
 			reading: store.isReading,
 			writing: store.isWriting,
 			needsReconnect: store.needsReconnect,
+			reconnecting: store.isConnecting,
 			autoDueAt: store.autoDueAt,
 			canWrite: !!caps?.canWrite && !!store.writeTarget,
 			canRead: !!caps?.canRead && !!store.readTarget,
@@ -230,6 +237,19 @@ class DevicePeqService {
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
+	/**
+	 * The same device, opened again. Its volume warning was answered on this connection already:
+	 * a device that restarts on every save would otherwise ask before every write.
+	 */
+	async #finishReopen(again: DeviceConnection): Promise<void> {
+		const consent = devicePeqStore.writeConsent;
+		const slot = await again.device.currentSlot().catch(() => null);
+		devicePeqStore.setConnected(again, slot);
+		devicePeqStore.writeConsent = consent;
+		logger.info(`reopened ${again.name}, slot ${slot}`);
+		if (!devicePeqStore.hasUnwritten) await this.read(true);
+	}
+
 	/** After the device dropped (or restarted to save): find it again without a chooser. */
 	async reconnect(): Promise<void> {
 		const conn = devicePeqStore.connection;
@@ -237,7 +257,7 @@ class DevicePeqService {
 		devicePeqStore.isConnecting = true;
 		try {
 			const again = conn.reopen ? await conn.reopen() : null;
-			if (again) await this.#finishConnect(again);
+			if (again) await this.#finishReopen(again);
 			else {
 				devicePeqStore.setDisconnected();
 				devicePeqStore.setStatus(m.device_peq_status_reconnect_manual());
@@ -262,19 +282,45 @@ class DevicePeqService {
 		await plugin.addListener('deviceAttached', ({ device }) => void this.usbAttached(device));
 	}
 
-	/** The connected device was unplugged: disconnected now, not at the next failed write. */
+	/**
+	 * The connected device was unplugged: disconnected now, not at the next failed write. One that
+	 * restarts to save is expected to go, and kept for its return: it can detach before the write
+	 * that saved has returned (the FOLA does), so a write under way counts too. Really unplugged
+	 * then, the write fails and says so.
+	 */
 	async usbDetached(deviceName: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn || conn.usbDeviceName !== deviceName) return;
+		const saving = devicePeqStore.isWriting && conn.device.capabilities.disconnectOnSave;
+		if (devicePeqStore.needsReconnect || saving) {
+			logger.info(`${conn.name} detached, waiting to be reconnected`);
+			return;
+		}
 		logger.info(`${conn.name} unplugged`);
 		await this.disconnect();
 	}
 
 	/**
-	 * A device was plugged in. With nothing connected or connecting and the app in view, connect,
-	 * as the device chip would; a device the database can't drive (a keyboard) is left alone.
+	 * A device was plugged in. The one waiting to be reconnected is reopened (unless a reopen is
+	 * already waiting for it). Else, with nothing connected or connecting and the app in view,
+	 * connect, as the device chip would; a device the database can't drive (a keyboard) is left
+	 * alone.
 	 */
 	async usbAttached(device: NativeUsbDevice): Promise<void> {
+		const conn = devicePeqStore.connection;
+		if (conn && devicePeqStore.needsReconnect && !devicePeqStore.isConnecting) {
+			const usb = conn.identity.usb;
+			const same =
+				!!usb?.productId &&
+				parseInt(usb.vendorId, 16) === device.vendorId &&
+				parseInt(usb.productId, 16) === device.productId &&
+				usb.productName === device.productName;
+			if (same) {
+				logger.info(`${conn.name} attached again, reconnecting`);
+				await this.reconnect();
+			}
+			return;
+		}
 		const busy = () => !!devicePeqStore.connection || devicePeqStore.isConnecting || !!this.choice;
 		if (busy()) return;
 		if (!appState.active) return;
@@ -412,8 +458,11 @@ class DevicePeqService {
 			if (result.reconnect) {
 				// The device restarts to save. Its transport is gone; `reopen` finds it again.
 				await conn.device.close().catch(() => {});
-				devicePeqStore.needsReconnect = true;
-				devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+				// Unless the user disconnected while it wrote.
+				if (devicePeqStore.connection === conn) {
+					devicePeqStore.needsReconnect = true;
+					void this.#awaitRestart(conn, count);
+				}
 			} else {
 				// Written to a listed preset while the device sits on a built-in one: switch to it,
 				// so what was written is what plays.
@@ -445,6 +494,58 @@ class DevicePeqService {
 			return false;
 		} finally {
 			devicePeqStore.isWriting = false;
+		}
+	}
+
+	/**
+	 * A device that restarted to save is reopened as soon as it is back. Not back within
+	 * `RESTART_WAIT_MS`, or no longer granted to the site (which only the chooser, on a click, can
+	 * fix), the sync bar offers Reconnect. The log says when the device went and came back, and
+	 * whether the browser said so, to tell those two apart.
+	 */
+	async #awaitRestart(conn: DeviceConnection, count: number): Promise<void> {
+		if (!conn.reopen) {
+			devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+			return;
+		}
+		const start = performance.now();
+		const since = () => Math.round(performance.now() - start);
+		const seen: string[] = [];
+		devicePeqStore.isConnecting = true;
+		devicePeqStore.setStatus(m.device_peq_status_saved_reconnecting());
+		let again: DeviceConnection | null = null;
+		try {
+			again = await conn.reopen({
+				timeoutMs: RESTART_WAIT_MS,
+				onEvent: (event) => seen.push(`${event} at ${since()} ms`)
+			});
+		} catch (e) {
+			logger.warn('reopen after save failed:', e instanceof Error ? e.message : String(e));
+		}
+		const events = seen.length > 0 ? seen.join(', ') : 'no connect or disconnect event';
+		// Disconnected meanwhile: what came back is no longer wanted.
+		if (devicePeqStore.connection !== conn || !devicePeqStore.needsReconnect) {
+			await again?.device.close().catch(() => {});
+			// Set by this wait: left on, the connect controls stay disabled.
+			if (!devicePeqStore.connection) devicePeqStore.isConnecting = false;
+			return;
+		}
+		if (!again) {
+			logger.warn(`${conn.name} not back ${since()} ms after saving (${events})`);
+			devicePeqStore.isConnecting = false;
+			devicePeqStore.setStatus(m.device_peq_status_saved_reconnect());
+			return;
+		}
+		logger.info(`${conn.name} back ${since()} ms after saving (${events})`);
+		try {
+			await this.#finishReopen(again);
+			if (!devicePeqStore.statusIsError) {
+				devicePeqStore.setStatus(m.device_peq_status_saved_reconnected({ count }));
+			}
+		} catch (e) {
+			this.fail(e, 'reconnect');
+		} finally {
+			devicePeqStore.isConnecting = false;
 		}
 	}
 

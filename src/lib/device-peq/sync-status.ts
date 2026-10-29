@@ -30,6 +30,8 @@ export interface SyncInput extends PanelStatusInput {
 	reading: boolean;
 	writing: boolean;
 	needsReconnect: boolean;
+	/** The device is being opened again (after it restarted to save, or the Reconnect press). */
+	reconnecting: boolean;
 	/** When the waiting auto-write fires, or null. */
 	autoDueAt: number | null;
 	/** Write would reach a writable preset now. */
@@ -52,6 +54,7 @@ export function syncStatus(s: SyncInput): SyncStatus | null {
 	}
 	if (s.needsReconnect) {
 		// The write's own message says why ("Saved. The device restarts…"), or what broke.
+		if (s.reconnecting) return { tone: 'busy', text: s.message ?? m.device_peq_reconnecting() };
 		const text = s.message ?? m.device_peq_reconnect_prompt();
 		return { tone: s.messageIsError ? 'error' : 'warning', text, actions: ['reconnect'] };
 	}
