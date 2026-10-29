@@ -36,6 +36,7 @@
 	"device_peq_connecting": "Connecting…",
 	"device_peq_other_connections": "Other connections:",
 	"device_peq_choose_prompt": "Several devices match. Pick the profile that fits yours.",
+	"device_peq_candidate_firmware": "{name} (firmware {range})",
 	"device_peq_choose_confirm": "Connect",
 	"device_peq_unsupported": "This device isn't in the EQ database.",
 	"device_peq_help_add": "Help add it",

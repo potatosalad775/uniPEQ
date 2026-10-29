@@ -36,6 +36,7 @@
 	"device_peq_connecting": "연결 중…",
 	"device_peq_other_connections": "다른 연결 방식:",
 	"device_peq_choose_prompt": "여러 기기가 감지되었습니다. 기기에 맞는 프로필을 선택해주세요.",
+	"device_peq_candidate_firmware": "{name} (펌웨어 {range})",
 	"device_peq_choose_confirm": "연결",
 	"device_peq_unsupported": "EQ 데이터베이스에 없는 기기입니다.",
 	"device_peq_help_add": "추가 도와주기",

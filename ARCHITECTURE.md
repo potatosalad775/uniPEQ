@@ -148,7 +148,11 @@ Handlers see only the bridge's two interfaces (`eqcaps-device-bridge/src/transpo
 ### 4.2 Connecting (`device-peq/connect.ts`)
 
 An identity (USB ids and product string) goes through the eqcaps client's `matchDevice` to
-profiles; the profile's `protocol` picks the handler; the bridge's `openDevice` opens it. Results:
+profiles; the profile's `protocol` picks the handler; the bridge's `openDevice` opens it. When a
+matched profile has a firmware range and the top matches share a handler that reads the firmware
+(USB HID only, already open), the firmware is read and the device matched again with it, so
+profiles that only the firmware tells apart (the Fosi DS3's 8- and 32-band firmware) don't ask.
+Only then: a device that doesn't answer costs the handler's timeout. Results:
 
 - `connected`, with a `DeviceConnection` whose `profileSource` is `device` (its own profile),
   `group` (a family profile its identity can't narrow), `guess` (no profile: `guessProtocol` by

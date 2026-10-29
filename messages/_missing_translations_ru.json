@@ -17,6 +17,7 @@
 		"Inside a sentence, # is the number: \"Read {count, plural, one {# band} other {# bands}}\"",
 		"An exact number like \"=0\": \"No bands\" beats the forms above."
 	],
+	"device_peq_candidate_firmware": "{name} (firmware {range})",
 	"device_peq_reconnecting": "Reconnecting…",
 	"device_peq_status_saved_reconnecting": "Saved. The device restarts after saving; reconnecting…",
 	"device_peq_status_saved_reconnected": "Wrote {count} band(s). The device restarted to save and is connected again.",
