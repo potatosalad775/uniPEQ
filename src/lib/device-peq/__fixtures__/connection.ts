@@ -19,6 +19,7 @@ export function fakeConnection(
 				writesPreamp: true,
 				writesSlot: false,
 				readsCurrentSlot: false,
+				readsEnabled: false,
 				canEnable: false,
 				slots: [],
 				disconnectOnSave: false,
@@ -28,6 +29,7 @@ export function fakeConnection(
 			pull: async () => ({ filters: [], preamp: 0 }),
 			push: async () => ({ reconnect: false }),
 			currentSlot: async () => null,
+			eqEnabled: async () => null,
 			setEnabled: async () => {},
 			close: async () => {}
 		},

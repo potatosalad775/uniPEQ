@@ -38,11 +38,14 @@ connects; the earlier recordings have it in UAC 1.0 on 1.4.6 (answered 7) and 1.
 - [x] eqcaps: the fake DS3 tracks the active preset and the EQ switch; handler tests for both
       reads; the README's capability list. Packed as 0.2.5-dev.4 (uncommitted on
       `feat/device-controls`), installed here.
-- [ ] uniPEQ: `PeqCapabilities` gains `readsEnabled`, `PeqDevice` gains `eqEnabled()`.
+- [x] uniPEQ: `PeqCapabilities` gains `readsEnabled`, `PeqDevice` gains `eqEnabled()`.
       `#finishConnect` / `#finishReopen` read both and call `setConnected(conn, slot, enabled)`;
       `eqEnabled` is the read value when there is one, else today's bypass-preset rule.
-- [ ] uniPEQ: specs for the store (a preset with the EQ off shows Off, and Read still reaches
-      that preset).
+- [x] uniPEQ: specs for the store (a preset with the EQ off shows Off, and Read still reaches
+      that preset) and the service (the switch is read only where the protocol reads one).
+- [ ] Try it on the DS3: connect with the EQ on and off, on a built-in and a user preset.
+- [ ] Later: the modernGraphTool link (`link-service.svelte.ts`) mirrors the capabilities without
+      `readsEnabled`; it doesn't need it while the link side never reads the switch itself.
 
 ## 2. Device controls
 
@@ -125,8 +128,8 @@ settings" section after the EQ rows, in the data's order, Android patterns only:
 ## Order
 
 1. Active preset in eqcaps, dev tarball. Done.
-2. Active preset in uniPEQ. ← next
-3. Button rule and fixes.
+2. Active preset in uniPEQ. Done; to try on the DS3.
+3. Button rule and fixes. ← next
 4. Controls plumbing and UI.
 5. The UAC reconnect path.
 

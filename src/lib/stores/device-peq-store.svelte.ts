@@ -213,7 +213,15 @@ class DevicePeqStore {
 		return this.activeSlot;
 	}
 
-	setConnected(connection: DeviceConnection, currentSlot: number | null): void {
+	/**
+	 * `enabled` is the device's EQ switch where it reads one (`readsEnabled`); otherwise whether the
+	 * EQ is on follows from the preset.
+	 */
+	setConnected(
+		connection: DeviceConnection,
+		currentSlot: number | null,
+		enabled: boolean | null = null
+	): void {
 		// Unwritten changes carry over only to the same device: another one's EQ is read regardless.
 		const known = this.knownDevice;
 		const same = known?.name === connection.name && known.profile.id === connection.profile.id;
@@ -229,7 +237,7 @@ class DevicePeqStore {
 		const listed = this.slots.some((s) => s.id === currentSlot);
 		this.deviceSlot = currentSlot;
 		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
-		this.eqEnabled = onBypass ? false : currentSlot !== null ? true : null;
+		this.eqEnabled = enabled ?? (onBypass ? false : currentSlot !== null ? true : null);
 		this.synced = null;
 		this.#baseline = this.#snapshot();
 		this.layout = null;

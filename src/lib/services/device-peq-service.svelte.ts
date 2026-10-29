@@ -71,6 +71,18 @@ function readPreamp(filters: EqFilter[], preamp: number | undefined): number | '
 	return Math.abs(preamp - auto) < 0.01 || Math.abs(preamp - derived) < 0.01 ? 'auto' : preamp;
 }
 
+/**
+ * The preset the device plays and, where its EQ switch is its own state, whether that is on. A
+ * failed read is unknown rather than an error: the connection works without it.
+ */
+async function playing(conn: DeviceConnection) {
+	const slot = await conn.device.currentSlot().catch(() => null);
+	const enabled = conn.device.capabilities.readsEnabled
+		? await conn.device.eqEnabled().catch(() => null)
+		: null;
+	return { slot, enabled };
+}
+
 class DevicePeqService {
 	/** A connect attempt waiting for the user to pick a profile or (Android) a device. */
 	choice = $state.raw<{ candidates: DeviceCandidate[] } | null>(null);
@@ -227,13 +239,15 @@ class DevicePeqService {
 	 * unless the list holds changes this device never got (the sync bar then offers Write and Read).
 	 */
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
-		const slot = await conn.device.currentSlot().catch(() => null);
-		devicePeqStore.setConnected(conn, slot);
+		const { slot, enabled } = await playing(conn);
+		devicePeqStore.setConnected(conn, slot, enabled);
 		this.#dropAsk();
 		this.install();
 		// Auto-write writes without a press, so its warning comes now, before any edit.
 		if (this.autoWriting) this.#ask();
-		logger.info(`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}`);
+		logger.info(
+			`connected ${conn.name} (${conn.profileId ?? conn.profileSource}), slot ${slot}, EQ ${enabled ?? '?'}`
+		);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
@@ -243,10 +257,10 @@ class DevicePeqService {
 	 */
 	async #finishReopen(again: DeviceConnection): Promise<void> {
 		const consent = devicePeqStore.writeConsent;
-		const slot = await again.device.currentSlot().catch(() => null);
-		devicePeqStore.setConnected(again, slot);
+		const { slot, enabled } = await playing(again);
+		devicePeqStore.setConnected(again, slot, enabled);
 		devicePeqStore.writeConsent = consent;
-		logger.info(`reopened ${again.name}, slot ${slot}`);
+		logger.info(`reopened ${again.name}, slot ${slot}, EQ ${enabled ?? '?'}`);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
 	}
 

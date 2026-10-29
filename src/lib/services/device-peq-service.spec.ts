@@ -140,6 +140,27 @@ describe('devicePeqService reading the device', () => {
 		expect(eqStore.canUndo).toBe(false);
 	});
 
+	it('reads an EQ switch apart from the preset, and reads that preset with the EQ off', async () => {
+		const { conn, pull } = device();
+		Object.assign(conn.device.capabilities, { readsEnabled: true, readsSlot: true });
+		vi.spyOn(conn.device, 'currentSlot').mockResolvedValue(2);
+		const eqEnabled = vi.spyOn(conn.device, 'eqEnabled').mockResolvedValue(false);
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		expect(eqEnabled).toHaveBeenCalledOnce();
+		expect(devicePeqStore.selection).toBe('off');
+		expect(pull).toHaveBeenCalledWith(expect.objectContaining({ slot: 2 }));
+	});
+
+	it("doesn't ask for an EQ switch the protocol doesn't read", async () => {
+		const { conn } = device();
+		const eqEnabled = vi.spyOn(conn.device, 'eqEnabled');
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		expect(eqEnabled).not.toHaveBeenCalled();
+		expect(devicePeqStore.selection).toBe(1);
+	});
+
 	it("doesn't read over changes the device never got, and reads once they're settled", async () => {
 		const { conn, pull } = device();
 		devicePeqStore.setConnected(conn, 1);

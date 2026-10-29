@@ -38,6 +38,7 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 		writesPreamp: true,
 		writesSlot: false,
 		readsCurrentSlot: true,
+		readsEnabled: false,
 		canEnable: true,
 		slots: [
 			{ id: 0, name: 'Jazz' },
@@ -60,6 +61,7 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 			})),
 			push: vi.fn(),
 			currentSlot: vi.fn(),
+			eqEnabled: vi.fn(),
 			setEnabled: vi.fn(async () => {}),
 			close: vi.fn(async () => {})
 		},

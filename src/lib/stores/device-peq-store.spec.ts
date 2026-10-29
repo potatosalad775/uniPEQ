@@ -24,6 +24,7 @@ function connection(
 		writesPreamp: true,
 		writesSlot: false,
 		readsCurrentSlot: true,
+		readsEnabled: false,
 		canEnable: true,
 		slots: KA17_SLOTS,
 		disconnectOnSave: false,
@@ -36,6 +37,7 @@ function connection(
 			pull: vi.fn(),
 			push: vi.fn(),
 			currentSlot: vi.fn(),
+			eqEnabled: vi.fn(),
 			setEnabled: vi.fn(),
 			close: vi.fn()
 		},
@@ -61,6 +63,35 @@ describe('devicePeqStore', () => {
 		devicePeqStore.setConnected(connection(), 10);
 		expect(devicePeqStore.selection).toBe('off');
 		expect(devicePeqStore.activeSlot).toBe(0);
+	});
+
+	describe('with an EQ switch apart from the preset (Fosi DS3)', () => {
+		const DS3_SLOTS = [
+			{ id: 0, name: 'JAZZ' },
+			{ id: 7, name: 'Custom1', writable: true },
+			{ id: 8, name: 'Custom2', writable: true }
+		];
+		const ds3 = () =>
+			connection({ readsSlot: true, writesSlot: true, readsEnabled: true, slots: DS3_SLOTS });
+
+		it('shows the preset the device is on', () => {
+			devicePeqStore.setConnected(ds3(), 7, true);
+			expect(devicePeqStore.selection).toBe(7);
+			expect(devicePeqStore.writeTarget).toEqual({ slot: 7 });
+		});
+
+		it('shows Off with the EQ off, and still reads and writes the preset it is on', () => {
+			devicePeqStore.setConnected(ds3(), 8, false);
+			expect(devicePeqStore.selection).toBe('off');
+			expect(devicePeqStore.activeSlot).toBe(8);
+			expect(devicePeqStore.readTarget).toEqual({ slot: 8 });
+			expect(devicePeqStore.writeTarget).toEqual({ slot: 8 });
+		});
+
+		it('is unknown when the switch could not be read', () => {
+			devicePeqStore.setConnected(ds3(), null, null);
+			expect(devicePeqStore.selection).toBeNull();
+		});
 	});
 
 	it('writes only user presets, and never retargets to one', () => {

@@ -32,6 +32,7 @@ export type PeqCapabilities = Pick<
 	| 'writesPreamp'
 	| 'writesSlot'
 	| 'readsCurrentSlot'
+	| 'readsEnabled'
 	| 'canEnable'
 	| 'slots'
 	| 'disconnectOnSave'
@@ -47,8 +48,14 @@ export interface PeqDevice {
 	readonly capabilities: PeqCapabilities;
 	pull(request?: PullRequest): Promise<PullResult>;
 	push(request: PushRequest): Promise<PushResult>;
-	/** The active preset slot; null when EQ is off or the protocol can't say. */
+	/**
+	 * The active preset slot; null when the protocol can't say, or on some bypass-preset protocols
+	 * when the EQ is off. Where the EQ switch is its own state (`readsEnabled`), the preset whether
+	 * the EQ is on or off.
+	 */
 	currentSlot(): Promise<number | null>;
+	/** Whether the EQ is on (`readsEnabled`); null when the protocol or device doesn't say. */
+	eqEnabled(): Promise<boolean | null>;
 	setEnabled(enabled: boolean, slot?: number): Promise<void>;
 	close(): Promise<void>;
 }
