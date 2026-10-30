@@ -581,40 +581,58 @@ describe('devicePeqService device controls', () => {
 
 	describe('in the browser', () => {
 		beforeEach(() => void connect.connectHid.mockClear());
-		afterEach(() => void (native.isNative = true));
+		afterEach(() => {
+			native.isNative = true;
+			vi.unstubAllGlobals();
+		});
 
-		async function notFoundAfterUsbMode() {
+		/** A DS3 switched to UAC 1.0, which the browser no longer grants the site. */
+		async function switchUsbMode() {
 			const { conn } = await connectDs3();
 			native.isNative = false;
-			conn.reopen = vi.fn(async () => null);
+			const reopen = vi.fn(async (_wait?: ReopenWait) => null);
+			conn.reopen = reopen;
 			await devicePeqService.setControl('uacMode', 1);
-			return conn;
+			return reopen;
 		}
+		const uac1 = () => ds3Connection({ uacMode: 1, gameMode: 0, volume: 24, led: 1 }).conn;
 
-		it('asks through the chooser when Reconnect is clicked and the device is not granted', async () => {
-			await notFoundAfterUsbMode();
-			const again = ds3Connection({ uacMode: 1, gameMode: 0, volume: 24, led: 1 });
-			connect.connectHid.mockResolvedValueOnce({ kind: 'connected', connection: again.conn });
-			await devicePeqService.reconnect({ choose: true });
+		it('opens the chooser soon after the change, on the click that confirmed it', async () => {
+			const again = uac1();
+			connect.connectHid.mockResolvedValueOnce({ kind: 'connected', connection: again });
+			const reopen = await switchUsbMode();
+			expect(reopen).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 1500 }));
 			expect(connect.connectHid).toHaveBeenCalledOnce();
-			expect(devicePeqStore.connection).toBe(again.conn);
+			expect(devicePeqStore.connection).toBe(again);
 			expect(devicePeqStore.controlValues.uacMode).toBe(1);
+			expect(devicePeqStore.statusMessage).toBe(
+				'Changed USB mode. The device restarted and is connected again.'
+			);
 		});
 
 		it('says to reconnect when the chooser is cancelled', async () => {
-			await notFoundAfterUsbMode();
-			await devicePeqService.reconnect({ choose: true });
+			await switchUsbMode();
 			expect(devicePeqStore.connection).toBeNull();
-			expect(devicePeqStore.statusMessage).toBe(
-				"Couldn't find the device again. Plug it in and connect."
-			);
-		});
-
-		it('never opens the chooser without a click', async () => {
-			await notFoundAfterUsbMode();
 			expect(devicePeqStore.statusMessage).toBe(
 				'Changed USB mode. The device restarted; reconnect, and pick it again if the browser asks.'
 			);
+		});
+
+		it('leaves it to Reconnect once the click no longer allows a chooser', async () => {
+			vi.stubGlobal('navigator', { userActivation: { isActive: false } });
+			await switchUsbMode();
+			expect(connect.connectHid).not.toHaveBeenCalled();
+			expect(devicePeqService.sync).toMatchObject({ actions: ['reconnect'] });
+
+			const again = uac1();
+			connect.connectHid.mockResolvedValueOnce({ kind: 'connected', connection: again });
+			await devicePeqService.reconnect({ choose: true });
+			expect(devicePeqStore.connection).toBe(again);
+		});
+
+		it('never opens the chooser without a click', async () => {
+			vi.stubGlobal('navigator', { userActivation: { isActive: false } });
+			await switchUsbMode();
 			await devicePeqService.reconnect();
 			expect(connect.connectHid).not.toHaveBeenCalled();
 			expect(devicePeqStore.connection).toBeNull();

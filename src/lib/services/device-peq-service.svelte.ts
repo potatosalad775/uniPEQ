@@ -66,6 +66,19 @@ type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null
  */
 const RESTART_WAIT_MS = 5000;
 
+/**
+ * In the browser, how long a device restarting for a control gets to reopen on its own before the
+ * chooser opens, ms. A device that keeps its HID handle (the DS3's game mode) is back by then; one
+ * whose grant the browser dropped never is, and the chooser needs the confirming click's user
+ * activation, which lasts about 5 s.
+ */
+const CHOOSER_AFTER_MS = 1500;
+
+/** Whether the page may still open a chooser from the last click; true where it can't tell. */
+const canChoose = () =>
+	(navigator as Navigator & { userActivation?: { isActive: boolean } }).userActivation?.isActive ??
+	true;
+
 const loadConnect = () => import('#lib/device-peq/connect.js');
 
 /**
@@ -329,15 +342,21 @@ class DevicePeqService {
 		if (devicePeqStore.connection !== conn) return;
 		devicePeqStore.needsReconnect = true;
 		const name = controlLabel(control);
-		await this.#awaitRestart(conn, {
-			waiting: m.device_control_restarting({ control: name }),
-			back: m.device_control_restarted({ control: name }),
-			// A device without a USB serial number loses its browser grant when it re-enumerates (the
-			// DS3 on every USB mode switch), so Reconnect may come to the chooser.
-			manual: isNative
-				? m.device_control_restart_reconnect({ control: name })
-				: m.device_control_restart_choose({ control: name })
-		});
+		// A device without a USB serial number loses its browser grant when it re-enumerates (the
+		// DS3 on every USB mode switch), and only the chooser finds it again: in the browser it
+		// opens soon, on the click that confirmed the change. Android asks for permission itself.
+		const browser = !isNative && conn.connectionType === 'hid';
+		await this.#awaitRestart(
+			conn,
+			{
+				waiting: m.device_control_restarting({ control: name }),
+				back: m.device_control_restarted({ control: name }),
+				manual: browser
+					? m.device_control_restart_choose({ control: name })
+					: m.device_control_restart_reconnect({ control: name })
+			},
+			browser ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
+		);
 	}
 
 	/**
@@ -352,20 +371,29 @@ class DevicePeqService {
 		try {
 			const again = conn.reopen ? await conn.reopen() : null;
 			if (again) await this.#finishReopen(again);
-			else {
+			else if (choose && !isNative && conn.connectionType === 'hid') {
+				await this.#viaChooser(conn, m.device_peq_status_reconnect_manual());
+			} else {
 				devicePeqStore.setDisconnected();
-				if (choose && !isNative && conn.connectionType === 'hid') {
-					logger.info(`${conn.name} not granted as it is now, asking through the chooser`);
-					await this.connect('hid');
-				}
-				if (!devicePeqStore.connection && !this.choice && !this.notFound) {
-					devicePeqStore.setStatus(m.device_peq_status_reconnect_manual());
-				}
+				devicePeqStore.setStatus(m.device_peq_status_reconnect_manual());
 			}
 		} catch (e) {
 			this.fail(e, 'reconnect');
 		} finally {
 			devicePeqStore.isConnecting = false;
+		}
+	}
+
+	/**
+	 * The browser lost the device's grant: connect it again through the chooser, which needs the
+	 * click that led here. Cancelled, the panel offers Connect and `manual` says why.
+	 */
+	async #viaChooser(conn: DeviceConnection, manual: string): Promise<void> {
+		logger.info(`${conn.name} not granted as it is now, asking through the chooser`);
+		devicePeqStore.setDisconnected();
+		await this.connect('hid');
+		if (!devicePeqStore.connection && !this.choice && !this.notFound) {
+			devicePeqStore.setStatus(manual);
 		}
 	}
 
@@ -598,12 +626,17 @@ class DevicePeqService {
 	}
 
 	/**
-	 * A device that restarted (to save, or for a control) is reopened as soon as it is back. Not back within
-	 * `RESTART_WAIT_MS`, or no longer granted to the site (which only the chooser, on a click, can
-	 * fix), the sync bar offers Reconnect. The log says when the device went and came back, and
+	 * A device that restarted (to save, or for a control) is reopened as soon as it is back. Not back
+	 * within `timeoutMs`, or no longer granted to the site (which only the chooser, on a click, can
+	 * fix), the sync bar offers Reconnect; with `choose`, the chooser opens instead while the click
+	 * that started this still allows it. The log says when the device went and came back, and
 	 * whether the browser said so, to tell those two apart.
 	 */
-	async #awaitRestart(conn: DeviceConnection, say: RestartMessages): Promise<void> {
+	async #awaitRestart(
+		conn: DeviceConnection,
+		say: RestartMessages,
+		{ timeoutMs = RESTART_WAIT_MS, choose = false } = {}
+	): Promise<void> {
 		if (!conn.reopen) {
 			devicePeqStore.setStatus(say.manual);
 			return;
@@ -616,7 +649,7 @@ class DevicePeqService {
 		let again: DeviceConnection | null = null;
 		try {
 			again = await conn.reopen({
-				timeoutMs: RESTART_WAIT_MS,
+				timeoutMs,
 				onEvent: (event) => seen.push(`${event} at ${since()} ms`)
 			});
 		} catch (e) {
@@ -633,7 +666,12 @@ class DevicePeqService {
 		if (!again) {
 			logger.warn(`${conn.name} not back ${since()} ms after restarting (${events})`);
 			devicePeqStore.isConnecting = false;
-			devicePeqStore.setStatus(say.manual);
+			if (choose && canChoose()) {
+				await this.#viaChooser(conn, say.manual);
+				if (devicePeqStore.connection && !devicePeqStore.statusIsError) {
+					devicePeqStore.setStatus(say.back);
+				}
+			} else devicePeqStore.setStatus(say.manual);
 			return;
 		}
 		logger.info(`${conn.name} back ${since()} ms after restarting (${events})`);

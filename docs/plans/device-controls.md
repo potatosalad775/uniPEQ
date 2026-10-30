@@ -121,7 +121,11 @@ Connect, through the chooser). GAME keeps the identity, so its restart already r
       devices (no USB serial number, so the grant lasts only while it is attached), and no connect
       event comes. In the browser the switch always ends at Reconnect → chooser, which works; the
       status says so. A restart that times out logs the HID devices seen for 30 s.
-- [ ] Android: `npm run android -- --eqcaps` (the local data in the APK), then UAC 2.0 ↔ 1.0.
+- [x] Android: `npm run android -- --eqcaps` (the local data in the APK); UAC 2.0 ↔ 1.0
+      reconnects on its own once the USB permission prompt is allowed.
+- [x] Browser: after 1.5 s without the device, the chooser opens on the confirming click's user
+      activation (about 5 s), instead of a 5 s wait ending at Reconnect.
+- [ ] Try the chooser timing on the DS3 (USB mode, then game mode, which should reopen alone).
 - [ ] Try it on the DS3: UAC 2.0 → 1.0 → 2.0 in the browser (first time through the chooser, then
       on its own) and on Android. The chooser offers `20b1:80d5` only with eqcaps data that lists
       it (the bundled snapshot doesn't yet).

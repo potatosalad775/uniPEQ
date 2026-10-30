@@ -255,8 +255,12 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
 - **A control that restarts the device** (`reconnect`) asks first, then is followed as a save
   that restarts: the device is closed, waited for and reopened, or the sync bar offers Reconnect.
   Some come back under other USB ids (the DS3's USB mode), so reopening looks for every exact
-  identity the profile lists (`device-peq/usb-identities.ts`). On the web an identity the site
-  was never granted is only found through the chooser, so Reconnect, being a click, opens it.
+  identity the profile lists (`device-peq/usb-identities.ts`). In the browser a device without a
+  USB serial number loses its grant when it re-enumerates (the DS3 on every USB mode switch), and
+  only the chooser finds it again. So there the wait is 1.5 s (a device that keeps its HID handle,
+  as in the DS3's game mode, is back by then), then the chooser opens on the click that confirmed
+  the change, which still allows it; past that, Reconnect (a click) opens it. Android asks for USB
+  permission on the attach and keeps the full wait.
 - **A value that stops the EQ applying** (`disablesEq`, the DS3's upsampling) is said under the
   control and in the sync bar, above everything but a failure. The app doesn't change it back on
   its own: controls are written only on the user's change.
