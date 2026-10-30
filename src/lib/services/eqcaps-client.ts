@@ -34,7 +34,7 @@ let store: CacheStore | null = null;
 export function eqcapsClient(): EqcapsClient {
 	store ??= persistentStore();
 	client ??= createClient({
-		baseUrl: V1_URL,
+		baseUrl: import.meta.env.VITE_EQCAPS_URL ?? V1_URL,
 		ttl: 0,
 		store,
 		snapshot: JSON.parse(snapshotText) as DataBundle,

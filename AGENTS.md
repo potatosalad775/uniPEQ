@@ -8,7 +8,7 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 
 ## Commands
 
-- `npm run dev` · `npm test` (`*.spec.ts` in node, `*.svelte.spec.ts` in Chromium) ·
+- `npm run dev` (`dev:eqcaps`: on device data built from `../eqcaps` or `EQCAPS_DIR`) · `npm test` (`*.spec.ts` in node, `*.svelte.spec.ts` in Chromium) ·
   `npm run check` · `npm run lint` (`npm run format` fixes). Run check, lint and test before a commit.
 - `npm run build` is a release build; `-- --mode debug` keeps the debug-only UI.
 - `npm run android [-- --release|--sideload --serial <id> --skip-web --no-launch]` builds, installs

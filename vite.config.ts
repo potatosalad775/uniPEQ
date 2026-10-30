@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { writeAndroidStrings } from './scripts/android-strings.js';
+import { localEqcaps } from './scripts/local-eqcaps.ts';
 import { thirdPartyLicenses } from './scripts/third-party-licenses.ts';
 
 const pkg = JSON.parse(
@@ -47,6 +48,8 @@ export default defineConfig({
 				filename.includes('node_modules') ? undefined : { runes: true }
 		}),
 		thirdPartyLicenses(),
+		// `npm run dev:eqcaps`: eqcaps data from a local checkout instead of the published one.
+		localEqcaps(),
 		// Keep these options in sync with the `i18n:compile` script in package.json, which compiles
 		// the same output for `npm run check`: svelte-check does not run Vite, so without it
 		// #lib/paraglide/* has no type declarations on a fresh clone.
