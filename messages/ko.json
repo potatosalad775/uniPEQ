@@ -275,6 +275,7 @@
 	"sync_auto_on": "자동 쓰기 켜짐: 다음 편집부터 기기에 씁니다.",
 	"eq_band_reset": "밴드 {band}을(를) 평탄하게 초기화",
 	"eq_band_reset_short": "초기화",
+	"eq_builtin": "{device}의 내장 프리셋이라 맞추거나 쓰지 않습니다. 밴드를 바꾸려면 사용자 프리셋을 고르세요.",
 	"eq_short": "목록의 밴드가 {device}보다 {count}개 적습니다. 맞추기를 누르면 평탄한 밴드로 채웁니다.",
 	"eq_empty_fixed": "아직 밴드가 없습니다. {device}에서 읽어오거나 평탄한 밴드 {count}개로 시작하세요.",
 	"eq_start_flat": "평탄하게 시작",

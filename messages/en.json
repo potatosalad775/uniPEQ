@@ -275,6 +275,7 @@
 	"sync_auto_on": "Auto-write is on: your next edit goes to the device.",
 	"eq_band_reset": "Reset band {band} to flat",
 	"eq_band_reset_short": "Reset",
+	"eq_builtin": "This is one of {device}'s built-in presets, so it isn't fitted or written. Pick a user preset to change its bands.",
 	"eq_short": "The list has {count} band(s) fewer than {device}. Fit fills them in flat.",
 	"eq_empty_fixed": "No bands yet. Read them from {device}, or start from {count} flat bands.",
 	"eq_start_flat": "Start flat",

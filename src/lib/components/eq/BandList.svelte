@@ -34,12 +34,24 @@
 	}
 
 	/**
+	 * The device is on a built-in preset, which holds what it holds (the DS3's hold 8 bands), and
+	 * the list would otherwise be offered Fit.
+	 */
+	const builtIn = $derived(
+		!!devicePeqStore.connection?.device.capabilities.canWrite &&
+			!devicePeqStore.targetWritable &&
+			eqConstraintStore.editable &&
+			!!eqConstraintStore.fitted
+	);
+
+	/**
 	 * Why Fit is offered, once a device is known: no bands yet (start from its count, flat), bands
-	 * it won't take, or fewer bands than it has.
+	 * it won't take, or fewer bands than it has. Not on a built-in preset: nothing fitted is
+	 * written there, so the note says that instead.
 	 */
 	const fitNote = $derived.by(() => {
 		const device = devicePeqStore.knownDevice?.name ?? '';
-		if (!eqConstraintStore.editable || !eqConstraintStore.fitted) return null;
+		if (!eqConstraintStore.editable || !eqConstraintStore.fitted || builtIn) return null;
 		if (eqStore.filters.length === 0) return m.eq_empty_fixed({ device, count: maxBands });
 		const { misfits, missing } = eqConstraintStore;
 		if (misfits > 0) return m.eq_misfits({ count: misfits, device });
@@ -75,8 +87,14 @@
 		</div>
 	{/if}
 
+	{#if builtIn}
+		<p class="mx-3.5 mt-1 mb-4 rounded-lg bg-base-content/5 px-3 py-2 text-xs touch:text-sm">
+			{m.eq_builtin({ device: devicePeqStore.knownDevice?.name ?? '' })}
+		</p>
+	{/if}
+
 	{#if eqStore.filters.length === 0}
-		{#if !fitNote}
+		{#if !fitNote && !builtIn}
 			<p class="px-4 py-3 text-sm text-base-content/70">{m.bands_empty()}</p>
 		{/if}
 	{:else}

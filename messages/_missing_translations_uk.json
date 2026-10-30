@@ -45,6 +45,7 @@
 	"device_control_restart_reconnect": "Changed {control}. The device restarted; reconnect to carry on.",
 	"settings_database_checked": "Last checked online",
 	"settings_database_never_checked": "Never; using the copy built into the app",
+	"eq_builtin": "This is one of {device}'s built-in presets, so it isn't fitted or written. Pick a user preset to change its bands.",
 	"android_link_channel": "modernGraphTool link",
 	"android_link_notification": "Linked with {host}",
 	"android_link_notification_device": "Linked with {host} · {device}",
