@@ -107,9 +107,16 @@ phone). `DeviceControls.svelte`, a "Device settings" section in the data's order
 find it, and the sync bar offers Reconnect, which can't find it either (the panel then offers
 Connect, through the chooser). GAME keeps the identity, so its restart already reopens.
 
-- [ ] After a `reconnect` control: try `reopen` against each of the profile's `match.usb`
-      entries, else the chooser (Connect gives the user activation). On the web the new identity
-      isn't granted until the chooser has offered it once.
+- [x] eqcaps: `grantedHidDevice` and `waitForGrantedHidDevice` take several identities
+      (`0d89efc`, packed as `0.2.5-dev.5`).
+- [x] `reopenHid`, `reopenNative` and the Android attach check look for every exact identity in
+      the profile's `match.usb`, the connected one first (`usb-identities.ts`).
+- [x] On the web, Reconnect (a click) falls back to the chooser when the device is back under an
+      identity the site wasn't granted; once granted, later switches reopen on their own. Not from
+      the link or an Android attach, which have no click.
+- [ ] Try it on the DS3: UAC 2.0 → 1.0 → 2.0 in the browser (first time through the chooser, then
+      on its own) and on Android. The chooser offers `20b1:80d5` only with eqcaps data that lists
+      it (the bundled snapshot doesn't yet).
 
 ## 3. Button sizes
 
@@ -151,7 +158,7 @@ Connect, through the chooser). GAME keeps the identity, so its restart already r
 2. Active preset in uniPEQ. Done; to try on the DS3.
 3. Button rule and fixes. Done; to look at on a device.
 4. Controls plumbing and UI. Done; to try on the DS3.
-5. The UAC reconnect path. ← next
+5. The UAC reconnect path. Done; to try on the DS3.
 
 Before a commit, `package.json` goes from the `file:` tarballs back to an npm version (eqcaps
 released), as AGENTS.md says.

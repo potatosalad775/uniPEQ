@@ -254,6 +254,9 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
   the ones the device has now, named by `role` (`device-peq/controls.ts`).
 - **A control that restarts the device** (`reconnect`) asks first, then is followed as a save
   that restarts: the device is closed, waited for and reopened, or the sync bar offers Reconnect.
+  Some come back under other USB ids (the DS3's USB mode), so reopening looks for every exact
+  identity the profile lists (`device-peq/usb-identities.ts`). On the web an identity the site
+  was never granted is only found through the chooser, so Reconnect, being a click, opens it.
 - **A value that stops the EQ applying** (`disablesEq`, the DS3's upsampling) is said under the
   control and in the sync bar, above everything but a failure. The app doesn't change it back on
   its own: controls are written only on the user's change.

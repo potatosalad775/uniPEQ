@@ -11,10 +11,12 @@ import { devicePeqService } from './device-peq-service.svelte';
 
 const connect = vi.hoisted(() => ({
 	drivableNative: vi.fn(async () => true),
-	connectNativeHid: vi.fn(async (): Promise<unknown> => ({ kind: 'cancelled' }))
+	connectNativeHid: vi.fn(async (): Promise<unknown> => ({ kind: 'cancelled' })),
+	connectHid: vi.fn(async (): Promise<unknown> => ({ kind: 'cancelled' }))
 }));
+const native = vi.hoisted(() => ({ isNative: true }));
 
-vi.mock('#lib/platform/native.js', () => ({ isNative: true }));
+vi.mock('#lib/platform/native.js', () => native);
 vi.mock('#lib/device-peq/connect.js', () => connect);
 
 const DAC: NativeUsbDevice = {
@@ -564,6 +566,56 @@ describe('devicePeqService device controls', () => {
 		expect(devicePeqStore.statusMessage).toBe(
 			'Changed USB mode. The device restarted and is connected again.'
 		);
+	});
+
+	it('on Android, reopens a device that attaches under its other USB identity', async () => {
+		const { conn } = await connectDs3();
+		conn.reopen = vi.fn(async () => null);
+		await devicePeqService.setControl('uacMode', 1);
+		const again = ds3Connection({ uacMode: 1, gameMode: 0, volume: 24, led: 1 });
+		conn.reopen = vi.fn(async () => again.conn);
+		const uac1 = { vendorId: 0x20b1, productId: 0x80d5, productName: 'Fosi Audio DS3' };
+		await devicePeqService.usbAttached({ ...DAC, ...uac1 });
+		expect(devicePeqStore.connection).toBe(again.conn);
+	});
+
+	describe('in the browser', () => {
+		beforeEach(() => void connect.connectHid.mockClear());
+		afterEach(() => void (native.isNative = true));
+
+		async function notFoundAfterUsbMode() {
+			const { conn } = await connectDs3();
+			native.isNative = false;
+			conn.reopen = vi.fn(async () => null);
+			await devicePeqService.setControl('uacMode', 1);
+			return conn;
+		}
+
+		it('asks through the chooser when Reconnect is clicked and the device is not granted', async () => {
+			await notFoundAfterUsbMode();
+			const again = ds3Connection({ uacMode: 1, gameMode: 0, volume: 24, led: 1 });
+			connect.connectHid.mockResolvedValueOnce({ kind: 'connected', connection: again.conn });
+			await devicePeqService.reconnect({ choose: true });
+			expect(connect.connectHid).toHaveBeenCalledOnce();
+			expect(devicePeqStore.connection).toBe(again.conn);
+			expect(devicePeqStore.controlValues.uacMode).toBe(1);
+		});
+
+		it('says to reconnect when the chooser is cancelled', async () => {
+			await notFoundAfterUsbMode();
+			await devicePeqService.reconnect({ choose: true });
+			expect(devicePeqStore.connection).toBeNull();
+			expect(devicePeqStore.statusMessage).toBe(
+				"Couldn't find the device again. Plug it in and connect."
+			);
+		});
+
+		it('never opens the chooser without a click', async () => {
+			await notFoundAfterUsbMode();
+			await devicePeqService.reconnect();
+			expect(connect.connectHid).not.toHaveBeenCalled();
+			expect(devicePeqStore.connection).toBeNull();
+		});
 	});
 
 	it('offers Reconnect when a device that restarted for a control is not found', async () => {

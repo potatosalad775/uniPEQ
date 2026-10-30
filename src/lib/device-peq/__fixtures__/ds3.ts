@@ -63,6 +63,13 @@ export const DS3_CONTROLS: Control[] = [
 	{ id: 'led', name: 'LED', kind: 'toggle', role: 'light' }
 ];
 
+/** UAC 2.0, then UAC 1.0, as eqcaps lists them: the DS3 changes its USB ids with its USB mode. */
+export const DS3_USB = [
+	{ vendorId: '0x152a', productId: '0x889b', productName: 'Fosi Audio DS3' },
+	{ vendorId: '0x20b1', productId: '0x80d5', productName: 'Fosi Audio DS3' },
+	{ vendorId: '0x152a', productName: 'Fosi Audio DS3' }
+];
+
 /** A connected DS3 holding `values` (what its controls are set to), on `firmware`. */
 export function ds3Connection(
 	values: Record<string, number> = {
@@ -75,7 +82,11 @@ export function ds3Connection(
 	},
 	firmware = '1.6.10'
 ) {
-	const conn = fakeConnection(hardwareProfile('fosi-audio-ds3', { bandCount: 32 }), {
+	const profile = {
+		...hardwareProfile('fosi-audio-ds3', { bandCount: 32 }),
+		match: { usb: DS3_USB }
+	};
+	const conn = fakeConnection(profile, {
 		readsFirmware: true,
 		controls: DS3_CONTROLS
 	});

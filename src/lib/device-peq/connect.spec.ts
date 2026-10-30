@@ -255,11 +255,35 @@ describe('connectHid', () => {
 		browser.grantedHidDevice.mockResolvedValue(hid(0x3302, 0xc20f, 'Protocol Micro'));
 		const again = await result.connection.reopen?.();
 		expect(again?.profileId).toBe('crinear-protocol-micro');
-		expect(browser.grantedHidDevice).toHaveBeenCalledWith({
-			vendorId: 0x3302,
-			productId: 0xc20f,
-			productName: 'Protocol Micro'
+		expect(browser.grantedHidDevice).toHaveBeenCalledWith([
+			{ vendorId: 0x3302, productId: 0xc20f, productName: 'Protocol Micro' }
+		]);
+	});
+
+	it('looks for a device under every identity its profile lists, its own first', async () => {
+		const e = entry('fosi-audio-ds3');
+		client.loadProfile.mockResolvedValueOnce({
+			...hardwareProfile('fosi-audio-ds3', { bandCount: 32 }),
+			match: {
+				usb: [
+					{ vendorId: '0x152a', productId: '0x889b', productName: 'Fosi Audio DS3' },
+					{ vendorId: '0x20b1', productId: '0x80d5', productName: 'Fosi Audio DS3' },
+					{ vendorId: '0x152a', productName: 'Fosi Audio DS3' }
+				]
+			}
 		});
+		browser.requestHidDevice.mockResolvedValue(hid(0x20b1, 0x80d5, 'Fosi Audio DS3'));
+		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		const result = await connectHid();
+		if (result.kind !== 'connected') throw new Error('expected a connection');
+
+		browser.waitForGrantedHidDevice.mockResolvedValue(hid(0x152a, 0x889b, 'Fosi Audio DS3'));
+		const again = await result.connection.reopen?.({ timeoutMs: 5000 });
+		expect(browser.waitForGrantedHidDevice.mock.calls[0]?.[0]).toEqual([
+			{ vendorId: 0x20b1, productId: 0x80d5, productName: 'Fosi Audio DS3' },
+			{ vendorId: 0x152a, productId: 0x889b, productName: 'Fosi Audio DS3' }
+		]);
+		expect(again?.identity.usb?.productId).toBe('0x889b');
 	});
 
 	it('waits for a device restarting to save, skipping its old handle, every time', async () => {
@@ -273,7 +297,7 @@ describe('connectHid', () => {
 		const onEvent = vi.fn();
 		const again = await result.connection.reopen?.({ timeoutMs: 5000, onEvent });
 		expect(browser.waitForGrantedHidDevice).toHaveBeenCalledWith(
-			{ vendorId: 0x31b2, productId: 0x1123, productName: 'TANCHJIM-FOLA' },
+			[{ vendorId: 0x31b2, productId: 0x1123, productName: 'TANCHJIM-FOLA' }],
 			{ timeoutMs: 5000, ignoreCurrent: true, reuseAfterMs: 1500, onEvent }
 		);
 		// Reopened, it can be reopened again after the next save.

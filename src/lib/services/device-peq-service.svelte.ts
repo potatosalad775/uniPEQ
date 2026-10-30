@@ -21,6 +21,7 @@ import {
 import { controlLabel } from '#lib/device-peq/controls.js';
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
 import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
+import { sameUsb, usbIdentities } from '#lib/device-peq/usb-identities.js';
 import { derivePreamp } from '#lib/eq/eq-preamp.js';
 import { fromCapsFilter, type EqFilter } from '#lib/eq/model.js';
 import { headroomPreamp } from '#lib/eq/preamp-control.js';
@@ -335,8 +336,12 @@ class DevicePeqService {
 		});
 	}
 
-	/** After the device dropped (or restarted to save): find it again without a chooser. */
-	async reconnect(): Promise<void> {
+	/**
+	 * After the device dropped (or restarted to save): find it again without a chooser. In the
+	 * browser, a device back under a USB identity the site was never granted (the DS3 after a USB
+	 * mode switch) is only found through the chooser, so a click (`choose`) opens it then.
+	 */
+	async reconnect({ choose = false } = {}): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn) return;
 		devicePeqStore.isConnecting = true;
@@ -345,7 +350,13 @@ class DevicePeqService {
 			if (again) await this.#finishReopen(again);
 			else {
 				devicePeqStore.setDisconnected();
-				devicePeqStore.setStatus(m.device_peq_status_reconnect_manual());
+				if (choose && !isNative && conn.connectionType === 'hid') {
+					logger.info(`${conn.name} not granted as it is now, asking through the chooser`);
+					await this.connect('hid');
+				}
+				if (!devicePeqStore.connection && !this.choice && !this.notFound) {
+					devicePeqStore.setStatus(m.device_peq_status_reconnect_manual());
+				}
 			}
 		} catch (e) {
 			this.fail(e, 'reconnect');
@@ -394,12 +405,8 @@ class DevicePeqService {
 	async usbAttached(device: NativeUsbDevice): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (conn && devicePeqStore.needsReconnect && !devicePeqStore.isConnecting) {
-			const usb = conn.identity.usb;
-			const same =
-				!!usb?.productId &&
-				parseInt(usb.vendorId, 16) === device.vendorId &&
-				parseInt(usb.productId, 16) === device.productId &&
-				usb.productName === device.productName;
+			// Back as any identity it has: the DS3's changes with its USB mode.
+			const same = usbIdentities(conn.identity.usb, conn.profile).some((i) => sameUsb(i, device));
 			if (same) {
 				logger.info(`${conn.name} attached again, reconnecting`);
 				await this.reconnect();

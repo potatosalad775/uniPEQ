@@ -46,6 +46,7 @@ import {
 } from '#lib/transports/native/native-hid-transport.js';
 import { DEMO_PROFILE, DemoHidTransport, demoDac } from './demo';
 import type { DeviceCandidate, DeviceConnection, ProfileSource, ReopenWait } from './types';
+import { sameUsb, usbIdentities } from './usb-identities';
 
 export type BridgeConnectionType = 'hid' | 'serial' | 'ble';
 
@@ -333,14 +334,7 @@ export async function connectHid(): Promise<ConnectResult> {
 		pickFrom: [],
 		reopen: (r) => {
 			if (!usb?.productId || usb.productName === undefined) return undefined;
-			return reopenHid(
-				{
-					vendorId: parseInt(usb.vendorId, 16),
-					productId: parseInt(usb.productId, 16),
-					productName: usb.productName
-				},
-				r
-			);
+			return reopenHid(usbIdentities(usb, r.profile), r);
 		}
 	});
 }
@@ -353,10 +347,14 @@ export async function connectHid(): Promise<ConnectResult> {
 const REUSE_HANDLE_MS = 1500;
 
 /**
- * Finds a granted WebHID device again, and gives the connection it comes back as the same
- * `reopen`, so a device that restarts on every save can be reopened after each one.
+ * Finds a granted WebHID device again, as any of its `identities`, and gives the connection it
+ * comes back as the same `reopen`, so a device that restarts on every save can be reopened after
+ * each one. One that came back under a new identity is only found once the chooser has offered it.
  */
-function reopenHid(identity: HidIdentity, r: Resolved): NonNullable<DeviceConnection['reopen']> {
+function reopenHid(
+	identity: readonly HidIdentity[],
+	r: Resolved
+): NonNullable<DeviceConnection['reopen']> {
 	const reopen = async (wait?: ReopenWait) => {
 		const again = wait
 			? await waitForGrantedHidDevice(identity, {
@@ -468,15 +466,14 @@ async function openNative(
 }
 
 /**
- * Finds an attached device again by vendor id, product id and product name. Android grants USB
- * permission per attach, so a device back from a restart asks for it again. `reopenNative(…)(path)`
- * is the `reopen` of the connection at `path`; the connection it reopens gets its own.
+ * Finds an attached device again by vendor id, product id and product name, as any of the
+ * identities its profile lists. Android grants USB permission per attach, so a device back from a
+ * restart asks for it again. `reopenNative(…)(path)` is the `reopen` of the connection at `path`;
+ * the connection it reopens gets its own.
  */
 function reopenNative(match: NativeUsbDevice, r: Resolved, plugin?: DeviceIoPlugin) {
-	const same = (d: NativeUsbDevice) =>
-		d.vendorId === match.vendorId &&
-		d.productId === match.productId &&
-		d.productName === match.productName;
+	const identities = usbIdentities(nativeIdentity(match).usb, r.profile);
+	const same = (d: NativeUsbDevice) => identities.some((i) => sameUsb(i, d));
 	const open = async (d: NativeUsbDevice): Promise<DeviceConnection | null> => {
 		if (!d.hasPermission) {
 			const { granted } = await (plugin ?? DeviceIo).requestPermission({

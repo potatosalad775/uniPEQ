@@ -59,7 +59,7 @@
 
 	function act(action: SyncAction) {
 		if (action === 'connect') onConnect?.();
-		else if (action === 'reconnect') void devicePeqService.reconnect();
+		else if (action === 'reconnect') void devicePeqService.reconnect({ choose: true });
 		else if (action === 'read') void devicePeqService.read();
 		else void devicePeqService.requestWrite();
 	}

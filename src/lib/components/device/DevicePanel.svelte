@@ -352,7 +352,7 @@
 					size="sm"
 					variant="outline"
 					disabled={devicePeqStore.isConnecting}
-					onclick={() => devicePeqService.reconnect()}
+					onclick={() => devicePeqService.reconnect({ choose: true })}
 				>
 					{m.device_peq_reconnect()}
 				</Button>
