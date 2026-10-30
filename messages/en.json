@@ -134,6 +134,7 @@
 	"device_control_restarting": "Changed {control}. The device restarts; reconnecting…",
 	"device_control_restarted": "Changed {control}. The device restarted and is connected again.",
 	"device_control_restart_reconnect": "Changed {control}. The device restarted; reconnect to carry on.",
+	"device_control_restart_choose": "Changed {control}. The device restarted; reconnect, and pick it again if the browser asks.",
 	"device_peq_choose_device_prompt": "Several devices are attached. Pick one.",
 	"device_peq_choose_cancel": "Cancel",
 	"bands_label": "Bands",

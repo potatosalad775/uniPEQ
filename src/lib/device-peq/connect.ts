@@ -30,7 +30,9 @@ import {
 	requestHidDevice,
 	requestSerialPort,
 	waitForGrantedHidDevice,
-	type HidIdentity
+	type HidDeviceLike,
+	type HidIdentity,
+	type HidLike
 } from '@potatosalad775/eqcaps-device-bridge/browser';
 import * as m from '#lib/paraglide/messages.js';
 import { eqcapsClient } from '#lib/services/eqcaps-client.js';
@@ -356,6 +358,7 @@ function reopenHid(
 	r: Resolved
 ): NonNullable<DeviceConnection['reopen']> {
 	const reopen = async (wait?: ReopenWait) => {
+		const watch = wait ? watchHid() : null;
 		const again = wait
 			? await waitForGrantedHidDevice(identity, {
 					timeoutMs: wait.timeoutMs,
@@ -364,9 +367,50 @@ function reopenHid(
 					...(wait.onEvent ? { onEvent: wait.onEvent } : {})
 				})
 			: await grantedHidDevice(identity);
+		if (!again && watch) await watch.missed(identity);
 		return again ? connection('hid', again, r, reopen) : null;
 	};
 	return reopen;
+}
+
+/** How long after a restart every HID device the browser reports is logged, ms. */
+const WATCH_HID_MS = 30_000;
+
+const hidLabel = (d: { vendorId: number; productId: number; productName: string }) =>
+	`${usbHex(d.vendorId)}:${usbHex(d.productId)} "${d.productName}"`;
+
+/**
+ * For the log, when a device restarting isn't found: every HID connect and disconnect the browser
+ * reports for a while (only granted devices are reported), and what is granted when the wait gives
+ * up. Tells a device that is slow to come back from one back under an identity not looked for, or
+ * not granted.
+ */
+function watchHid() {
+	const hid =
+		typeof navigator !== 'undefined' ? (navigator as Navigator & { hid?: HidLike }).hid : undefined;
+	const start = performance.now();
+	const on = (what: string) => (e: { device: HidDeviceLike }) =>
+		logger.info(
+			`HID ${what} at ${Math.round(performance.now() - start)} ms: ${hidLabel(e.device)}`
+		);
+	const connected = on('connect');
+	const disconnected = on('disconnect');
+	hid?.addEventListener?.('connect', connected);
+	hid?.addEventListener?.('disconnect', disconnected);
+	setTimeout(() => {
+		hid?.removeEventListener?.('connect', connected);
+		hid?.removeEventListener?.('disconnect', disconnected);
+	}, WATCH_HID_MS);
+	return {
+		async missed(identity: readonly HidIdentity[]) {
+			const granted = (await hid?.getDevices().catch(() => [])) ?? [];
+			logger.warn(
+				`looked for ${identity.map(hidLabel).join(', ')}; granted now: ` +
+					(granted.map(hidLabel).join(', ') || 'none') +
+					`; HID connects in the next ${WATCH_HID_MS / 1000} s are logged`
+			);
+		}
+	};
 }
 
 /**

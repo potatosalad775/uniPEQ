@@ -332,7 +332,11 @@ class DevicePeqService {
 		await this.#awaitRestart(conn, {
 			waiting: m.device_control_restarting({ control: name }),
 			back: m.device_control_restarted({ control: name }),
-			manual: m.device_control_restart_reconnect({ control: name })
+			// A device without a USB serial number loses its browser grant when it re-enumerates (the
+			// DS3 on every USB mode switch), so Reconnect may come to the chooser.
+			manual: isNative
+				? m.device_control_restart_reconnect({ control: name })
+				: m.device_control_restart_choose({ control: name })
 		});
 	}
 

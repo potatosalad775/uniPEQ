@@ -134,6 +134,7 @@
 	"device_control_restarting": "{control} 설정을 변경했습니다. 기기가 재시작되어 다시 연결하는 중입니다.",
 	"device_control_restarted": "{control} 설정을 변경했습니다. 기기가 재시작되어 다시 연결되었습니다.",
 	"device_control_restart_reconnect": "{control} 설정을 변경했습니다. 기기가 재시작되었으므로, 계속하려면 다시 연결하세요.",
+	"device_control_restart_choose": "{control} 설정을 변경했습니다. 기기가 재시작되었으므로, 다시 연결하세요. 브라우저가 물으면 기기를 다시 고르세요.",
 	"device_peq_choose_device_prompt": "여러 기기가 연결되어 있습니다. 하나를 고르세요.",
 	"device_peq_choose_cancel": "취소",
 	"bands_label": "밴드",

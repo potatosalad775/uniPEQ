@@ -43,6 +43,7 @@
 	"device_control_restarting": "Changed {control}. The device restarts; reconnecting…",
 	"device_control_restarted": "Changed {control}. The device restarted and is connected again.",
 	"device_control_restart_reconnect": "Changed {control}. The device restarted; reconnect to carry on.",
+	"device_control_restart_choose": "Changed {control}. The device restarted; reconnect, and pick it again if the browser asks.",
 	"settings_database_checked": "Last checked online",
 	"settings_database_never_checked": "Never; using the copy built into the app",
 	"eq_builtin": "This is one of {device}'s built-in presets, so it isn't fitted or written. Pick a user preset to change its bands.",

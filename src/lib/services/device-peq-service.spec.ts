@@ -612,6 +612,9 @@ describe('devicePeqService device controls', () => {
 
 		it('never opens the chooser without a click', async () => {
 			await notFoundAfterUsbMode();
+			expect(devicePeqStore.statusMessage).toBe(
+				'Changed USB mode. The device restarted; reconnect, and pick it again if the browser asks.'
+			);
 			await devicePeqService.reconnect();
 			expect(connect.connectHid).not.toHaveBeenCalled();
 			expect(devicePeqStore.connection).toBeNull();
