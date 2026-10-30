@@ -2,13 +2,16 @@
 // Builds the app and installs it on a connected phone or emulator, in one step:
 // web build → `cap sync android` → Gradle `assembleDebug` → `adb install -r` → launch.
 //
-//   npm run android -- [--release | --sideload] [--serial <id>] [--skip-web] [--no-launch]
+//   npm run android -- [--release | --sideload] [--eqcaps] [--serial <id>] [--skip-web]
+//                      [--no-launch]
 //
 //   --release      the signed release APK instead of the debug one (built by android-release.mjs
 //                  --apk, so it needs android/key.properties). Same app id as debug but another
 //                  key: uninstall one before installing the other.
 //   --sideload     the GitHub sideload APK (android-release.mjs --sideload): its own app id, so it
 //                  installs beside the debug or Play app
+//   --eqcaps       the debug app on eqcaps data built from ../eqcaps (or EQCAPS_DIR), copied into
+//                  the APK: devices and USB ids not published yet (scripts/local-eqcaps.ts)
 //   --serial <id>  the adb device to use when several are connected (`adb devices` lists them)
 //   --skip-web     reuse the last web build in dist/ (only native code changed; for --release and
 //                  --sideload it must be a release build of the same kind)
@@ -18,7 +21,7 @@
 // Gradle picks its own JDK (Zulu 21, see CLAUDE.md), so JAVA_HOME doesn't matter.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +41,22 @@ const sideload = has('sideload');
 if (release && sideload) {
 	console.error('✖ Pick one of --release and --sideload.');
 	process.exit(1);
+}
+const eqcaps = has('eqcaps');
+if (eqcaps && (release || sideload)) {
+	console.error('✖ --eqcaps is for the debug app only.');
+	process.exit(1);
+}
+
+/** The local eqcaps data, built and copied into the web build at the path the client reads. */
+async function copyEqcapsData() {
+	const { buildEqcapsData, eqcapsSite, EQCAPS_ROUTE } = await import('./local-eqcaps.ts');
+	console.log('\n▶ eqcaps data');
+	if (!(await buildEqcapsData())) process.exit(1);
+	const out = join(root, 'dist', ...EQCAPS_ROUTE.split('/').filter(Boolean));
+	rmSync(out, { recursive: true, force: true });
+	cpSync(eqcapsSite, out, { recursive: true });
+	console.log(`Copied ${eqcapsSite} to ${out}`);
 }
 const appId = sideload ? `${APP_ID}.sideload` : APP_ID;
 
@@ -129,7 +148,11 @@ if (release || sideload) {
 	apk = join(apkDir, 'release', 'app-release.apk');
 } else {
 	// Debug mode: the demo device and the DEBUG badge, as in `npm run dev` (src/lib/platform/build.ts).
-	if (!skipWeb.length) step('Web build', 'npm', ['run', 'build', '--', '--mode', 'debug']);
+	// The eqcaps mode is a debug build too, on the local data.
+	if (!skipWeb.length) {
+		step('Web build', 'npm', ['run', 'build', '--', '--mode', eqcaps ? 'eqcaps' : 'debug']);
+	}
+	if (eqcaps) await copyEqcapsData();
 	step('Capacitor sync', 'npx', ['cap', 'sync', 'android']);
 	step('Gradle assembleDebug', windows ? 'gradlew.bat' : './gradlew', ['assembleDebug'], {
 		cwd: join(root, 'android')

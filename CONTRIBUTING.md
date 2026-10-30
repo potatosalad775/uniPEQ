@@ -43,7 +43,8 @@ Before a pull request: `npm run check`, `npm run lint` and `npm test`. CI runs t
 
 To try unreleased eqcaps changes, install the tarballs from `npm run release -- <version> --pack`
 in eqcaps. Never a `file:` link. For unreleased device data (a new device, a USB id the published
-data lacks), `npm run dev:eqcaps` serves the checkout's data from the dev server; no tarball needed.
+data lacks), `npm run dev:eqcaps` serves the checkout's data from the dev server, and
+`npm run android -- --eqcaps` copies it into a debug APK; no tarball needed.
 
 ## Translating
 
