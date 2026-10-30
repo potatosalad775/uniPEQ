@@ -114,6 +114,9 @@ Connect, through the chooser). GAME keeps the identity, so its restart already r
 - [x] On the web, Reconnect (a click) falls back to the chooser when the device is back under an
       identity the site wasn't granted; once granted, later switches reopen on their own. Not from
       the link or an Android attach, which have no click.
+- [x] Found on the DS3: it drops off USB before `sendReport` of the USB mode switch returns, so the
+      write failed and nothing waited for it. eqcaps `3ca5d93` (`0.2.5-dev.6`): a transport error
+      in a `reconnect` control's write is the restart.
 - [ ] Try it on the DS3: UAC 2.0 → 1.0 → 2.0 in the browser (first time through the chooser, then
       on its own) and on Android. The chooser offers `20b1:80d5` only with eqcaps data that lists
       it (the bundled snapshot doesn't yet).
