@@ -79,7 +79,7 @@
 
 	<!-- Nothing refits the list on its own: it only says what doesn't fit, and Fit is the user's call. -->
 	{#if fitNote}
-		<div class="mx-3.5 mt-1 mb-4 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
+		<div class="mx-3.5 my-1 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2">
 			<p class="min-w-0 flex-1 text-xs touch:text-sm">{fitNote}</p>
 			<Button title={m.eq_fit_title()} size="sm" variant="outline" class="shrink-0" onclick={fit}>
 				{eqStore.filters.length === 0 ? m.eq_start_flat() : m.eq_fit()}
@@ -88,7 +88,7 @@
 	{/if}
 
 	{#if builtIn}
-		<p class="mx-3.5 mt-1 mb-4 rounded-lg bg-base-content/5 px-3 py-2 text-xs touch:text-sm">
+		<p class="mx-3.5 my-1 rounded-lg bg-base-content/5 px-3 py-2 text-xs touch:text-sm">
 			{m.eq_builtin({ device: devicePeqStore.knownDevice?.name ?? '' })}
 		</p>
 	{/if}

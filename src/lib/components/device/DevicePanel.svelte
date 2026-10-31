@@ -45,7 +45,6 @@
 	let chosenId = $derived(devicePeqService.choice?.candidates[0]?.id ?? '');
 
 	// ── Device EQ: what the device plays, and what Read reaches ──────────────
-
 	const eqOptions = $derived.by(() => {
 		if (!caps) return [];
 		const out: { value: string; label: string; disabled?: boolean }[] = [];
@@ -99,7 +98,7 @@
 		connection?.profileId && !isDemo ? PROFILE_URL + encodeURIComponent(connection.profileId) : null
 	);
 	const hasNotices = $derived(
-		isDemo || noticesWarn || connection?.profileSource === 'group' || isWriteOnly || !!profileUrl
+		isDemo || noticesWarn || connection?.profileSource === 'group' || isWriteOnly
 	);
 
 	/** How far the profile's limits are confirmed (eqcaps `meta.status`), as a badge. */
@@ -158,7 +157,9 @@
 <section
 	aria-labelledby={heading ? 'device-heading' : undefined}
 	aria-label={heading ? undefined : m.device_peq_label()}
-	class="flex flex-col gap-3 {heading ? 'rounded-xl bg-base-100 p-4' : ''}"
+	class="flex flex-col gap-3 {heading
+		? 'rounded-xl bg-base-100 p-4 wide:rounded-r-none wide:pb-px'
+		: ''}"
 >
 	{#if heading}
 		<h2 id="device-heading" class="text-sm font-semibold">{m.device_peq_label()}</h2>
@@ -269,17 +270,6 @@
 					{limitsSummary}{#if devicePeqStore.firmware}
 						· {m.device_peq_firmware({ version: devicePeqStore.firmware })}{/if}
 				</p>
-				<p class="mt-1.5 flex flex-wrap gap-1">
-					{#if statusBadge}
-						<Badge tone={statusBadge.tone}>{statusBadge.text}</Badge>
-					{/if}
-					{#if isExperimental}
-						<Badge tone="warning">
-							<FlaskConical class="size-3" aria-hidden="true" />
-							{m.device_peq_experimental_badge()}
-						</Badge>
-					{/if}
-				</p>
 			</div>
 			<Button
 				title={m.device_peq_disconnect()}
@@ -290,6 +280,29 @@
 			>
 				{m.device_peq_disconnect()}
 			</Button>
+		</div>
+
+		<!-- Device profile status and urls -->
+		<div class="-mt-1 flex flex-wrap items-center gap-1 gap-x-3">
+			{#if statusBadge}
+				<Badge tone={statusBadge.tone}>{statusBadge.text}</Badge>
+			{/if}
+			{#if isExperimental}
+				<Badge tone="warning">
+					<FlaskConical class="size-3" aria-hidden="true" />
+					{m.device_peq_experimental_badge()}
+				</Badge>
+			{/if}
+			{#if profileUrl}
+				<p class="flex flex-wrap text-xs touch:text-sm">
+					{@render link(profileUrl, m.device_peq_view_profile())}
+				</p>
+				{#if reportUrl && !isDraft}
+					<p class="flex flex-wrap text-xs touch:text-sm">
+						{@render link(reportUrl, m.device_peq_report_limits())}
+					</p>
+				{/if}
+			{/if}
 		</div>
 
 		<!-- What's worth knowing about the profile, as text rather than behind a popover. -->
@@ -327,15 +340,6 @@
 					{#if isWriteOnly}
 						<p>{m.device_peq_write_only()}</p>
 					{/if}
-					{#if profileUrl}
-						<p class="flex flex-wrap gap-x-3">
-							{@render link(profileUrl, m.device_peq_view_profile())}
-							{#if reportUrl && !isDraft}{@render link(
-									reportUrl,
-									m.device_peq_report_limits()
-								)}{/if}
-						</p>
-					{/if}
 				</div>
 			</div>
 		{/if}
@@ -358,89 +362,94 @@
 				</Button>
 			</div>
 		{:else}
-			<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
-				{#if hasPresets}
-					<SelectMenu
-						label={eqLabel}
-						value={eqValue}
-						options={eqChoices}
-						onValueChange={(next) => void devicePeqService.switchTo(next)}
-					>
-						{#snippet trigger(props)}
-							<ListRow
-								label={eqLabel}
-								description={caps?.canEnable ? m.device_peq_eq_hint() : m.device_peq_preset_hint()}
-								disabled={devicePeqStore.isBusy}
-								buttonProps={props}
-							>
-								{#snippet trailing()}
-									<span class="max-w-32 truncate">{eqCurrentLabel}</span>
-									<ChevronDown class="ml-1 size-4" aria-hidden="true" />
-								{/snippet}
-							</ListRow>
-						{/snippet}
-					</SelectMenu>
-				{:else if hasOnOff}
-					<ListRow label={m.device_peq_eq_label()} for="device-eq-on">
-						{#snippet trailing()}
-							<Switch
-								id="device-eq-on"
-								bind:checked={
-									() => devicePeqStore.eqEnabled !== false,
-									(on) => void devicePeqService.switchTo(on ? 'on' : 'off')
-								}
-								disabled={devicePeqStore.isBusy}
-							/>
-						{/snippet}
-					</ListRow>
-				{/if}
-				{#if canAutoWrite}
-					<ListRow
-						label={m.device_peq_auto_write()}
-						description={m.settings_auto_write_hint()}
-						for="device-auto-write"
-					>
-						{#snippet trailing()}
-							<Switch
-								id="device-auto-write"
-								bind:checked={
-									() => devicePeqService.autoWriteOn, (on) => devicePeqService.setAutoWrite(on)
-								}
-							/>
-						{/snippet}
-					</ListRow>
-				{/if}
-			</div>
+			<section class="flex flex-col gap-2">
+				<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
+					{#if hasPresets}
+						<SelectMenu
+							label={eqLabel}
+							value={eqValue}
+							options={eqChoices}
+							onValueChange={(next) => void devicePeqService.switchTo(next)}
+						>
+							{#snippet trigger(props)}
+								<ListRow
+									label={eqLabel}
+									description={caps?.canEnable
+										? m.device_peq_eq_hint()
+										: m.device_peq_preset_hint()}
+									disabled={devicePeqStore.isBusy}
+									buttonProps={props}
+								>
+									{#snippet trailing()}
+										<span class="max-w-32 truncate">{eqCurrentLabel}</span>
+										<ChevronDown class="ml-1 size-4" aria-hidden="true" />
+									{/snippet}
+								</ListRow>
+							{/snippet}
+						</SelectMenu>
+					{:else if hasOnOff}
+						<ListRow label={m.device_peq_eq_label()} for="device-eq-on">
+							{#snippet trailing()}
+								<Switch
+									id="device-eq-on"
+									bind:checked={
+										() => devicePeqStore.eqEnabled !== false,
+										(on) => void devicePeqService.switchTo(on ? 'on' : 'off')
+									}
+									disabled={devicePeqStore.isBusy}
+								/>
+							{/snippet}
+						</ListRow>
+					{/if}
+					{#if canAutoWrite}
+						<ListRow
+							label={m.device_peq_auto_write()}
+							description={m.settings_auto_write_hint()}
+							for="device-auto-write"
+						>
+							{#snippet trailing()}
+								<Switch
+									id="device-auto-write"
+									bind:checked={
+										() => devicePeqService.autoWriteOn, (on) => devicePeqService.setAutoWrite(on)
+									}
+								/>
+							{/snippet}
+						</ListRow>
+					{/if}
+				</div>
 
-			<div class="flex gap-2">
-				{#if caps?.canRead}
-					<Button
-						title={readTarget ? m.device_peq_read_title() : m.device_peq_unreachable()}
-						variant="outline"
-						class="flex-1"
-						disabled={!readTarget || devicePeqStore.isBusy}
-						onclick={() => devicePeqService.read()}
-					>
-						{devicePeqStore.isReading ? m.device_peq_reading() : m.device_peq_read()}
-					</Button>
-				{/if}
-				{#if caps?.canWrite}
-					<Button
-						title={writeTarget
-							? m.device_peq_write_title()
-							: builtIn
-								? m.device_peq_builtin()
-								: m.device_peq_unreachable()}
-						class="flex-1"
-						disabled={!writeTarget || devicePeqStore.isBusy}
-						onclick={() => devicePeqService.requestWrite()}
-					>
-						{devicePeqStore.isWriting ? m.device_peq_writing() : m.device_peq_write()}
-					</Button>
-				{/if}
-			</div>
+				<div class="flex gap-2">
+					{#if caps?.canRead}
+						<Button
+							title={readTarget ? m.device_peq_read_title() : m.device_peq_unreachable()}
+							variant="outline"
+							class="flex-1"
+							disabled={!readTarget || devicePeqStore.isBusy}
+							onclick={() => devicePeqService.read()}
+						>
+							{devicePeqStore.isReading ? m.device_peq_reading() : m.device_peq_read()}
+						</Button>
+					{/if}
+					{#if caps?.canWrite}
+						<Button
+							title={writeTarget
+								? m.device_peq_write_title()
+								: builtIn
+									? m.device_peq_builtin()
+									: m.device_peq_unreachable()}
+							class="flex-1"
+							disabled={!writeTarget || devicePeqStore.isBusy}
+							onclick={() => devicePeqService.requestWrite()}
+						>
+							{devicePeqStore.isWriting ? m.device_peq_writing() : m.device_peq_write()}
+						</Button>
+					{/if}
+				</div>
 
-			<DeviceControls />
+				<!-- Device Controls. Such as USB mode, DAC filter, Volume, Gain, and more. -->
+				<DeviceControls />
+			</section>
 		{/if}
 	{/if}
 </section>

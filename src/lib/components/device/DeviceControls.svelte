@@ -51,7 +51,7 @@
 </script>
 
 {#if devicePeqStore.controls.length > 0}
-	<section aria-labelledby={headingId} class="flex flex-col gap-1">
+	<section aria-labelledby={headingId} class="flex flex-col gap-1 pt-4">
 		<h3 id={headingId} class="text-xs font-semibold tracking-wide text-primary uppercase">
 			{m.device_control_section()}
 		</h3>
