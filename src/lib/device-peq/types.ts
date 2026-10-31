@@ -127,3 +127,9 @@ export interface ReopenWait {
 	/** The browser (or Android) saw the device leave or come back, or kept it; for the log. */
 	onEvent?: (event: 'connect' | 'disconnect' | 'gone' | 'reused') => void;
 }
+
+/**
+ * A device operation under way. Each one is reported in the sync bar while it runs (`syncStatus`
+ * names it), so one added here can't run without the bar saying so.
+ */
+export type DeviceOperation = 'read' | 'write' | 'switch' | 'control';

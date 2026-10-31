@@ -9,7 +9,7 @@
  * that don't fit are flagged, never refitted: Fit is the user's call.
  */
 import { readRequest, writeRequest, type PresetRequest } from '#lib/device-peq/preset.js';
-import type { DeviceConnection, PeqCapabilities } from '#lib/device-peq/types.js';
+import type { DeviceConnection, DeviceOperation, PeqCapabilities } from '#lib/device-peq/types.js';
 import { eqFiltersEqual, type EqFilter } from '#lib/eq/model.js';
 import { eqDisabledBy, type Control, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
@@ -116,14 +116,17 @@ class DevicePeqStore {
 		return this.connection !== null && !this.needsReconnect;
 	}
 
+	/** The operation under way. A new `is…` flag belongs here, and so in `isBusy` and the sync bar. */
+	get operation(): DeviceOperation | null {
+		if (this.isReading) return 'read';
+		if (this.isWriting) return 'write';
+		if (this.isSwitching) return 'switch';
+		if (this.isControlling) return 'control';
+		return null;
+	}
+
 	get isBusy(): boolean {
-		return (
-			this.isConnecting ||
-			this.isReading ||
-			this.isWriting ||
-			this.isSwitching ||
-			this.isControlling
-		);
+		return this.isConnecting || this.operation !== null;
 	}
 
 	/** The controls the device has now, in the profile's order. */

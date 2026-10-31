@@ -4,8 +4,7 @@ import { syncStatus, type SyncInput } from './sync-status';
 const BASE: SyncInput = {
 	connected: true,
 	knownDevice: 'KA17',
-	reading: false,
-	writing: false,
+	operation: null,
 	needsReconnect: false,
 	reconnecting: false,
 	autoDueAt: null,
@@ -63,7 +62,25 @@ describe('syncStatus', () => {
 			tone: 'pending',
 			dueAt: 123
 		});
-		expect(status({ writing: true, autoDueAt: 123 })?.tone).toBe('busy');
+		expect(status({ operation: 'write', autoDueAt: 123 })?.tone).toBe('busy');
+	});
+
+	it('shows every operation under way', () => {
+		for (const operation of ['read', 'write', 'switch', 'control'] as const) {
+			expect(status({ operation, inSync: true })?.tone).toBe('busy');
+		}
+	});
+
+	it("says what was just done over the offer to read, and keeps the offer's buttons", () => {
+		expect(status({ message: 'Set Mic gain to 12 dB.' })).toEqual({
+			tone: 'muted',
+			text: 'Set Mic gain to 12 dB.',
+			actions: ['read', 'write']
+		});
+		expect(status({ inSync: true, message: 'Set Mic gain to 12 dB.' })).toMatchObject({
+			tone: 'success',
+			text: 'Set Mic gain to 12 dB.'
+		});
 	});
 
 	it('lets a failure outrank a waiting auto-write', () => {

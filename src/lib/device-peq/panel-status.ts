@@ -31,6 +31,11 @@ export interface PanelStatusInput {
 	builtIn: boolean;
 	/** Read or Write can't reach the preset Device EQ shows from where the device is. */
 	unreachable: boolean;
+	/**
+	 * The device's EQ is off. Then a device that reads or writes only where it is reaches no
+	 * preset, and what brings it back is the EQ switch, not picking another preset.
+	 */
+	eqOff?: boolean;
 	inSync: boolean | null;
 	/** A control set so that the device doesn't apply its EQ (upsampling, say), by its label. */
 	eqOffBy?: string | null;
@@ -47,7 +52,12 @@ export function panelStatus(s: PanelStatusInput): PanelStatus | null {
 		return { tone: 'warning', text: m.device_peq_auto_paused(), action: 'review' };
 	}
 	if (s.builtIn) return { tone: 'muted', text: m.device_peq_builtin() };
-	if (s.unreachable) return { tone: 'muted', text: m.device_peq_unreachable() };
+	if (s.unreachable) {
+		return {
+			tone: 'muted',
+			text: s.eqOff ? m.device_peq_unreachable_off() : m.device_peq_unreachable()
+		};
+	}
 	if (s.autoWriting && s.autoClipRisk) {
 		return { tone: 'warning', text: m.device_peq_push_clip_risk() };
 	}

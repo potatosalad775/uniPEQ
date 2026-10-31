@@ -564,10 +564,14 @@ describe('devicePeqService device controls', () => {
 	it('writes a control, then reads them all again', async () => {
 		const { conn } = await connectDs3();
 		const write = vi.spyOn(conn.device, 'writeControl');
-		await devicePeqService.setControl('volume', 30);
+		const setting = devicePeqService.setControl('volume', 30);
+		expect(devicePeqService.sync).toMatchObject({ tone: 'busy', text: 'Changing the setting…' });
+		await setting;
 		expect(write).toHaveBeenCalledWith('volume', 30);
 		expect(devicePeqStore.controlValues.volume).toBe(30);
 		expect(devicePeqStore.isBusy).toBe(false);
+		// The bar says what changed, not only whether the EQ matches.
+		expect(devicePeqService.sync?.text).toMatch(/^Set Volume to 30\b/);
 	});
 
 	it('says when a control stops the EQ applying', async () => {

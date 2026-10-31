@@ -18,7 +18,13 @@ import {
 	readLayout,
 	type PushPlan
 } from '#lib/device-peq/push-plan.js';
-import { controlLabel } from '#lib/device-peq/controls.js';
+import {
+	balanceLabel,
+	balanceOf,
+	balanceValue,
+	controlLabel,
+	controlValueLabel
+} from '#lib/device-peq/controls.js';
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
 import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
 import { sameUsb, usbIdentities } from '#lib/device-peq/usb-identities.js';
@@ -171,8 +177,7 @@ class DevicePeqService {
 		return syncStatus({
 			connected: !!store.connection,
 			knownDevice: store.knownDevice?.name ?? null,
-			reading: store.isReading,
-			writing: store.isWriting,
+			operation: store.operation,
 			needsReconnect: store.needsReconnect,
 			reconnecting: store.isConnecting,
 			autoDueAt: store.autoDueAt,
@@ -189,6 +194,7 @@ class DevicePeqService {
 				(!!caps?.canWrite && !builtIn && !store.writeTarget) ||
 				(!!caps?.canRead && !store.readTarget),
 			inSync: store.inSync,
+			eqOff: store.selection === 'off',
 			eqOffBy: store.eqOffBy[0] ? controlLabel(store.eqOffBy[0]) : null
 		});
 	}
@@ -342,7 +348,10 @@ class DevicePeqService {
 				logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
 				if (restarts) break;
 			}
-			if (!restarts) devicePeqStore.controlValues = await conn.device.readControls();
+			if (!restarts) {
+				devicePeqStore.controlValues = await conn.device.readControls();
+				devicePeqStore.setStatus(this.#controlSet(changes));
+			}
 		} catch (e) {
 			this.fail(e, 'control');
 			hapticError();
@@ -375,6 +384,25 @@ class DevicePeqService {
 			},
 			browser ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
 		);
+	}
+
+	/**
+	 * What a control write did, as the device now holds it: the balance as one value when the
+	 * changes were its two gains, else the last control changed.
+	 */
+	#controlSet(changes: [id: string, value: number][]): string {
+		const values = devicePeqStore.controlValues;
+		const balance = balanceOf(devicePeqStore.controls);
+		if (balance && changes.some(([id]) => id === balance.left.id || id === balance.right.id)) {
+			const value = balanceLabel(balance, balanceValue(balance, values));
+			return m.device_control_set({ control: m.device_control_balance(), value });
+		}
+		const [id, wrote] = changes[changes.length - 1];
+		const control = devicePeqStore.connection!.device.capabilities.controls.find(
+			(c) => c.id === id
+		)!;
+		const value = controlValueLabel(control, values[id] ?? wrote);
+		return m.device_control_set({ control: controlLabel(control), value });
 	}
 
 	/**

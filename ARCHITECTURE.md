@@ -217,6 +217,10 @@ changed:
 4. **One status line**: the EQ tab's sync bar (`device-peq/sync-status.ts`, ranked over
    `panel-status.ts`), also the live region screen readers hear. The device chip's dot repeats it.
    The modernGraphTool link shares the bar rather than adding a row (§10).
+   Every device operation (`DeviceOperation`: read, write, switch, control) shows busy there while
+   it runs, and its result after, even one that leaves the EQ alone ("Set Mic gain to 12 dB"); the
+   result stands for "in sync" until the list changes. `syncStatus` keys its busy text by the
+   operation, so a new one doesn't type-check until the bar can say it.
    No toast per write; a failure gets a toast and an error haptic.
 
 Writing:
@@ -249,7 +253,7 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
   a failed read leaves them unshown and the EQ works without them. Reading and writing the EQ never
   touches them.
 - **Written only when the user changes one** (`devicePeqService.setControl`; a slider when let
-  go), then all are read again: one control can decide which others exist (the DS3's USB mode
+  go), said in the sync bar as the value read back, then all are read again: one control can decide which others exist (the DS3's USB mode
   hides its DAC filter and shows its game mode). `DeviceControls` in the device panel shows only
   the ones the device has now, named by `role` (`device-peq/controls.ts`).
 - **A control that restarts the device** (`reconnect`) asks first, then is followed as a save

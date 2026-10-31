@@ -8,6 +8,7 @@
  */
 import * as m from '#lib/paraglide/messages.js';
 import { panelStatus, type PanelStatusInput } from './panel-status';
+import type { DeviceOperation } from './types';
 
 /** `busy`: a read or write is under way; `pending`: an auto-write is waiting to fire. */
 export type SyncTone = 'muted' | 'success' | 'warning' | 'error' | 'busy' | 'pending';
@@ -27,8 +28,8 @@ export interface SyncInput extends PanelStatusInput {
 	connected: boolean;
 	/** The device the EQ is edited for, still named after it disconnected; null before any. */
 	knownDevice: string | null;
-	reading: boolean;
-	writing: boolean;
+	/** The operation under way, or null. */
+	operation: DeviceOperation | null;
 	needsReconnect: boolean;
 	/** The device is being opened again (after it restarted to save, or the Reconnect press). */
 	reconnecting: boolean;
@@ -41,6 +42,14 @@ export interface SyncInput extends PanelStatusInput {
 	/** The list holds changes the device never got, from before a disconnect or a preset change. */
 	unwritten: boolean;
 }
+
+/** What the bar says while an operation runs: every operation has its line. */
+const BUSY: Record<DeviceOperation, () => string> = {
+	read: m.device_peq_reading,
+	write: m.device_peq_writing,
+	switch: m.device_peq_switching,
+	control: m.device_control_setting
+};
 
 /**
  * Null before any device: the bar hides, and the chip offers to connect. After a disconnect the
@@ -58,8 +67,7 @@ export function syncStatus(s: SyncInput): SyncStatus | null {
 		const text = s.message ?? m.device_peq_reconnect_prompt();
 		return { tone: s.messageIsError ? 'error' : 'warning', text, actions: ['reconnect'] };
 	}
-	if (s.writing) return { tone: 'busy', text: m.device_peq_writing() };
-	if (s.reading) return { tone: 'busy', text: m.device_peq_reading() };
+	if (s.operation) return { tone: 'busy', text: BUSY[s.operation]() };
 	const failed = !!s.message && s.messageIsError;
 	if (s.autoDueAt !== null && !failed) {
 		return { tone: 'pending', text: m.sync_pending(), dueAt: s.autoDueAt };
@@ -84,11 +92,13 @@ export function syncStatus(s: SyncInput): SyncStatus | null {
 		const actions: SyncAction[] = [];
 		if (s.canRead) actions.push('read');
 		if (!s.autoWriting && s.canWrite) actions.push('write');
-		return {
-			tone: 'muted',
-			text: s.autoWriting ? m.sync_auto_on() : s.canRead ? m.sync_not_read() : m.sync_unwritten(),
-			actions
-		};
+		// What was just done (a control set) is said over the hint; the buttons stay.
+		const hint = s.autoWriting
+			? m.sync_auto_on()
+			: s.canRead
+				? m.sync_not_read()
+				: m.sync_unwritten();
+		return { tone: 'muted', text: s.message ?? hint, actions };
 	}
 	// Manual mode: whatever the device doesn't have yet is one press away.
 	if (!s.autoWriting && s.canWrite && s.inSync === false) {

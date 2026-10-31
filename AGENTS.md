@@ -44,7 +44,9 @@ section before changing behaviour. Builds, Android toolchain, CI and releases:
 - Devices: protocols, limits and device data are eqcaps' job (`../eqcaps`); a protocol bug or a
   missing device is fixed there. `src/lib/device-peq/` keeps the read/write invariants in
   ARCHITECTURE §5 (fit before every write, never retarget, the device's EQ is the document, one
-  status line: the sync bar). `connect.ts`, the bridge, the client and the snapshot stay behind
+  status line: the sync bar). A new device operation goes into `DeviceOperation` and the store's
+  `operation`, and says its result with `setStatus`, even when it leaves the EQ alone; otherwise the
+  bar goes on describing the last read or write. `connect.ts`, the bridge, the client and the snapshot stay behind
   dynamic `import()`; only `eqcaps-core` may be in the boot bundle. State in
   `stores/device-peq-store.svelte.ts`, actions in `services/device-peq-service.svelte.ts`.
 - EQ edits go through `eqStore` methods, never by assigning `filters`: each is an undo step, or

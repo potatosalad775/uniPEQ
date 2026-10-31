@@ -54,6 +54,13 @@ describe('panelStatus', () => {
 		);
 	});
 
+	it('says to turn the EQ on when it is off, not to pick another preset', () => {
+		expect(status({ unreachable: true, eqOff: true, inSync: true })).toEqual({
+			tone: 'muted',
+			text: "The device's EQ is off. Turn it on first."
+		});
+	});
+
 	it('names an unreachable preset before the clip risk', () => {
 		expect(status({ unreachable: true, autoWriting: true, autoClipRisk: true })?.text).toMatch(
 			/only read and write the preset it's using/

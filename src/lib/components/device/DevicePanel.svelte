@@ -132,6 +132,10 @@
 	const writeTarget = $derived(devicePeqStore.writeTarget);
 	/** Device EQ shows a built-in preset: Write is off by design, not because of where it is. */
 	const builtIn = $derived(!!caps?.canWrite && !devicePeqStore.targetWritable);
+	/** Why Read or Write can't reach the preset: with the EQ off, the switch brings it back. */
+	const unreachable = $derived(
+		devicePeqStore.selection === 'off' ? m.device_peq_unreachable_off() : m.device_peq_unreachable()
+	);
 	/** Auto-write needs a device that can be written without restarting after each save. */
 	const canAutoWrite = $derived(!!caps?.canWrite && !caps.disconnectOnSave);
 
@@ -157,9 +161,7 @@
 <section
 	aria-labelledby={heading ? 'device-heading' : undefined}
 	aria-label={heading ? undefined : m.device_peq_label()}
-	class="flex flex-col gap-3 {heading
-		? 'rounded-xl bg-base-100 p-4 wide:rounded-r-none wide:pb-px'
-		: ''}"
+	class="flex flex-col gap-3 {heading ? 'rounded-xl bg-base-100 p-4 wide:rounded-r-none' : ''}"
 >
 	{#if heading}
 		<h2 id="device-heading" class="text-sm font-semibold">{m.device_peq_label()}</h2>
@@ -422,7 +424,7 @@
 				<div class="flex gap-2">
 					{#if caps?.canRead}
 						<Button
-							title={readTarget ? m.device_peq_read_title() : m.device_peq_unreachable()}
+							title={readTarget ? m.device_peq_read_title() : unreachable}
 							variant="outline"
 							class="flex-1"
 							disabled={!readTarget || devicePeqStore.isBusy}
@@ -437,7 +439,7 @@
 								? m.device_peq_write_title()
 								: builtIn
 									? m.device_peq_builtin()
-									: m.device_peq_unreachable()}
+									: unreachable}
 							class="flex-1"
 							disabled={!writeTarget || devicePeqStore.isBusy}
 							onclick={() => devicePeqService.requestWrite()}
@@ -448,7 +450,9 @@
 				</div>
 
 				<!-- Device Controls. Such as USB mode, DAC filter, Volume, Gain, and more. -->
-				<DeviceControls />
+				<div class="wide:-mb-2">
+					<DeviceControls />
+				</div>
 			</section>
 		{/if}
 	{/if}
