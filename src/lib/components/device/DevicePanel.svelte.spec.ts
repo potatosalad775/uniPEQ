@@ -145,8 +145,12 @@ describe('DevicePanel', () => {
 		devicePeqStore.setConnected(conn, 0);
 		renderPanel();
 
-		await expect.element(page.getByRole('status').getByText(/built-in presets/)).toBeVisible();
-		await expect.element(page.getByRole('button', { name: /built-in presets/ })).toBeDisabled();
+		await expect
+			.element(page.getByRole('status').getByText(/built-in device preset/))
+			.toBeVisible();
+		await expect
+			.element(page.getByRole('button', { name: /built-in device preset/ }))
+			.toBeDisabled();
 	});
 });
 

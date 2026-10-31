@@ -5,7 +5,8 @@
 	Layout after modernGraphTool's EqFilterList, rewritten lighter (no channels, no AutoEQ).
 	Touch-height rows, no per-band switch, Add band as the last row, and no card of its own: it
 	sits in the EQ tab's band card under the preamp. A device with a set band count has no Add row;
-	Fit pads a short list. Rows, Add and Fit are off while the device is disconnected.
+	Fit pads a short list. Rows, Add and Fit are off while the device is disconnected or on a
+	built-in preset.
 -->
 <script lang="ts">
 	import { Plus, TriangleAlert } from '@lucide/svelte';
@@ -34,24 +35,22 @@
 	}
 
 	/**
-	 * The device is on a built-in preset, which holds what it holds (the DS3's hold 8 bands), and
-	 * the list would otherwise be offered Fit.
+	 * The device is on a built-in preset, which holds what it holds (the DS3's hold 8 bands): the
+	 * list is read-only there, and the note says why.
 	 */
 	const builtIn = $derived(
-		!!devicePeqStore.connection?.device.capabilities.canWrite &&
-			!devicePeqStore.targetWritable &&
-			eqConstraintStore.editable &&
-			!!eqConstraintStore.fitted
+		!devicePeqStore.needsReconnect &&
+			!!devicePeqStore.connection?.device.capabilities.canWrite &&
+			!devicePeqStore.targetWritable
 	);
 
 	/**
 	 * Why Fit is offered, once a device is known: no bands yet (start from its count, flat), bands
-	 * it won't take, or fewer bands than it has. Not on a built-in preset: nothing fitted is
-	 * written there, so the note says that instead.
+	 * it won't take, or fewer bands than it has. Never while the list is read-only.
 	 */
 	const fitNote = $derived.by(() => {
 		const device = devicePeqStore.knownDevice?.name ?? '';
-		if (!eqConstraintStore.editable || !eqConstraintStore.fitted || builtIn) return null;
+		if (!eqConstraintStore.editable || !eqConstraintStore.fitted) return null;
 		if (eqStore.filters.length === 0) return m.eq_empty_fixed({ device, count: maxBands });
 		const { misfits, missing } = eqConstraintStore;
 		if (misfits > 0) return m.eq_misfits({ count: misfits, device });

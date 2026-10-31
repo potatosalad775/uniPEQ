@@ -88,7 +88,7 @@ describe('syncStatus', () => {
 
 	it('puts a built-in preset before the offer to read', () => {
 		const s = status({ builtIn: true, canWrite: false });
-		expect(s?.text).toMatch(/built-in presets/);
+		expect(s?.text).toMatch(/built-in device preset/);
 		expect(s?.actions).toBeUndefined();
 	});
 

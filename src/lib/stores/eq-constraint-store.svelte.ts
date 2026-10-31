@@ -21,8 +21,11 @@ import { eqStore } from './eq-store.svelte';
 class EqConstraintStore {
 	/** A device has been connected, so there is a profile to edit for. */
 	hasDevice = $derived(devicePeqStore.knownDevice !== null);
-	/** The list can be edited: its device is connected. Read-only otherwise. */
-	editable = $derived(devicePeqStore.canEdit);
+	/**
+	 * The list can be edited: its device is connected and on a preset the user may write.
+	 * Read-only otherwise: on a built-in preset an edit would have nowhere to go.
+	 */
+	editable = $derived(devicePeqStore.canEdit && devicePeqStore.targetWritable);
 	profile = $derived(devicePeqStore.knownDevice?.profile ?? UNCONSTRAINED);
 	isGraphic = $derived(isGraphicProfile(this.profile));
 	/** Band cap; 0 = unlimited. */

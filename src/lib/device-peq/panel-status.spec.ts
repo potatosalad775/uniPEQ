@@ -63,7 +63,7 @@ describe('panelStatus', () => {
 
 	it('says a built-in preset is not written, ahead of reachability', () => {
 		expect(status({ builtIn: true, unreachable: true, inSync: true })?.text).toMatch(
-			/built-in presets/
+			/built-in device preset/
 		);
 	});
 

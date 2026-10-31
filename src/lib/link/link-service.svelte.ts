@@ -329,7 +329,7 @@ class Session {
 		return {
 			connected: store.connection !== null,
 			knownDevice: store.knownDevice?.name ?? null,
-			editable: store.canEdit,
+			editable: eqConstraintStore.editable,
 			activeSlot: store.activeSlot,
 			deviceSlot: store.deviceSlot,
 			eqEnabled: store.eqEnabled,

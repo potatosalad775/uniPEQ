@@ -34,11 +34,13 @@ describe('BandList', () => {
 		onSlot(7);
 		await expect.element(page.getByText(/24 band\(s\) fewer/)).toBeVisible();
 		await expect.element(page.getByRole('button', { name: m.eq_fit_title() })).toBeVisible();
+		await expect.element(page.getByRole('button', { name: /^1/ })).toBeEnabled();
 	});
 
-	it('says a built-in preset is kept as it is, with no Fit', async () => {
+	it('keeps a built-in preset read-only, with no Fit', async () => {
 		onSlot(0);
-		await expect.element(page.getByText(/built-in presets, so it isn't fitted/)).toBeVisible();
+		await expect.element(page.getByText(/built-in presets, so it can't be edited/)).toBeVisible();
+		await expect.element(page.getByRole('button', { name: /^1/ })).toBeDisabled();
 		await expect.element(page.getByText(/fewer/)).not.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('button', { name: m.eq_fit_title() }))
