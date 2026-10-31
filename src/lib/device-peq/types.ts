@@ -105,6 +105,11 @@ export interface DeviceConnection {
 	reopen?: (wait?: ReopenWait) => Promise<DeviceConnection | null>;
 	/** Android: the plugin's path for the device (changes on every replug), to tell its detach. */
 	usbDeviceName?: string;
+	/**
+	 * Calls `listener` once when the device goes on its own (unplugged, out of range), where the
+	 * browser reports it; returns the unsubscribe. Android follows the plugin's detach instead.
+	 */
+	onLost?: (listener: () => void) => () => void;
 }
 
 /**

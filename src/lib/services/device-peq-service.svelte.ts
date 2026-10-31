@@ -119,6 +119,7 @@ class DevicePeqService {
 	#choice: Choice | null = null;
 	#installed = false;
 	#watchingUsb = false;
+	#unwatchLost: () => void = () => {};
 	#timer: ReturnType<typeof setTimeout> | undefined;
 	#running = false;
 	#again = false;
@@ -264,6 +265,7 @@ class DevicePeqService {
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const { slot, enabled } = await playing(conn);
 		devicePeqStore.setConnected(conn, slot, enabled);
+		this.#watchLost(conn);
 		this.#dropAsk();
 		this.install();
 		// Auto-write writes without a press, so its warning comes now, before any edit.
@@ -283,6 +285,7 @@ class DevicePeqService {
 		const consent = devicePeqStore.writeConsent;
 		const { slot, enabled } = await playing(again);
 		devicePeqStore.setConnected(again, slot, enabled);
+		this.#watchLost(again);
 		devicePeqStore.writeConsent = consent;
 		logger.info(`reopened ${again.name}, slot ${slot}, EQ ${enabled ?? '?'}`);
 		await this.#readControls(again);
@@ -352,9 +355,10 @@ class DevicePeqService {
 			devicePeqStore.isControlling = false;
 		}
 		if (!restarts) return;
+		// Before the close: the device leaving now is the restart, not an unplug.
+		if (devicePeqStore.connection === conn) devicePeqStore.needsReconnect = true;
 		await conn.device.close().catch(() => {});
 		if (devicePeqStore.connection !== conn) return;
-		devicePeqStore.needsReconnect = true;
 		const name = controlLabel(control);
 		// A device without a USB serial number loses its browser grant when it re-enumerates (the
 		// DS3 on every USB mode switch), and only the chooser finds it again: in the browser it
@@ -424,18 +428,31 @@ class DevicePeqService {
 		await plugin.addListener('deviceAttached', ({ device }) => void this.usbAttached(device));
 	}
 
-	/**
-	 * The connected device was unplugged: disconnected now, not at the next failed write. One that
-	 * restarts to save is expected to go, and kept for its return: it can detach before the write
-	 * that saved has returned (the FOLA does), so a write under way counts too. Really unplugged
-	 * then, the write fails and says so.
-	 */
+	/** The connected device was unplugged, as the plugin tells it by its path. */
 	async usbDetached(deviceName: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn || conn.usbDeviceName !== deviceName) return;
+		await this.#lost(conn);
+	}
+
+	/** Follow `conn` going, where its transport says (the browser's); the last one is dropped. */
+	#watchLost(conn: DeviceConnection): void {
+		this.#unwatchLost();
+		this.#unwatchLost = conn.onLost?.(() => void this.#lost(conn)) ?? (() => {});
+	}
+
+	/**
+	 * The device went: disconnected now, not at the next failed write, with the list read-only until
+	 * it is back. One that restarts to save is expected to go, and kept for its return: it can go
+	 * before the write that saved has returned (the FOLA does), so a write under way counts too, as
+	 * does a control being set (one can restart the device). Really unplugged then, the write fails
+	 * and says so.
+	 */
+	async #lost(conn: DeviceConnection): Promise<void> {
+		if (devicePeqStore.connection !== conn) return;
 		const saving = devicePeqStore.isWriting && conn.device.capabilities.disconnectOnSave;
-		if (devicePeqStore.needsReconnect || saving) {
-			logger.info(`${conn.name} detached, waiting to be reconnected`);
+		if (devicePeqStore.needsReconnect || saving || devicePeqStore.isControlling) {
+			logger.info(`${conn.name} went, waiting to be reconnected`);
 			return;
 		}
 		logger.info(`${conn.name} unplugged`);
@@ -473,6 +490,8 @@ class DevicePeqService {
 		if (!conn) return;
 		this.#cancelPending();
 		this.#dropAsk();
+		this.#unwatchLost();
+		this.#unwatchLost = () => {};
 		await conn.device.close().catch(() => {});
 		devicePeqStore.setDisconnected();
 	}

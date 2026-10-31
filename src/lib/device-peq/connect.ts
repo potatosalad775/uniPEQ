@@ -234,7 +234,8 @@ function connection(
 		profileSource: r.profileSource,
 		profileId: r.profileId,
 		identity: device.identity,
-		...(reopen ? { reopen } : {})
+		...(reopen ? { reopen } : {}),
+		...(transport.onDisconnect ? { onLost: transport.onDisconnect.bind(transport) } : {})
 	};
 }
 

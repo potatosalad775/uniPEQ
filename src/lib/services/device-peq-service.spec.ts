@@ -99,6 +99,51 @@ describe('devicePeqService on Android USB events', () => {
 	});
 });
 
+describe('devicePeqService when the browser says the device went', () => {
+	/** A connection whose transport reports it going, as WebHID does; `lose()` fires it. */
+	function losable() {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }));
+		let listener: (() => void) | null = null;
+		const unsubscribe = vi.fn(() => void (listener = null));
+		conn.onLost = (l) => ((listener = l), unsubscribe);
+		return { conn, unsubscribe, lose: () => listener?.() };
+	}
+
+	async function connectWith(conn: DeviceConnection) {
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+	}
+
+	afterEach(async () => {
+		await devicePeqService.disconnect();
+		devicePeqStore.forget();
+	});
+
+	it('disconnects at once, keeping the device', async () => {
+		const { conn, lose } = losable();
+		await connectWith(conn);
+		const close = vi.spyOn(conn.device, 'close');
+		lose();
+		await vi.waitFor(() => expect(devicePeqStore.connection).toBeNull());
+		expect(close).toHaveBeenCalledOnce();
+		expect(devicePeqStore.knownDevice?.name).toBe(conn.name);
+		expect(devicePeqStore.canEdit).toBe(false);
+	});
+
+	it('stops listening to a connection once another replaces it or it is disconnected', async () => {
+		const first = losable();
+		await connectWith(first.conn);
+		const second = losable();
+		await connectWith(second.conn);
+		expect(first.unsubscribe).toHaveBeenCalledOnce();
+		first.lose();
+		expect(devicePeqStore.connection).toBe(second.conn);
+
+		await devicePeqService.disconnect();
+		expect(second.unsubscribe).toHaveBeenCalledOnce();
+	});
+});
+
 describe('devicePeqService reading the device', () => {
 	const ON_DEVICE = [{ type: 'PK' as const, freq: 100, gain: -2, q: 0.7 }];
 
