@@ -315,16 +315,30 @@ class DevicePeqService {
 	 * which others exist (the DS3's USB mode). A control that restarts the device (`reconnect`) is
 	 * followed by reopening it, as after a save; the panel asks before it.
 	 */
-	async setControl(id: string, value: number): Promise<void> {
+	setControl(id: string, value: number): Promise<void> {
+		return this.setControls([[id, value]]);
+	}
+
+	/**
+	 * Set several controls for one change (both channel gains for a balance), in the order given,
+	 * then read them all again. A write that restarts the device ends the run.
+	 */
+	async setControls(changes: [id: string, value: number][]): Promise<void> {
 		const conn = devicePeqStore.connection;
-		const control = conn?.device.capabilities.controls.find((c) => c.id === id);
-		if (!conn || !control || devicePeqStore.isBusy) return;
+		const all = conn?.device.capabilities.controls ?? [];
+		if (!conn || changes.length === 0 || devicePeqStore.isBusy) return;
+		if (!changes.every(([id]) => all.some((c) => c.id === id))) return;
+		let control = all[0];
 		devicePeqStore.isControlling = true;
 		devicePeqStore.setStatus(null);
 		let restarts = false;
 		try {
-			restarts = (await conn.device.writeControl(id, value)).reconnect;
-			logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
+			for (const [id, value] of changes) {
+				control = all.find((c) => c.id === id)!;
+				restarts = (await conn.device.writeControl(id, value)).reconnect;
+				logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
+				if (restarts) break;
+			}
 			if (!restarts) devicePeqStore.controlValues = await conn.device.readControls();
 		} catch (e) {
 			this.fail(e, 'control');

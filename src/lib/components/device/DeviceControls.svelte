@@ -3,7 +3,8 @@
 	mode and the like, one row each in the profile's order, only those the device has now. A toggle is
 	a switch, a choice a select menu (as Device EQ is), a range a slider that writes once let go: a
 	control is written only when the user changes it. One that restarts the device asks first; one
-	set so that the EQ doesn't apply says so under it, and the sync bar says it too.
+	set so that the EQ doesn't apply says so under it, and the sync bar says it too. A gain per
+	channel is one balance slider, in the left channel's place.
 -->
 <script lang="ts">
 	import { ChevronDown } from '@lucide/svelte';
@@ -14,7 +15,14 @@
 	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
 	import Slider from '#lib/components/atoms/Slider.svelte';
 	import Switch from '#lib/components/atoms/Switch.svelte';
-	import { controlLabel, controlValueLabel } from '#lib/device-peq/controls.js';
+	import {
+		balanceLabel,
+		balanceOf,
+		balanceValue,
+		balanceWrites,
+		controlLabel,
+		controlValueLabel
+	} from '#lib/device-peq/controls.js';
 	import * as m from '#lib/paraglide/messages.js';
 	import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
 	import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
@@ -28,6 +36,7 @@
 
 	const values = $derived(devicePeqStore.controlValues);
 	const busy = $derived(devicePeqStore.isBusy);
+	const balance = $derived(balanceOf(devicePeqStore.controls));
 
 	const current = (c: Control) => values[c.id] ?? 0;
 
@@ -35,6 +44,10 @@
 		if (value === values[control.id]) return;
 		if (control.reconnect) pending = { control, value };
 		else await devicePeqService.setControl(control.id, value);
+	}
+
+	async function setBalance(n: number) {
+		if (balance) await devicePeqService.setControls(balanceWrites(balance, n, values));
 	}
 
 	function hint(control: Control): string | undefined {
@@ -58,7 +71,30 @@
 		<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
 			{#each devicePeqStore.controls as control (control.id)}
 				{@const label = controlLabel(control)}
-				{#if control.kind === 'toggle'}
+				{#if balance && control === balance.right}
+					<!-- Shown with the left channel's. -->
+				{:else if balance && control === balance.left}
+					{@const name = m.device_control_balance()}
+					{@const shown = held?.id === 'balance' ? held.value : balanceValue(balance, values)}
+					<ListRow label={name}>
+						{#snippet trailing()}
+							<span class="tabular-nums">{balanceLabel(balance, shown)}</span>
+						{/snippet}
+						<Slider
+							bind:value={() => shown, (value) => (held = { id: 'balance', value })}
+							min={balance.min}
+							max={balance.max}
+							step={balance.step}
+							disabled={busy}
+							aria-label={name}
+							aria-valuetext={balanceLabel(balance, shown)}
+							onchange={() => {
+								if (held?.id !== 'balance') return;
+								void setBalance(held.value).finally(() => (held = null));
+							}}
+						/>
+					</ListRow>
+				{:else if control.kind === 'toggle'}
 					<ListRow
 						{label}
 						description={hint(control)}

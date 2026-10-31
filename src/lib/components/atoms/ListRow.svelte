@@ -100,6 +100,6 @@
 		</svelte:element>
 	{/if}
 	{#if children}
-		<div class="px-4 pb-2">{@render children()}</div>
+		<div class="-mt-2 px-4 pb-2">{@render children()}</div>
 	{/if}
 </div>

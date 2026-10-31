@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import type { Control } from '@potatosalad775/eqcaps-core';
+import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
 import { ds3Connection } from '#lib/device-peq/__fixtures__/ds3.js';
+import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
 import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
 import DeviceControls from './DeviceControls.svelte';
@@ -97,5 +100,47 @@ describe('DeviceControls', () => {
 			.element(page.getByRole('status'))
 			.toHaveTextContent("The device doesn't apply its EQ with this Upsampling setting.");
 		expect(devicePeqService.sync?.tone).toBe('warning');
+	});
+
+	it('shows a gain per channel as one balance, and writes both gains for it', async () => {
+		const gain = (id: string, role: Control['role']): Control => ({
+			id,
+			name: id,
+			kind: 'range',
+			role,
+			range: { min: -50, max: 0, step: 1 },
+			unit: 'dB'
+		});
+		const conn = fakeConnection(hardwareProfile('nicehck-pureaural', { bandCount: 10 }), {
+			controls: [gain('leftGain', 'balance-left'), gain('rightGain', 'balance-right')]
+		});
+		const state: Record<string, number> = { leftGain: -4, rightGain: 0 };
+		Object.assign(conn.device, {
+			readControls: async () => ({ ...state }),
+			writeControl: async (id: string, value: number) => {
+				state[id] = value;
+				return { reconnect: false };
+			}
+		});
+		const write = vi.spyOn(conn.device, 'writeControl');
+		devicePeqStore.setConnected(conn, 10, true);
+		devicePeqStore.controlValues = await conn.device.readControls();
+		render(DeviceControls);
+
+		const slider = page.getByRole('slider', { name: 'Balance' });
+		await expect.element(slider).toHaveValue('4');
+		await expect.element(page.getByText('Left -4 dB')).toBeVisible();
+		expect(page.getByRole('slider').elements()).toHaveLength(1);
+
+		const input = slider.element() as HTMLInputElement;
+		input.value = '-6';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		input.dispatchEvent(new Event('change', { bubbles: true }));
+		await vi.waitFor(() => expect(state).toEqual({ leftGain: 0, rightGain: -6 }));
+		expect(write.mock.calls).toEqual([
+			['rightGain', -6],
+			['leftGain', 0]
+		]);
+		await expect.element(page.getByText('Right -6 dB')).toBeVisible();
 	});
 });
