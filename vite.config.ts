@@ -48,7 +48,7 @@ export default defineConfig({
 				filename.includes('node_modules') ? undefined : { runes: true }
 		}),
 		thirdPartyLicenses(),
-		// `npm run dev:eqcaps`: eqcaps data from a local checkout instead of the published one.
+		// `npm run dev:eqcaps`: eqcaps source and data from a local checkout instead of the published ones.
 		localEqcaps(),
 		// Keep these options in sync with the `i18n:compile` script in package.json, which compiles
 		// the same output for `npm run check`: svelte-check does not run Vite, so without it

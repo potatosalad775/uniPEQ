@@ -10,8 +10,9 @@
 //                  key: uninstall one before installing the other.
 //   --sideload     the GitHub sideload APK (android-release.mjs --sideload): its own app id, so it
 //                  installs beside the debug or Play app
-//   --eqcaps       the debug app on eqcaps data built from ../eqcaps (or EQCAPS_DIR), copied into
-//                  the APK: devices and USB ids not published yet (scripts/local-eqcaps.ts)
+//   --eqcaps       the debug app on eqcaps from ../eqcaps (or EQCAPS_DIR): its source, and its data
+//                  copied into the APK, for devices and handlers not published yet
+//                  (scripts/local-eqcaps.ts)
 //   --serial <id>  the adb device to use when several are connected (`adb devices` lists them)
 //   --skip-web     reuse the last web build in dist/ (only native code changed; for --release and
 //                  --sideload it must be a release build of the same kind)

@@ -33,7 +33,7 @@ npm run dev                        # http://localhost:5173
 | Command | What it does |
 |---|---|
 | `npm run dev` | Dev server |
-| `npm run dev:eqcaps` | Dev server on eqcaps data built from `../eqcaps` (or `EQCAPS_DIR`), rebuilt when it changes |
+| `npm run dev:eqcaps` | Dev server on eqcaps from `../eqcaps` (or `EQCAPS_DIR`): its package source and its data, rebuilt when it changes |
 | `npm test` | Unit specs (Node) and component specs (`*.svelte.spec.ts`, Chromium); `npm run test:unit` watches |
 | `npm run check` | Paraglide compile, `svelte-kit sync`, `svelte-check` |
 | `npm run lint` | Prettier check and ESLint; `npm run format` fixes formatting |
@@ -41,10 +41,12 @@ npm run dev                        # http://localhost:5173
 
 Before a pull request: `npm run check`, `npm run lint` and `npm test`. CI runs the same.
 
-To try unreleased eqcaps changes, install the tarballs from `npm run release -- <version> --pack`
-in eqcaps. Never a `file:` link. For unreleased device data (a new device, a USB id the published
-data lacks), `npm run dev:eqcaps` serves the checkout's data from the dev server, and
-`npm run android -- --eqcaps` copies it into a debug APK; no tarball needed.
+To try unreleased eqcaps changes (a new device, a USB id the published data lacks, a handler fix),
+`npm run dev:eqcaps` runs the app on the checkout's package source and data, and
+`npm run android -- --eqcaps` builds a debug APK from both. Only Vite is redirected, so
+`npm run check` and the specs still use the installed packages. To test what an eqcaps release
+would ship, install the tarballs from `npm run release -- <version> --pack` there and don't
+commit the `file:` entries that leaves in package.json. Never a `file:` link to the checkout.
 
 ## Translating
 
