@@ -48,6 +48,7 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 		disconnectOnSave: false,
 		experimental: false,
 		readsFirmware: false,
+		readsBandCount: false,
 		controls: []
 	};
 	return {

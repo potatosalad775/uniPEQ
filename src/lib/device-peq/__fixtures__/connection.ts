@@ -25,6 +25,7 @@ export function fakeConnection(
 				disconnectOnSave: false,
 				experimental: false,
 				readsFirmware: false,
+				readsBandCount: false,
 				controls: [],
 				...capabilities
 			},
@@ -34,6 +35,7 @@ export function fakeConnection(
 			eqEnabled: async () => null,
 			setEnabled: async () => {},
 			firmware: async () => null,
+			bandCount: async () => null,
 			readControls: async () => ({}),
 			writeControl: async () => ({ reconnect: false }),
 			close: async () => {}

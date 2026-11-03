@@ -38,6 +38,7 @@ export type PeqCapabilities = Pick<
 	| 'disconnectOnSave'
 	| 'experimental'
 	| 'readsFirmware'
+	| 'readsBandCount'
 	| 'controls'
 >;
 
@@ -61,6 +62,8 @@ export interface PeqDevice {
 	setEnabled(enabled: boolean, slot?: number): Promise<void>;
 	/** The firmware version (`readsFirmware`), read once; null when the device doesn't say. */
 	firmware(): Promise<string | null>;
+	/** The band count the device reports (`readsBandCount`); null when it doesn't say. */
+	bandCount(): Promise<number | null>;
 	/**
 	 * Every control in `capabilities.controls` by id; null for one the device doesn't have now (its
 	 * firmware range or the control it depends on). Pull and push never touch controls.

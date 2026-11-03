@@ -152,7 +152,10 @@ profiles; the profile's `protocol` picks the handler; the bridge's `openDevice` 
 matched profile has a firmware range and the top matches share a handler that reads the firmware
 (USB HID only, already open), the firmware is read and the device matched again with it, so
 profiles that only the firmware tells apart (the Fosi DS3's 8- and 32-band firmware) don't ask.
-Only then: a device that doesn't answer costs the handler's timeout. Results:
+Only then: a device that doesn't answer costs the handler's timeout. A device that reports its own
+band count (`readsBandCount`, FiiO's protocols) overrides the profile's when they differ, unless the
+profile sets slots by index, and the log says so: writing too few bands leaves the rest playing.
+Results:
 
 - `connected`, with a `DeviceConnection` whose `profileSource` is `device` (its own profile),
   `group` (a family profile its identity can't narrow), `guess` (no profile: `guessProtocol` by

@@ -30,6 +30,7 @@ function connection(
 		disconnectOnSave: false,
 		experimental: false,
 		readsFirmware: false,
+		readsBandCount: false,
 		controls: [],
 		...over
 	};
@@ -42,6 +43,7 @@ function connection(
 			eqEnabled: vi.fn(),
 			setEnabled: vi.fn(),
 			firmware: vi.fn(),
+			bandCount: async () => null,
 			readControls: vi.fn(),
 			writeControl: vi.fn(),
 			close: vi.fn()

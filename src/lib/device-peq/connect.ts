@@ -20,6 +20,7 @@ import {
 	protocolOf,
 	transportsOf,
 	usbHex,
+	type BridgeDevice,
 	type DeviceIdentity,
 	type Protocol,
 	type Transport
@@ -216,12 +217,25 @@ async function resolve(
 	};
 }
 
-function connection(
+/**
+ * `profile` with the band count the device reports, where they differ: writing fewer bands than the
+ * device has would leave the rest playing what they held. A profile that sets slots by index keeps
+ * its count, since those slots would no longer line up.
+ */
+async function withDeviceBands(device: BridgeDevice, profile: Profile): Promise<Profile> {
+	if (!device.capabilities.readsBandCount || profile.bands?.length) return profile;
+	const bandCount = await device.bandCount();
+	if (bandCount === null || bandCount === profile.bandCount) return profile;
+	logger.warn(`${profile.id}: the device reports ${bandCount} bands, not ${profile.bandCount}`);
+	return { ...profile, bandCount };
+}
+
+async function connection(
 	transportKind: BridgeConnectionType,
 	transport: Transport,
 	r: Resolved,
 	reopen?: DeviceConnection['reopen']
-): DeviceConnection {
+): Promise<DeviceConnection> {
 	const device = openDevice(transport, r.protocol, {
 		profile: { bandCount: r.profile.bandCount },
 		log: (message) => logger.debug(message)
@@ -230,7 +244,7 @@ function connection(
 		device,
 		connectionType: transportKind,
 		name: r.name,
-		profile: r.profile,
+		profile: await withDeviceBands(device, r.profile),
 		profileSource: r.profileSource,
 		profileId: r.profileId,
 		identity: device.identity,
@@ -274,7 +288,7 @@ async function identify(opts: {
 		const transport = await opts.open(r.protocol);
 		return {
 			kind: 'connected',
-			connection: connection(opts.kind, transport, r, opts.reopen?.(r))
+			connection: await connection(opts.kind, transport, r, opts.reopen?.(r))
 		};
 	};
 
@@ -465,9 +479,9 @@ export async function connectDemo(): Promise<ConnectResult> {
 		profileId: DEMO_PROFILE.id,
 		name: `${DEMO_PROFILE.device.brand} ${DEMO_PROFILE.device.model}`
 	};
-	const open = (): DeviceConnection =>
-		connection('hid', new DemoHidTransport(demoDac()), r, async () => open());
-	return { kind: 'connected', connection: open() };
+	const open = (): Promise<DeviceConnection> =>
+		connection('hid', new DemoHidTransport(demoDac()), r, open);
+	return { kind: 'connected', connection: await open() };
 }
 
 // ── Android ─────────────────────────────────────────────────────────────────
@@ -527,7 +541,7 @@ function reopenNative(match: NativeUsbDevice, r: Resolved, plugin?: DeviceIoPlug
 			if (!granted) return null;
 		}
 		const transport = await openNativeHid({ ...d, hasPermission: true }, plugin);
-		const conn = connection('hid', transport, r, reopenFrom(d.deviceName));
+		const conn = await connection('hid', transport, r, reopenFrom(d.deviceName));
 		return { ...conn, usbDeviceName: d.deviceName };
 	};
 	const reopenFrom =

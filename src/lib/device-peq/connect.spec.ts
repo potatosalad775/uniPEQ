@@ -99,6 +99,57 @@ describe('connectHid', () => {
 		expect(await connectHid()).toEqual({ kind: 'cancelled' });
 	});
 
+	describe('the band count the device reports', () => {
+		const fiio = entry('snowsky-tiny-a', { protocol: { handler: 'fiio-usb-hid' } });
+
+		/** A FiiO-protocol device that answers its band count, or fails the read at `null`. */
+		function reporting(count: number | null): HidTransport {
+			const listeners = new Set<(id: number, data: Uint8Array) => void>();
+			return {
+				...hid(0x2972, 0x0115, 'SNOWSKY TINY A'),
+				sendReport: vi.fn(async () => {
+					if (count === null) throw new Error('unplugged');
+					const answer = [0xbb, 0x0b, 0, 0, 0x18, 1, count, 0, 0xee];
+					for (const l of listeners) l(7, Uint8Array.from(answer));
+				}),
+				onInputReport: (listener) => {
+					listeners.add(listener);
+					return () => listeners.delete(listener);
+				}
+			};
+		}
+
+		async function connectedBands(transport: HidTransport, profile = {}) {
+			browser.requestHidDevice.mockResolvedValue(transport);
+			client.matchDevice.mockResolvedValue({
+				best: match(fiio),
+				matches: [match(fiio)],
+				ambiguous: false
+			});
+			client.loadProfile.mockResolvedValue({
+				...hardwareProfile('snowsky-tiny-a', { bandCount: 5 }),
+				...profile
+			});
+			const result = await connectHid();
+			if (result.kind !== 'connected') throw new Error(result.kind);
+			return result.connection.profile.bandCount;
+		}
+
+		it('overrides a profile that says otherwise', async () => {
+			expect(await connectedBands(reporting(10))).toBe(10);
+		});
+
+		it('leaves the profile when the device reports none, or the read fails', async () => {
+			expect(await connectedBands(reporting(0))).toBe(5);
+			expect(await connectedBands(reporting(null))).toBe(5);
+		});
+
+		it('leaves a profile that sets slots by index', async () => {
+			const bands = [{ index: 0, types: ['PK'] }];
+			expect(await connectedBands(reporting(10), { bands })).toBe(5);
+		});
+	});
+
 	it('drives a matched device with its profile’s protocol and limits', async () => {
 		const e = entry('crinear-protocol-micro');
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0xc20f, 'Protocol Micro'));
