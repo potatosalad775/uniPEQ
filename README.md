@@ -73,7 +73,7 @@ uniPEQ is built in the open, and you don't need to write code to help.
 
 ## Development
 
-SvelteKit 2 (static SPA) + Svelte 5 + Tailwind CSS 4 in Capacitor 8. Node.js 20.19 or newer.
+SvelteKit 3 (static SPA) + Svelte 5 + Tailwind CSS 4 in Capacitor 8. Node.js 20.19 or newer.
 
 ```sh
 npm install
@@ -81,11 +81,11 @@ npm run dev        # http://localhost:5173
 npm run android    # build, install and start the debug app on a connected phone
 ```
 
-Setup, tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md). 
-How the app is built: [ARCHITECTURE.md](ARCHITECTURE.md).
+- Setup, tests, the Android toolchain, CI and releases: [CONTRIBUTING.md](CONTRIBUTING.md).
+- How the app is built: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## License
 
-uniPEQ is free software under the [GNU General Public License v3.0 or later](LICENSE). The app lists
-the licenses of the software it ships under Settings → Open-source licenses. eqcaps, which carries
-the device data and protocols, is MIT (code) and CC0 (data).
+uniPEQ is free software under the [GNU General Public License v3.0 or later](LICENSE). The app lists the licenses of the software it ships under Settings → Open-source licenses. 
+
+[eqcaps](https://github.com/potatosalad775/eqcaps), which carries the device data and protocols, is MIT (code) and CC0 (data).
