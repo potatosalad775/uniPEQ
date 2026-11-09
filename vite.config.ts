@@ -51,8 +51,10 @@ export default defineConfig({
 		// `npm run dev:eqcaps`: eqcaps source and data from a local checkout instead of the published ones.
 		localEqcaps(),
 		// Keep these options in sync with the `i18n:compile` script in package.json, which compiles
-		// the same output for `npm run check`: svelte-check does not run Vite, so without it
-		// #lib/paraglide/* has no type declarations on a fresh clone.
+		// for `npm run check`: svelte-check does not run Vite, so without it #lib/paraglide/* has no
+		// type declarations on a fresh clone. The layouts differ, because virtual-modules (this
+		// plugin's default) needs Vite: the CLI writes message-modules to the same outdir, and
+		// whichever ran last leaves its files there. Both give the same types and app.
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
