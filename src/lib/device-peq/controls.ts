@@ -19,7 +19,11 @@ const ROLE_LABELS: Record<NonNullable<Control['role']>, () => string> = {
 	'amp-mode': m.device_control_amp_mode,
 	'mic-gain': m.device_control_mic_gain,
 	'balance-left': m.device_control_left_channel,
-	'balance-right': m.device_control_right_channel
+	'balance-right': m.device_control_right_channel,
+	'noise-control': m.device_control_noise_control,
+	'mic-noise-reduction': m.device_control_mic_noise_reduction,
+	'prompt-tone': m.device_control_prompt_tone,
+	'prompt-tone-volume': m.device_control_prompt_tone_volume
 };
 
 export function controlLabel(control: Control): string {
