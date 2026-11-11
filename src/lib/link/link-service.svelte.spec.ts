@@ -140,6 +140,16 @@ describe('linkService', () => {
 		expect(linkService.openAddress(href)?.href).toBe('https://app.example/uniPEQ/?tab=eq');
 		expect(joiners[0].options.server).toBe('https://other.example');
 		expect(joiners[0].options.room).toBe('ABCD1234');
+		expect(joiners[0].options.launch).toBeUndefined();
+	});
+
+	it("hands the launch token of mGT's own link back, and none for a typed code", () => {
+		const token = 'ABCDEFGH23456789';
+		const href = webLink('https://other.example', 'ABCD1234', 'https://app.example/', token);
+		linkService.openAddress(href);
+		expect(joiners[0].options.launch).toBe(token);
+		linkService.open('WXYZ-5678');
+		expect(joiners[1].options.launch).toBeUndefined();
 	});
 
 	it("applies mGT's edits as one undo step per burst, a band projected onto its slot", () => {

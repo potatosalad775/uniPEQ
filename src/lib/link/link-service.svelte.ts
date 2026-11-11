@@ -152,12 +152,14 @@ class Session {
 	#dispose: (() => void)[] = [];
 	#watching = false;
 
-	constructor(server: string, room: string, events: SessionEvents) {
+	/** `launch` is the token of a link modernGraphTool opened itself, echoed back in `hello`. */
+	constructor(server: string, room: string, events: SessionEvents, launch?: string) {
 		this.server = server;
 		this.room = room;
 		this.link = startJoiner({
 			server,
 			room,
+			launch,
 			version: __APP_VERSION__,
 			defaultServer: DEFAULT_SERVER,
 			foreground: appState.active,
@@ -470,7 +472,7 @@ class LinkService {
 		}
 		this.#pending?.link.deny();
 		logger.info(`link: joining ${formatRoomCode(target.room)} on ${hostOf(target.server)}`);
-		this.#pending = new Session(target.server, target.room, this.#events);
+		this.#pending = new Session(target.server, target.room, this.#events, target.launch);
 		clearTimeout(this.#goBackTimer);
 		this.#goBackTimer = setTimeout(() => this.#sync(true), GO_BACK_MS);
 		this.#sync();
