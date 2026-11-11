@@ -6,7 +6,8 @@ name: Release
 # (kr.potatosalad775.unipeq.sideload) and key, so it installs beside the Play app and Play Protect
 # doesn't take it for a re-signed copy. It tells its users about newer releases, which it finds
 # through GitHub's releases/latest: that skips pre-releases, and a release counts only once its APK
-# is attached. `npm run release` (scripts/release.mjs) bumps, tags and publishes the release.
+# is attached. `npm run release` (scripts/release.mjs) bumps, tags and publishes the release, with
+# the version's CHANGELOG.md entry as its notes; the Play upload takes the same entry.
 # A pre-release uploads the bundle but leaves the website alone. A manual run deploys the website
 # and keeps the bundle as a workflow artifact instead of uploading it (Play refuses a versionCode
 # twice, so only releases upload); so does a release while PLAY_SERVICE_ACCOUNT_JSON is unset.
@@ -170,6 +171,18 @@ jobs:
           cp android/app/build/outputs/bundle/release/app-release.aab \
             "out/uniPEQ-${{ needs.version.outputs.version }}.aab"
 
+      # Play's "What's new" is the version's CHANGELOG.md entry, which `npm run release` makes sure
+      # the tag carries. Without one (a release made by hand) Play gets the bundle without notes.
+      - name: Release notes from CHANGELOG.md
+        id: notes
+        run: |
+          mkdir whatsnew
+          if node scripts/changelog.js "${{ needs.version.outputs.version }}" > whatsnew/whatsnew-en-US; then
+            echo "dir=whatsnew" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CHANGELOG.md has no entry for v${{ needs.version.outputs.version }}; Play gets no release notes"
+          fi
+
       # Each output depends only on the build it ships, not on the steps before it: a failed Play
       # upload still keeps the bundle and still builds and attaches the sideload APK.
       - name: Upload to Play
@@ -183,6 +196,7 @@ jobs:
           releaseName: ${{ needs.version.outputs.version }}
           track: ${{ vars.PLAY_TRACK || 'internal' }}
           status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+          whatsNewDirectory: ${{ steps.notes.outputs.dir }}
 
       - name: Keep the bundle as a workflow artifact
         if: >-

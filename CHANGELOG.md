@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.3.4 [2026-11-11]
+- Improved compatibility with Moondrop devices.
+- Fixed an issue where an EQ could be applied twice, when linked with modernGraphTool from the same device.
+
 ## v1.3.3 [2026-11-09]
 - Improved compatibility with Kiwi Ears devices.
 

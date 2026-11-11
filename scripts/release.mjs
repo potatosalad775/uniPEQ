@@ -9,13 +9,16 @@
 //                 is and sideload installs aren't told (releases/latest skips pre-releases)
 //   --yes         don't ask before pushing
 //
-// Needs a clean main that's up to date with origin, and the GitHub CLI signed in (`gh auth login`).
+// Needs a clean main that's up to date with origin, the GitHub CLI signed in (`gh auth login`), and
+// a `## vX.Y.Z [YYYY-MM-DD]` entry in CHANGELOG.md: it becomes the release's notes on GitHub and Play.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
+import { PLAY_NOTES_LIMIT, changelogNotes, readChangelog } from './changelog.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const windows = process.platform === 'win32';
@@ -89,11 +92,22 @@ if (read('git', ['rev-list', '--count', 'HEAD..origin/main']) !== '0') {
 if (read('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`]) !== null) {
 	fail(`${tag} already exists.`);
 }
+// The changelog entry is the release's notes, on GitHub and on Play: the tag must carry it.
+let notes;
+try {
+	notes = changelogNotes(readChangelog(), version);
+} catch (error) {
+	fail(error.message);
+}
+if (!notes) fail(`CHANGELOG.md has no "## ${tag} [YYYY-MM-DD]" entry: add and commit one first.`);
+if (notes.length > PLAY_NOTES_LIMIT) {
+	fail(`The ${tag} notes are ${notes.length} characters; Play takes at most ${PLAY_NOTES_LIMIT}.`);
+}
 step('Type check', 'npm', ['run', 'check']);
 step('Tests', 'npm', ['test']);
 
 console.log(
-	`\nuniPEQ ${current} → ${version}${has('prerelease') ? ' (pre-release)' : ''}\n` +
+	`\nuniPEQ ${current} → ${version}${has('prerelease') ? ' (pre-release)' : ''}\n\n${notes}\n\n` +
 		'Pushes the version commit and tag to origin and publishes the GitHub release, which\n' +
 		(has('prerelease')
 			? 'uploads the Play bundle and attaches the sideload APK (the website stays as it is).'
@@ -108,7 +122,21 @@ if (!has('yes')) {
 
 step(`npm version ${version}`, 'npm', ['version', version, '-m', 'chore(release): v%s']);
 const push = ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`];
-const release = ['release', 'create', tag, '--verify-tag', '--generate-notes', '--title', tag];
+// A file, not --notes: cmd can't carry the entry's newlines as an argument. gh puts these notes
+// above the generated ones (merged PRs and the compare link).
+const notesFile = join(mkdtempSync(join(tmpdir(), 'unipeq-release-')), 'notes.md');
+writeFileSync(notesFile, `${notes}\n`);
+const release = [
+	'release',
+	'create',
+	tag,
+	'--verify-tag',
+	'--notes-file',
+	notesFile,
+	'--generate-notes',
+	'--title',
+	tag
+];
 if (has('prerelease')) release.push('--prerelease');
 step('Push', 'git', push, `The version commit and ${tag} are local. Retry: git ${push.join(' ')}`);
 step(

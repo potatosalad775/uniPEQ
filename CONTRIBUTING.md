@@ -183,15 +183,22 @@ verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`. Settings shows it (`__A
 npm run release -- patch|minor|major|X.Y.Z [--prerelease] [--yes]
 ```
 
-`scripts/release.mjs` needs a clean `main` up to date with origin and a signed-in `gh`. It runs
-check and test, `npm version` (commit + tag `vX.Y.Z`), pushes both and publishes the GitHub release.
-Nothing is built locally. The published release starts `.github/workflows/release.yml`:
+First commit the release's entry at the top of `CHANGELOG.md`: a `## vX.Y.Z [YYYY-MM-DD]` heading
+and its lines, at most 500 characters (Play's limit for release notes). It is the release's notes
+everywhere, and `scripts/changelog.js` reads it; `scripts/changelog.spec.ts` checks the file's
+format, and that the version in `package.json` has an entry, in every test run.
+
+`scripts/release.mjs` needs a clean `main` up to date with origin, a signed-in `gh` and that entry.
+It runs check and test, `npm version` (commit + tag `vX.Y.Z`), pushes both and publishes the GitHub
+release with the entry as its notes, above GitHub's generated ones. Nothing is built locally. The
+published release starts `.github/workflows/release.yml`:
 
 - **Web:** deployed to GitHub Pages (`BASE_PATH=/uniPEQ` → `paths.base`). Skipped for
   pre-releases.
 - **Play:** the signed `.aab` is uploaded to a Play track (`PLAY_TRACK` variable, default
-  `internal`). A manual run, or a release without `PLAY_SERVICE_ACCOUNT_JSON`, keeps the bundle as
-  a workflow artifact instead (Play refuses a versionCode twice).
+  `internal`), with the entry as its en-US "What's new". A manual run, or a release without
+  `PLAY_SERVICE_ACCOUNT_JSON`, keeps the bundle as a workflow artifact instead (Play refuses a
+  versionCode twice).
 - **Sideload APK:** attached to the release. Built with `VITE_DISTRIBUTION=github` and Gradle
   `-Psideload`: app id `kr.potatosalad775.unipeq.sideload`, signed with its own key, so it installs
   beside the Play app and Play Protect doesn't flag it as a re-signed copy. Only this build checks
