@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cuts a release in one step: checks → `npm version` (commit + tag vX.Y.Z) → push → publish the
+// Cuts a release in one step: checks → version commit + tag vX.Y.Z → push → publish the
 // GitHub release. Publishing starts .github/workflows/release.yml, which deploys the web app to
 // GitHub Pages, uploads the Play bundle and attaches the sideload APK. Nothing is built here.
 //
@@ -9,8 +9,9 @@
 //                 is and sideload installs aren't told (releases/latest skips pre-releases)
 //   --yes         don't ask before pushing
 //
-// Needs a clean main that's up to date with origin, the GitHub CLI signed in (`gh auth login`), and
-// a `## vX.Y.Z [YYYY-MM-DD]` entry in CHANGELOG.md: it becomes the release's notes on GitHub and Play.
+// Needs a main that's clean but for CHANGELOG.md and up to date with origin, the GitHub CLI signed
+// in (`gh auth login`), and a `## vX.Y.Z [YYYY-MM-DD]` entry in CHANGELOG.md, committed or not: it
+// goes into the version commit and becomes the release's notes on GitHub and Play.
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -81,9 +82,12 @@ if (minor > 99 || patch > 99) fail(`${version}: the versionCode scheme needs MIN
 
 // Everything that can stop a release, before anything changes.
 if (read('git', ['branch', '--show-current']) !== 'main') fail('Release from main.');
-if (read('git', ['status', '--porcelain', '--untracked-files=no'])) {
-	fail('Commit or stash your changes first.');
-}
+// CHANGELOG.md may be uncommitted: the release's entry goes into the version commit.
+const dirty = (read('git', ['status', '--porcelain', '--untracked-files=no']) ?? '')
+	.split('\n')
+	.filter((line) => line && !/\sCHANGELOG\.md$/.test(line));
+if (dirty.length)
+	fail('Commit or stash your changes first (only CHANGELOG.md may be uncommitted).');
 if (read('gh', ['auth', 'status']) === null) fail('The GitHub CLI is not signed in: gh auth login');
 step('Fetch origin', 'git', ['fetch', 'origin', 'main', '--tags']);
 if (read('git', ['rev-list', '--count', 'HEAD..origin/main']) !== '0') {
@@ -99,7 +103,7 @@ try {
 } catch (error) {
 	fail(error.message);
 }
-if (!notes) fail(`CHANGELOG.md has no "## ${tag} [YYYY-MM-DD]" entry: add and commit one first.`);
+if (!notes) fail(`CHANGELOG.md has no "## ${tag} [YYYY-MM-DD]" entry: add one first.`);
 if (notes.length > PLAY_NOTES_LIMIT) {
 	fail(`The ${tag} notes are ${notes.length} characters; Play takes at most ${PLAY_NOTES_LIMIT}.`);
 }
@@ -120,7 +124,20 @@ if (!has('yes')) {
 	if (!/^y(es)?$/i.test(answer.trim())) fail('Cancelled; nothing changed.');
 }
 
-step(`npm version ${version}`, 'npm', ['version', version, '-m', 'chore(release): v%s']);
+// Commit and tag by hand: `npm version` refuses a dirty tree and commits only the package files,
+// and the changelog entry belongs in the same commit.
+const message = `chore(release): ${tag}`;
+step(`npm version ${version}`, 'npm', ['version', version, '--no-git-tag-version']);
+step('Commit', 'git', [
+	'commit',
+	'-m',
+	message,
+	'--',
+	'package.json',
+	'package-lock.json',
+	'CHANGELOG.md'
+]);
+step('Tag', 'git', ['tag', '-a', tag, '-m', message]);
 const push = ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`];
 // A file, not --notes: cmd can't carry the entry's newlines as an argument. gh puts these notes
 // above the generated ones (merged PRs and the compare link).

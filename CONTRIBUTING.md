@@ -183,13 +183,15 @@ verbatim, versionCode `MAJOR*10000 + MINOR*100 + PATCH`. Settings shows it (`__A
 npm run release -- patch|minor|major|X.Y.Z [--prerelease] [--yes]
 ```
 
-First commit the release's entry at the top of `CHANGELOG.md`: a `## vX.Y.Z [YYYY-MM-DD]` heading
-and its lines, at most 500 characters (Play's limit for release notes). It is the release's notes
+First write the release's entry at the top of `CHANGELOG.md`: a `## vX.Y.Z [YYYY-MM-DD]` heading
+and its lines, at most 500 characters (Play's limit for release notes). Leave it uncommitted and it
+goes into the `chore(release)` commit. It is the release's notes
 everywhere, and `scripts/changelog.js` reads it; `scripts/changelog.spec.ts` checks the file's
 format, and that the version in `package.json` has an entry, in every test run.
 
-`scripts/release.mjs` needs a clean `main` up to date with origin, a signed-in `gh` and that entry.
-It runs check and test, `npm version` (commit + tag `vX.Y.Z`), pushes both and publishes the GitHub
+`scripts/release.mjs` needs a `main` that is clean but for `CHANGELOG.md` and up to date with
+origin, a signed-in `gh` and that entry. It runs check and test, bumps the version, commits it with
+the changelog and tags `vX.Y.Z`, pushes both and publishes the GitHub
 release with the entry as its notes, above GitHub's generated ones. Nothing is built locally. The
 published release starts `.github/workflows/release.yml`:
 
