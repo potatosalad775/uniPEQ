@@ -126,7 +126,7 @@
 
 <Dialog.Root bind:open={() => introStore.open, (open) => !open && close()}>
 	<Dialog.Portal>
-		<Dialog.Overlay class="fixed inset-0 z-40 animate-fade-in bg-black/40" />
+		<Dialog.Overlay class="fixed inset-0 z-50 animate-fade-in bg-black/40" />
 		<!-- Focus starts on the page itself, not its first link, so no ring shows until Tab. -->
 		<Dialog.Content
 			bind:ref={content}

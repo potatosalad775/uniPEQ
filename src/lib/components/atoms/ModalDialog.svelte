@@ -37,7 +37,7 @@
 
 <Dialog.Root bind:open>
 	<Dialog.Portal>
-		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40" />
+		<Dialog.Overlay class="fixed inset-0 z-50 bg-black/40" />
 		<!-- Focus starts on the dialog itself, not its first button: a focus() moved by script
 			after a tap can match :focus-visible, which rang the button on touch. -->
 		<Dialog.Content
