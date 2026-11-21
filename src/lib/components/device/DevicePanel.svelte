@@ -10,11 +10,25 @@
 	simulated, without a status or eqcaps links: eqcaps doesn't list its profile.
 -->
 <script lang="ts">
-	import { ChevronDown, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
+	import {
+		ChevronDown,
+		EllipsisVertical,
+		FlaskConical,
+		Plus,
+		SquarePen,
+		Trash2,
+		TriangleAlert,
+		Usb
+	} from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
 	import Badge from '#lib/components/atoms/Badge.svelte';
 	import Button from '#lib/components/atoms/Button.svelte';
+	import Input from '#lib/components/atoms/Input.svelte';
 	import ListRow from '#lib/components/atoms/ListRow.svelte';
+	import Menu from '#lib/components/atoms/Menu.svelte';
+	import MenuItem from '#lib/components/atoms/MenuItem.svelte';
+	import MenuSeparator from '#lib/components/atoms/MenuSeparator.svelte';
+	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
 	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
 	import Switch from '#lib/components/atoms/Switch.svelte';
 	import DeviceControls from './DeviceControls.svelte';
@@ -144,6 +158,23 @@
 		eqOptions.flatMap((o) => (o.disabled ? [] : [{ value: o.value, label: o.label }]))
 	);
 	const eqCurrentLabel = $derived(eqOptions.find((o) => o.value === eqValue)?.label ?? '');
+
+	// ── The device's own list of presets: add one, rename or delete the one shown ──
+	const presetRoom = $derived(devicePeqStore.slotRoom);
+	const presetCount = $derived(devicePeqStore.slots.length);
+	const presetsFull = $derived(presetRoom !== null && presetCount >= presetRoom);
+	/** The preset Rename and Delete are about: the one Read and Write target. */
+	const targetPreset = $derived(devicePeqStore.targetSlot);
+	let renaming = $state(false);
+	let newName = $state('');
+	/** The device refused the name just tried: said in the dialog, which stays open. */
+	let renameRefused = $state(false);
+	let deleting = $state(false);
+
+	async function rename() {
+		renameRefused = !(await devicePeqService.renamePreset(newName));
+		if (!renameRefused) renaming = false;
+	}
 </script>
 
 {#snippet link(href: string, text: string)}
@@ -153,8 +184,10 @@
 		{href}
 		target="_blank"
 		rel="noopener noreferrer"
-		class="text-primary underline-offset-4 hover:underline">{text}</a
+		class="text-primary underline-offset-4 hover:underline"
 	>
+		{text}
+	</a>
 	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 {/snippet}
 
@@ -403,6 +436,53 @@
 							{/snippet}
 						</ListRow>
 					{/if}
+					{#if devicePeqStore.canEditPresets}
+						<Menu class="min-w-52">
+							{#snippet trigger(props)}
+								<ListRow
+									label={m.device_peq_presets_manage()}
+									description={presetRoom === null
+										? undefined
+										: m.device_peq_presets_count({ count: presetCount, max: presetRoom })}
+									disabled={devicePeqStore.isBusy}
+									buttonProps={props}
+								>
+									{#snippet trailing()}
+										<EllipsisVertical class="size-4" aria-hidden="true" />
+									{/snippet}
+								</ListRow>
+							{/snippet}
+							<MenuItem
+								disabled={presetsFull}
+								description={presetsFull ? m.device_peq_presets_full() : undefined}
+								onSelect={() => void devicePeqService.createPreset()}
+							>
+								{#snippet icon()}<Plus class="size-4" aria-hidden="true" />{/snippet}
+								{m.device_peq_presets_new()}
+							</MenuItem>
+							{#if targetPreset}
+								<MenuItem
+									onSelect={() => {
+										newName = targetPreset.name;
+										renameRefused = false;
+										renaming = true;
+									}}
+								>
+									{#snippet icon()}<SquarePen class="size-4" aria-hidden="true" />{/snippet}
+									{m.device_peq_presets_rename({ name: targetPreset.name })}
+								</MenuItem>
+								<MenuSeparator />
+								<MenuItem
+									destructive
+									disabled={presetCount <= 1}
+									onSelect={() => (deleting = true)}
+								>
+									{#snippet icon()}<Trash2 class="size-4" aria-hidden="true" />{/snippet}
+									{m.device_peq_presets_delete({ name: targetPreset.name })}
+								</MenuItem>
+							{/if}
+						</Menu>
+					{/if}
 					{#if canAutoWrite}
 						<ListRow
 							label={m.device_peq_auto_write()}
@@ -457,3 +537,65 @@
 		{/if}
 	{/if}
 </section>
+
+<ModalDialog
+	bind:open={renaming}
+	title={m.device_peq_presets_rename_title()}
+	description={m.device_peq_presets_rename_body()}
+>
+	<form
+		id="device-preset-rename"
+		onsubmit={(event) => {
+			event.preventDefault();
+			void rename();
+		}}
+	>
+		<Input bind:value={newName} aria-label={m.presets_name_label()} autocomplete="off" />
+	</form>
+	{#if renameRefused && devicePeqStore.statusIsError}
+		<p class="text-sm text-error" role="alert">{devicePeqStore.statusMessage}</p>
+	{/if}
+	{#snippet footer()}
+		<Button
+			title={m.device_peq_presets_cancel()}
+			variant="ghost"
+			onclick={() => (renaming = false)}
+		>
+			{m.device_peq_presets_cancel()}
+		</Button>
+		<Button
+			title={m.device_peq_presets_rename_confirm()}
+			type="submit"
+			form="device-preset-rename"
+			disabled={!newName.trim() || devicePeqStore.isBusy}
+		>
+			{m.device_peq_presets_rename_confirm()}
+		</Button>
+	{/snippet}
+</ModalDialog>
+
+<ModalDialog
+	bind:open={deleting}
+	title={m.device_peq_presets_delete_title({ name: targetPreset?.name ?? '' })}
+	description={m.device_peq_presets_delete_body({ device: connection?.name ?? '' })}
+>
+	{#snippet footer()}
+		<Button
+			title={m.device_peq_presets_cancel()}
+			variant="ghost"
+			onclick={() => (deleting = false)}
+		>
+			{m.device_peq_presets_cancel()}
+		</Button>
+		<Button
+			title={m.device_peq_presets_delete_confirm()}
+			variant="destructive"
+			onclick={() => {
+				deleting = false;
+				void devicePeqService.deletePreset();
+			}}
+		>
+			{m.device_peq_presets_delete_confirm()}
+		</Button>
+	{/snippet}
+</ModalDialog>

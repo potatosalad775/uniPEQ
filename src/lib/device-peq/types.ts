@@ -14,7 +14,8 @@ import type {
 	PullRequest,
 	PullResult,
 	PushRequest,
-	PushResult
+	PushResult,
+	Slot
 } from '@potatosalad775/eqcaps-device-bridge';
 
 export type { PullResult, PushRequest, PushResult, DeviceIdentity };
@@ -40,7 +41,15 @@ export type PeqCapabilities = Pick<
 	| 'readsFirmware'
 	| 'readsBandCount'
 	| 'controls'
->;
+> & {
+	/**
+	 * The device keeps its presets as a list with names of its own, which `slots()` reads; `slots`
+	 * is then the room it has. Unset by a bridge from before it could tell.
+	 */
+	listsSlots?: boolean;
+	/** Presets can be created, renamed and deleted. Unset by a bridge from before it could. */
+	editsSlots?: boolean;
+};
 
 /**
  * A connected device. The bridge's `BridgeDevice` satisfies this as is. Every value in and out is a
@@ -60,6 +69,17 @@ export interface PeqDevice {
 	/** Whether the EQ is on (`readsEnabled`); null when the protocol or device doesn't say. */
 	eqEnabled(): Promise<boolean | null>;
 	setEnabled(enabled: boolean, slot?: number): Promise<void>;
+	/** The presets as they are now: asked of a device that `listsSlots`, with the names it stores. */
+	slots?(): Promise<readonly Slot[]>;
+	/**
+	 * The next three need `editsSlots`. An empty preset after the last one, under a name the device
+	 * side picks; the device may start playing it.
+	 */
+	createSlot?(request?: { name?: string }): Promise<Slot>;
+	/** A name the device can't store is refused (`invalid-request`), never shortened. */
+	renameSlot?(slot: number, name: string): Promise<void>;
+	/** The presets after it move down by one, and the device may switch to another. */
+	deleteSlot?(slot: number): Promise<void>;
 	/** The firmware version (`readsFirmware`), read once; null when the device doesn't say. */
 	firmware(): Promise<string | null>;
 	/** The band count the device reports (`readsBandCount`); null when it doesn't say. */
@@ -135,4 +155,4 @@ export interface ReopenWait {
  * A device operation under way. Each one is reported in the sync bar while it runs (`syncStatus`
  * names it), so one added here can't run without the bar saying so.
  */
-export type DeviceOperation = 'read' | 'write' | 'switch' | 'control';
+export type DeviceOperation = 'read' | 'write' | 'switch' | 'control' | 'preset';

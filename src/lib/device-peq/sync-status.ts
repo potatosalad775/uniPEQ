@@ -48,7 +48,8 @@ const BUSY: Record<DeviceOperation, () => string> = {
 	read: m.device_peq_reading,
 	write: m.device_peq_writing,
 	switch: m.device_peq_switching,
-	control: m.device_control_setting
+	control: m.device_control_setting,
+	preset: m.device_peq_presets_updating
 };
 
 /**

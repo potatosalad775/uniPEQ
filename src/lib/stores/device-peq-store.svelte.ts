@@ -103,6 +103,13 @@ class DevicePeqStore {
 	firmware = $state<string | null>(null);
 	/** A control is being written. */
 	isControlling = $state(false);
+	/**
+	 * The presets the device holds, as it last listed them, for a device that keeps a list with
+	 * names of its own (`listsSlots`); null for one whose presets are the profile's.
+	 */
+	deviceSlots = $state.raw<Slot[] | null>(null);
+	/** A preset is being created, renamed or deleted. */
+	isEditingPresets = $state(false);
 
 	get isConnected(): boolean {
 		return this.connection !== null;
@@ -122,6 +129,7 @@ class DevicePeqStore {
 		if (this.isWriting) return 'write';
 		if (this.isSwitching) return 'switch';
 		if (this.isControlling) return 'control';
+		if (this.isEditingPresets) return 'preset';
 		return null;
 	}
 
@@ -161,7 +169,25 @@ class DevicePeqStore {
 
 	/** EQ memories to read from and write to — the bypass preset is the off switch, not one. */
 	get slots(): Slot[] {
-		return (this.connection?.device.capabilities.slots ?? []).filter((s) => !s.bypass);
+		const all = this.deviceSlots ?? this.connection?.device.capabilities.slots ?? [];
+		return all.filter((s) => !s.bypass);
+	}
+
+	/** How many presets the device has room for, where it keeps a list; null where they are fixed. */
+	get slotRoom(): number | null {
+		const caps = this.connection?.device.capabilities;
+		if (!caps || this.deviceSlots === null) return null;
+		return caps.slots.filter((s) => !s.bypass).length;
+	}
+
+	/** Presets can be created, renamed and deleted on this device. */
+	get canEditPresets(): boolean {
+		return !!this.connection?.device.capabilities.editsSlots && this.deviceSlots !== null;
+	}
+
+	/** The preset Read and Write target, as the device lists it. */
+	get targetSlot(): Slot | null {
+		return this.slots.find((s) => s.id === this.activeSlot) ?? null;
 	}
 
 	/** The preset that turns the device's EQ off, if it has one. */
@@ -249,7 +275,8 @@ class DevicePeqStore {
 	setConnected(
 		connection: DeviceConnection,
 		currentSlot: number | null,
-		enabled: boolean | null = null
+		enabled: boolean | null = null,
+		deviceSlots: Slot[] | null = null
 	): void {
 		// Unwritten changes carry over only to the same device: another one's EQ is read regardless.
 		const known = this.knownDevice;
@@ -257,6 +284,7 @@ class DevicePeqStore {
 		const carried = this.connection ? this.hasUnwritten : this.unwritten;
 		this.unwritten = same && carried;
 		this.connection = connection;
+		this.deviceSlots = deviceSlots;
 		this.knownDevice = { name: connection.name, profile: connection.profile };
 		this.isConnecting = false;
 		this.needsReconnect = false;
@@ -312,6 +340,31 @@ class DevicePeqStore {
 	}
 
 	/**
+	 * The device's presets as it lists them now, after one was created or renamed, and what it
+	 * plays. The target stays: its id still names the same preset.
+	 */
+	relisted(slots: Slot[], currentSlot: number | null, enabled: boolean | null): void {
+		this.deviceSlots = slots;
+		this.deviceSlot = currentSlot;
+		if (enabled !== null) this.eqEnabled = enabled;
+	}
+
+	/**
+	 * The target preset was deleted. The ids after it moved down, so the target is the preset the
+	 * device went to, and whatever the list held for the deleted one has nowhere left to go.
+	 */
+	deleted(slots: Slot[], currentSlot: number | null, enabled: boolean | null): void {
+		this.relisted(slots, currentSlot, enabled);
+		const listed = this.slots.some((s) => s.id === currentSlot);
+		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
+		this.unwritten = false;
+		this.#baseline = this.#snapshot();
+		this.synced = null;
+		this.layout = null;
+		this.autoPaused = false;
+	}
+
+	/**
 	 * The connection is gone. `knownDevice` stays, with the list read-only until it is back, and
 	 * whether the list holds changes it never got.
 	 */
@@ -325,6 +378,8 @@ class DevicePeqStore {
 		this.isWriting = false;
 		this.isSwitching = false;
 		this.isControlling = false;
+		this.isEditingPresets = false;
+		this.deviceSlots = null;
 		this.activeSlot = null;
 		this.deviceSlot = null;
 		this.eqEnabled = null;

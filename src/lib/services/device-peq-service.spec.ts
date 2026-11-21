@@ -247,6 +247,138 @@ describe('devicePeqService reading the device', () => {
 	});
 });
 
+describe('devicePeqService on a device that keeps a list of presets', () => {
+	const BAND = { type: 'PK' as const, freq: 100, gain: -2, q: 0.7 };
+
+	/**
+	 * A device with room for four presets that holds `names`, each with one band. As on a Topping
+	 * DAC, a new preset is empty and becomes the one played, and a delete moves the later ones
+	 * down and sends the device back to its first.
+	 */
+	async function listDevice(names = ['Bass', 'Airy']) {
+		const held = names.map((name) => ({ name, filters: [BAND] }));
+		let current = 0;
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
+			canEnable: true,
+			readsSlot: true,
+			writesSlot: true,
+			listsSlots: true,
+			editsSlots: true,
+			slots: [0, 1, 2, 3].map((id) => ({ id, name: `Config ${id + 1}`, writable: true }))
+		});
+		const d = conn.device;
+		d.slots = async () => held.map((h, id) => ({ id, name: h.name, writable: true }));
+		d.currentSlot = async () => current;
+		d.setEnabled = async (_on, slot) => void (current = slot ?? current);
+		d.pull = async (r) => ({ filters: held[r?.slot ?? current].filters, preamp: 0 });
+		d.createSlot = async () => {
+			held.push({ name: `Config ${held.length + 1}`, filters: [] });
+			current = held.length - 1;
+			return { id: current, name: held[current].name, writable: true };
+		};
+		d.renameSlot = async (slot, name) => {
+			if (name.length > 15)
+				throw Object.assign(new Error('too long'), bridgeError('invalid-request'));
+			held[slot].name = name;
+		};
+		d.deleteSlot = async (slot) => {
+			held.splice(slot, 1);
+			current = 0;
+		};
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		return { conn, held };
+	}
+	const bridgeError = (code: string) => ({ name: 'BridgeError', code });
+	const names = () => devicePeqStore.slots.map((s) => s.name);
+
+	beforeEach(() => {
+		devicePeqStore.forget();
+		eqStore.reset();
+		settingsStore.writeWarning = false;
+	});
+
+	afterEach(() => {
+		devicePeqStore.forget();
+		settingsStore.writeWarning = true;
+	});
+
+	it("lists the device's presets under its names, not the profile's", async () => {
+		await listDevice();
+		expect(names()).toEqual(['Bass', 'Airy']);
+		expect(devicePeqStore.slotRoom).toBe(4);
+		expect(devicePeqStore.canEditPresets).toBe(true);
+		expect(devicePeqStore.activeSlot).toBe(0);
+	});
+
+	it("keeps the profile's presets for a device that lists none of its own", async () => {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
+			slots: [{ id: 1, name: 'USER1' }]
+		});
+		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
+		await devicePeqService.connect('hid');
+		expect(names()).toEqual(['USER1']);
+		expect(devicePeqStore.slotRoom).toBeNull();
+		expect(devicePeqStore.canEditPresets).toBe(false);
+		await devicePeqService.createPreset();
+		expect(names()).toEqual(['USER1']);
+	});
+
+	it('creates a preset, shows it and reads it', async () => {
+		await listDevice();
+		expect(eqStore.filters).toHaveLength(1);
+		await devicePeqService.createPreset();
+		expect(names()).toEqual(['Bass', 'Airy', 'Config 3']);
+		expect(devicePeqStore.activeSlot).toBe(2);
+		expect(devicePeqStore.selection).toBe(2);
+		expect(eqStore.filters).toHaveLength(0);
+		expect(devicePeqStore.operation).toBeNull();
+	});
+
+	it('keeps unwritten changes for the new preset instead of reading over them', async () => {
+		await listDevice();
+		eqStore.update(0, { gain: 5 });
+		await devicePeqService.createPreset();
+		expect(devicePeqStore.activeSlot).toBe(2);
+		expect(eqStore.filters[0].gain).toBe(5);
+		expect(devicePeqStore.hasUnwritten).toBe(true);
+	});
+
+	it('creates nothing once the device is full', async () => {
+		const { held } = await listDevice(['A', 'B', 'C', 'D']);
+		await devicePeqService.createPreset();
+		expect(held).toHaveLength(4);
+	});
+
+	it('renames the preset shown, and says so when the device refuses the name', async () => {
+		await listDevice();
+		expect(await devicePeqService.renamePreset(' Warm ')).toBe(true);
+		expect(names()).toEqual(['Warm', 'Airy']);
+		expect(await devicePeqService.renamePreset('a name far too long')).toBe(false);
+		expect(names()).toEqual(['Warm', 'Airy']);
+		expect(devicePeqStore.statusIsError).toBe(true);
+		expect(devicePeqStore.failure).toEqual({ op: 'preset', code: 'invalid-request' });
+	});
+
+	it('deletes the preset shown and reads the one the device went to', async () => {
+		const { held } = await listDevice(['Bass', 'Airy', 'Warm']);
+		held[0].filters = [BAND, BAND];
+		await devicePeqService.switchTo('p1');
+		eqStore.update(0, { gain: 5 });
+		await devicePeqService.deletePreset();
+		expect(names()).toEqual(['Bass', 'Warm']);
+		expect(devicePeqStore.activeSlot).toBe(0);
+		expect(devicePeqStore.hasUnwritten).toBe(false);
+		expect(eqStore.filters).toHaveLength(2);
+	});
+
+	it("leaves the device's last preset alone", async () => {
+		const { held } = await listDevice(['Only']);
+		await devicePeqService.deletePreset();
+		expect(held).toHaveLength(1);
+	});
+});
+
 describe('devicePeqService volume warning', () => {
 	/** A device that can switch presets, connected through the service as a press would. */
 	async function connectDevice(profileSource: 'device' | 'demo' = 'device') {

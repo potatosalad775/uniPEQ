@@ -47,6 +47,7 @@ import {
 	type NativeUsbDevice
 } from '#lib/transports/native/device-io.js';
 import type { Filter } from '@potatosalad775/eqcaps-core';
+import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 import { logger } from './logger';
 
 export type ConnectKind = 'hid' | 'serial' | 'ble' | 'demo';
@@ -109,6 +110,18 @@ async function playing(conn: DeviceConnection) {
 		? await conn.device.eqEnabled().catch(() => null)
 		: null;
 	return { slot, enabled };
+}
+
+/**
+ * The presets a device that keeps a list holds now, under its own names; null for a device whose
+ * presets are the profile's, and when the list can't be read (the profile's then stand in).
+ */
+async function listed(conn: DeviceConnection): Promise<Slot[] | null> {
+	if (!conn.device.capabilities.listsSlots || !conn.device.slots) return null;
+	return conn.device.slots().then(
+		(slots) => [...slots],
+		() => null
+	);
 }
 
 class DevicePeqService {
@@ -270,7 +283,7 @@ class DevicePeqService {
 	 */
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const { slot, enabled } = await playing(conn);
-		devicePeqStore.setConnected(conn, slot, enabled);
+		devicePeqStore.setConnected(conn, slot, enabled, await listed(conn));
 		this.#watchLost(conn);
 		this.#dropAsk();
 		this.install();
@@ -290,7 +303,7 @@ class DevicePeqService {
 	async #finishReopen(again: DeviceConnection): Promise<void> {
 		const consent = devicePeqStore.writeConsent;
 		const { slot, enabled } = await playing(again);
-		devicePeqStore.setConnected(again, slot, enabled);
+		devicePeqStore.setConnected(again, slot, enabled, await listed(again));
 		this.#watchLost(again);
 		devicePeqStore.writeConsent = consent;
 		logger.info(`reopened ${again.name}, slot ${slot}, EQ ${enabled ?? '?'}`);
@@ -786,6 +799,115 @@ class DevicePeqService {
 			devicePeqStore.isSwitching = false;
 		}
 		if (switched && !devicePeqStore.hasUnwritten) await this.read(true);
+	}
+
+	// ── The device's own list of presets ──────────────────────────────────────
+
+	/** The list again, and what the device plays, after it changed. */
+	async #relist(conn: DeviceConnection): Promise<Slot[] | null> {
+		const slots = await listed(conn);
+		const { slot, enabled } = await playing(conn);
+		if (slots && devicePeqStore.connection === conn) devicePeqStore.relisted(slots, slot, enabled);
+		return slots;
+	}
+
+	/**
+	 * Add an empty preset to the device and make it the one Device EQ shows. The list isn't read
+	 * over if it holds changes not written yet: they can then be written to the new preset.
+	 */
+	async createPreset(): Promise<void> {
+		const conn = devicePeqStore.connection;
+		const room = devicePeqStore.slotRoom;
+		if (!conn?.device.createSlot || !devicePeqStore.canEditPresets || devicePeqStore.isBusy) return;
+		if (room !== null && devicePeqStore.slots.length >= room) return;
+		this.#cancelPending();
+		// The device goes over to the new preset, which is flat: as audible as a write.
+		if (this.#ask(() => this.createPreset())) return;
+		devicePeqStore.isEditingPresets = true;
+		devicePeqStore.setStatus(null);
+		let made: Slot | null = null;
+		try {
+			made = await conn.device.createSlot();
+			await this.#relist(conn);
+			logger.info(`created preset ${made.id} "${made.name}"`);
+			devicePeqStore.setStatus(m.device_peq_presets_created({ name: made.name }));
+		} catch (e) {
+			this.fail(e, 'preset');
+			hapticError();
+			// Show what the device holds, whatever the attempt did.
+			if (!devicePeqStore.needsReconnect) await this.#relist(conn);
+		} finally {
+			devicePeqStore.isEditingPresets = false;
+		}
+		if (made && devicePeqStore.connection === conn) await this.switchTo(`p${made.id}`);
+	}
+
+	/**
+	 * Rename the preset Device EQ shows; true when the device took the name. A name the device
+	 * can't store is refused as it is, not shortened to fit.
+	 */
+	async renamePreset(name: string): Promise<boolean> {
+		const conn = devicePeqStore.connection;
+		const slot = devicePeqStore.targetSlot;
+		if (!conn?.device.renameSlot || !slot || !devicePeqStore.canEditPresets) return false;
+		if (devicePeqStore.isBusy) return false;
+		const next = name.trim();
+		if (next === slot.name) return true;
+		devicePeqStore.isEditingPresets = true;
+		devicePeqStore.setStatus(null);
+		try {
+			await conn.device.renameSlot(slot.id, next);
+			await this.#relist(conn);
+			logger.info(`renamed preset ${slot.id} to "${next}"`);
+			devicePeqStore.setStatus(m.device_peq_presets_renamed({ name: next }));
+			return true;
+		} catch (e) {
+			if (errorCode(e) === 'invalid-request') {
+				logger.error('device preset failed:', e instanceof Error ? e.message : String(e));
+				devicePeqStore.setStatus(m.device_peq_presets_name_refused(), true);
+				devicePeqStore.failure = { op: 'preset', code: 'invalid-request' };
+			} else {
+				this.fail(e, 'preset');
+			}
+			hapticError();
+			return false;
+		} finally {
+			devicePeqStore.isEditingPresets = false;
+		}
+	}
+
+	/**
+	 * Delete the preset Device EQ shows, for good. The device moves to another of its presets, which
+	 * is then read: what the list held was the deleted one's.
+	 */
+	async deletePreset(): Promise<void> {
+		const conn = devicePeqStore.connection;
+		const slot = devicePeqStore.targetSlot;
+		if (!conn?.device.deleteSlot || !slot || !devicePeqStore.canEditPresets) return;
+		if (devicePeqStore.isBusy || devicePeqStore.slots.length <= 1) return;
+		this.#cancelPending();
+		// The device goes over to another preset: as audible as a write.
+		if (this.#ask(() => this.deletePreset())) return;
+		devicePeqStore.isEditingPresets = true;
+		devicePeqStore.setStatus(null);
+		let done = false;
+		try {
+			await conn.device.deleteSlot(slot.id);
+			const slots = await conn.device.slots!();
+			const now = await playing(conn);
+			if (devicePeqStore.connection !== conn) return;
+			devicePeqStore.deleted([...slots], now.slot, now.enabled);
+			logger.info(`deleted preset ${slot.id} "${slot.name}", the device is on ${now.slot}`);
+			devicePeqStore.setStatus(m.device_peq_presets_deleted({ name: slot.name }));
+			done = true;
+		} catch (e) {
+			this.fail(e, 'preset');
+			hapticError();
+			if (!devicePeqStore.needsReconnect) await this.#relist(conn);
+		} finally {
+			devicePeqStore.isEditingPresets = false;
+		}
+		if (done) await this.read(true);
 	}
 
 	// ── Auto-write ────────────────────────────────────────────────────────────
