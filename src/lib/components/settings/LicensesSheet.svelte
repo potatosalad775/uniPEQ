@@ -41,8 +41,10 @@
 				href="https://github.com/potatosalad775/uniPEQ"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="text-accent underline">github.com/potatosalad775/uniPEQ</a
+				class="text-accent underline"
 			>
+				github.com/potatosalad775/uniPEQ
+			</a>
 		</p>
 	</div>
 
@@ -72,8 +74,10 @@
 								href={notice.url}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="mx-2 mb-2 block text-xs break-all text-accent underline">{notice.url}</a
+								class="mx-2 mb-2 block text-xs break-all text-accent underline"
 							>
+								{notice.url}
+							</a>
 							<!-- eslint-enable svelte/no-navigation-without-resolve -->
 						{/if}
 						{@render licenseText(notice.text || m.settings_licenses_no_text())}
