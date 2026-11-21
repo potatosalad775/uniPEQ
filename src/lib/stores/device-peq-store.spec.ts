@@ -48,6 +48,7 @@ function connection(
 			bandCount: async () => null,
 			readControls: vi.fn(),
 			writeControl: vi.fn(),
+			eq: vi.fn(),
 			close: vi.fn()
 		},
 		connectionType: 'hid',

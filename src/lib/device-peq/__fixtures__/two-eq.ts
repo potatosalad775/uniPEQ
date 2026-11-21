@@ -3,7 +3,8 @@
  * bands, one channel) and a headphone EQ `spk` ("SPK EQ", 20 bands, its left and right driven
  * apart, presets of its own). In single-EQ mode (`state.single`) the user EQ is one 20-band EQ and
  * any operation on `spk` is refused as `unsupported`, as the bridge's Qudelix handler does. The
- * device keeps what is written to it, and records each call with the EQ it named. Each EQ is on a
+ * device keeps what is written to it, and records each call with the EQ it was made on (the view,
+ * `conn.device.eq(id)`). Each EQ is on a
  * preset (`state.preset`) or on none (null, an edited EQ, which `currentSlot` answers as null): a
  * write naming a preset saves there and plays it, one naming none leaves the EQ on none, and
  * switching the EQ on with a preset loads it, as a Qudelix does. Each EQ's switch is its own.
@@ -58,13 +59,12 @@ export function twoEqDevice({ single = false, preset = 22 as number | null } = {
 		}
 	};
 	const calls: { op: string; eq: string | undefined }[] = [];
-	/** The EQ an operation names, refused as a single-EQ mode refuses the headphone EQ. */
+	/** The EQ an operation is on, refused as a single-EQ mode refuses the headphone EQ. */
 	const on = (op: string, eq: string | undefined) => {
 		calls.push({ op, eq });
 		if (eq === 'spk' && state.single) throw bridgeError('unsupported', 'no speaker EQ');
 		return eq;
 	};
-	const presetOf = (eq: string | undefined) => (eq === 'spk' ? 'spk' : 'usr');
 	const profile = {
 		...hardwareProfile('two-eq-dac', { bandCount: 10 }),
 		device: { brand: 'Spec', model: 'Two-EQ DAC' },
@@ -83,35 +83,38 @@ export function twoEqDevice({ single = false, preset = 22 as number | null } = {
 		},
 		[SPK]
 	);
-	const d = conn.device;
-	d.pull = async (r = {}) => {
-		if (on('pull', r.eq) === 'spk') {
-			const { left, right, preamp } = state.spk;
-			return { filters: left, preamp, right: { filters: right, preamp } };
-		}
-		return state.single ? state.all : state.usr;
-	};
-	d.push = async (r: PushRequest) => {
-		if (on('push', r.eq) === 'spk') {
-			state.spk.left = [...r.filters];
-			state.spk.right = [...(r.right?.filters ?? r.filters)];
-		} else if (state.single) state.all = { filters: [...r.filters], preamp: r.preamp ?? 0 };
-		else state.usr = { filters: [...r.filters], preamp: r.preamp ?? 0 };
-		state.preset[presetOf(r.eq)] = r.slot ?? null;
-		return { reconnect: false };
-	};
-	d.currentSlot = async (eq) => (on('currentSlot', eq), state.preset[presetOf(eq)]);
-	d.eqEnabled = async (eq) => (on('eqEnabled', eq), state.enabled[presetOf(eq)]);
-	d.setEnabled = async (enabled, slot, eq) => {
-		on('setEnabled', eq);
-		state.enabled[presetOf(eq)] = enabled;
-		if (enabled && slot !== undefined) state.preset[presetOf(eq)] = slot;
-	};
-	// The bridge reads no band count of an EQ the mode lacks: null, not an error.
-	d.bandCount = async (eq) => {
-		calls.push({ op: 'bandCount', eq });
-		if (eq === 'spk') return state.single ? null : 20;
-		return state.single ? 20 : 10;
-	};
+	for (const eq of [undefined, 'spk'] as const) {
+		const d = conn.device.eq(eq);
+		const which = eq ?? 'usr';
+		d.pull = async () => {
+			if (on('pull', eq) === 'spk') {
+				const { left, right, preamp } = state.spk;
+				return { filters: left, preamp, right: { filters: right, preamp } };
+			}
+			return state.single ? state.all : state.usr;
+		};
+		d.push = async (r: PushRequest) => {
+			if (on('push', eq) === 'spk') {
+				state.spk.left = [...r.filters];
+				state.spk.right = [...(r.right?.filters ?? r.filters)];
+			} else if (state.single) state.all = { filters: [...r.filters], preamp: r.preamp ?? 0 };
+			else state.usr = { filters: [...r.filters], preamp: r.preamp ?? 0 };
+			state.preset[which] = r.slot ?? null;
+			return { reconnect: false };
+		};
+		d.currentSlot = async () => (on('currentSlot', eq), state.preset[which]);
+		d.eqEnabled = async () => (on('eqEnabled', eq), state.enabled[which]);
+		d.setEnabled = async (enabled, slot) => {
+			on('setEnabled', eq);
+			state.enabled[which] = enabled;
+			if (enabled && slot !== undefined) state.preset[which] = slot;
+		};
+		// The bridge reads no band count of an EQ the mode lacks: null, not an error.
+		d.bandCount = async () => {
+			calls.push({ op: 'bandCount', eq });
+			if (eq === 'spk') return state.single ? null : 20;
+			return state.single ? 20 : 10;
+		};
+	}
 	return { conn, state, calls };
 }

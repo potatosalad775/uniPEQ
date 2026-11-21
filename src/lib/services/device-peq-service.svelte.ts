@@ -185,7 +185,7 @@ async function listed(conn: DeviceConnection): Promise<Slot[] | null> {
  */
 async function eqThere(conn: DeviceConnection, id: string): Promise<boolean> {
 	try {
-		await conn.device.currentSlot(id);
+		await conn.device.eq(id).currentSlot();
 		return true;
 	} catch (e) {
 		if (errorCode(e) === 'unsupported') return false;
@@ -216,7 +216,7 @@ async function absentEqs(conn: DeviceConnection): Promise<string[]> {
 async function reportedBands(conn: DeviceConnection, id: string | undefined) {
 	const data = eqProfile(conn.profile, id)!;
 	if (!conn.device.capabilities.readsBandCount || data.bands?.length) return null;
-	const reported = await conn.device.bandCount(id);
+	const reported = await conn.device.eq(id).bandCount();
 	if (reported === null || reported === data.bandCount) return null;
 	logger.warn(`${data.id}: the device reports ${reported} bands, not ${data.bandCount}`);
 	return reported;

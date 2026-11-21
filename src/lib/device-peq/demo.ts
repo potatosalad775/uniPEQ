@@ -297,6 +297,7 @@ export function stereo(left: PeqDevice, right: PeqDevice): PeqDevice {
 		bandCount: () => left.bandCount(),
 		readControls: () => left.readControls(),
 		writeControl: (id, value) => left.writeControl(id, value),
+		eq: (id) => stereo(left.eq(id), right.eq(id)),
 		async close() {
 			await left.close();
 			await right.close();

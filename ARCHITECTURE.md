@@ -230,25 +230,27 @@ changed:
      offers Read and Write. Connecting never writes. Another device or EQ is read regardless.
    - **One EQ at a time.** A device can have several EQs (eqcaps `protocol.eqs`, the bridge's
      `capabilities.eqs`): a Qudelix 5K has its user EQ and a headphone EQ with its own bands,
-     presets, switch and left and right. `devicePeqStore` keeps the connection as opened
-     (`opened`) and the EQ the list edits (`eq`); its `connection` is the device viewed as that EQ
+     presets, switch and left and right. `devicePeqStore` keeps the connection as opened (`opened`)
+     and the EQ the list edits (`eq`); its `connection` is the device viewed as that EQ
      (`device-peq/device-eqs.ts`, `eqView`): the EQ's profile (`eqProfile`, with the band count the
-     device reports for it), presets and `perChannel`, and a device that names the EQ in every
-     operation. The document, sync state, constraint, Device EQ, presets sheet, channel row and
-     link all read that view and never see an EQ id; only what is the device's (its going away,
-     its controls) reads `opened`. Every connection starts on the profile's own EQ; a reopen keeps
-     the EQ while the device still has it. Picking another (the band card's EQ row) is like
-     connecting another device: its preset, switch and presets are read, the sync state starts
-     over, its bands come in as a fresh start, and auto-write and the link take the new view for a
-     new connection. Changes the EQ on screen never got are never carried to the other (a 10-band
-     list doesn't belong on a 20-band left and right EQ): one waiting for auto-write goes out
-     first; otherwise a dialog asks to Write them to the EQ left (then switch), Discard them, or
-     Cancel. `knownDevice` names the EQ, so a reconnect keeps changes only for the same one.
+     device reports for it) and the bridge's view of the device as that EQ (`device.eq(id)`), with
+     its operations, presets and `perChannel`. The document, sync state, constraint, Device EQ,
+     presets sheet, channel row and link all read that view and never see an EQ id; only what is the
+     device's (its going away, its controls) reads `opened`. Every connection starts on the
+     profile's own EQ; a reopen keeps the EQ while the device still has it. Picking another (the
+     band card's EQ row) is like connecting another device: its preset, switch and presets are read,
+     the sync state starts over, its bands come in as a fresh start, and auto-write and the link
+     take the new view for a new connection. Changes the EQ on screen never got are never carried to
+     the other (a 10-band list doesn't belong on a 20-band left and right EQ): one waiting for
+     auto-write goes out first; otherwise a dialog asks to Write them to the EQ left (then switch),
+     Discard them, or Cancel. `knownDevice` names the EQ, so a reconnect keeps changes only for the
+     same one.
    - **An EQ the device's mode lacks** answers `unsupported` (a Qudelix in single-EQ mode has no
-     headphone EQ). Connecting and reopening ask each listed EQ once (`currentSlot(eq)`); a missing
-     one shows disabled in the EQ row, and any other failure is a failure, not an absence. An
-     operation refused as `unsupported` on a listed EQ that is gone (the mode changed on the device
-     or in its own app) falls back to the profile's own EQ, reads it, and the sync bar says so.
+     headphone EQ). Connecting and reopening ask each listed EQ once (`eq(id).currentSlot()`); a
+     missing one shows disabled in the EQ row, and any other failure is a failure, not an absence.
+     An operation refused as `unsupported` on a listed EQ that is gone (the mode changed on the
+     device or in its own app) falls back to the profile's own EQ, reads it, and the sync bar says
+     so.
    - Nothing refits the list on its own: a list that doesn't fit is flagged, and **Fit**
      (`fitFilters`) is the user's action.
    - **Left and right apart** only on a device that drives them apart: profile `channels:

@@ -9,7 +9,7 @@
  */
 import { eqProfile, profileEqs } from '@potatosalad775/eqcaps-core';
 import * as m from '#lib/paraglide/messages.js';
-import type { DeviceConnection, PeqDevice } from './types';
+import type { DeviceConnection } from './types';
 
 /** One of a device's EQs, as the EQ row offers it. */
 export interface DeviceEq {
@@ -55,44 +55,20 @@ export function eqLabel(eq: { name?: string }): string {
 }
 
 /**
- * `conn` viewed as one of its EQs: that EQ's profile (its band count, presets and channels), its
- * presets and whether the bridge drives its channels apart, and a device that names it in every
- * operation that takes one. The firmware, the controls and closing are the device's. The
- * profile's own EQ needs nothing named, so its view is `conn` itself unless the device reports
- * another band count.
+ * `conn` viewed as one of its EQs: that EQ's profile (its band count, presets and channels) with
+ * the device viewed as it (`eq()`), whose operations, presets and channels are that EQ's. The
+ * firmware, the controls and closing are the device's on every view. The profile's own EQ is how
+ * the device was opened, so its view is `conn` itself unless the device reports another band count.
  */
 export function eqView(conn: DeviceConnection, eq: EqTarget): DeviceConnection {
 	const own = eqProfile(conn.profile, eq.id);
-	const info = conn.device.capabilities.eqs.find((e) => e.id === eq.id);
-	if (!own || (eq.id !== undefined && !info)) {
-		throw new Error(`${conn.name} has no EQ "${eq.id}"`);
-	}
+	if (!own) throw new Error(`${conn.name} has no EQ "${eq.id}"`);
 	const profile = eq.bandCount === null ? own : { ...own, bandCount: eq.bandCount };
-	if (!info) return profile === conn.profile ? conn : { ...conn, profile };
-	const id = info.id;
-	const d = conn.device;
-	const { slots, createSlot, renameSlot, deleteSlot } = d;
-	const device: PeqDevice = {
-		capabilities: { ...d.capabilities, slots: info.slots, perChannel: info.perChannel },
-		pull: (request) => d.pull({ ...request, eq: id }),
-		push: (request) => d.push({ ...request, eq: id }),
-		currentSlot: () => d.currentSlot(id),
-		eqEnabled: () => d.eqEnabled(id),
-		setEnabled: (enabled, slot) => d.setEnabled(enabled, slot, id),
-		...(slots && { slots: () => d.slots!(id) }),
-		...(createSlot && { createSlot: (request) => d.createSlot!({ ...request, eq: id }) }),
-		...(renameSlot && { renameSlot: (slot, name) => d.renameSlot!(slot, name, id) }),
-		...(deleteSlot && { deleteSlot: (slot) => d.deleteSlot!(slot, id) }),
-		firmware: () => d.firmware(),
-		bandCount: () => d.bandCount(id),
-		readControls: () => d.readControls(),
-		writeControl: (control, value) => d.writeControl(control, value),
-		close: () => d.close()
-	};
+	if (eq.id === undefined) return profile === conn.profile ? conn : { ...conn, profile };
 	// The name ends in the profile's own EQ ("Qudelix 5K · USR EQ") where the data labels it: the
 	// view is named for the EQ it is. A name from elsewhere (a guessed device) is left alone.
 	const name = conn.name === labelOf(conn.profile) ? labelOf(profile) : conn.name;
-	return { ...conn, name, profile, device };
+	return { ...conn, name, profile, device: conn.device.eq(eq.id) };
 }
 
 /** A profile's device and EQ label, as a connection is named for it. */

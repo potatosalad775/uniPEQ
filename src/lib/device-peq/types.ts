@@ -58,10 +58,10 @@ export type PeqCapabilities = Pick<
  * written value in eqcaps units (Hz, dB, RBJ Q, `LSC`/`HSC`); pushes are `fit` + `complete`d
  * first, since the bridge never clamps or pads (`push-plan.ts`).
  *
- * A device can have several EQs (`capabilities.eqs`): each operation on one takes its id as `eq`
- * (in the request for `pull`, `push` and `createSlot`), the profile's own EQ without one. The
- * store's connection is the device viewed as one EQ (`eqView`), whose device names it in every
- * call, so nothing past the store passes `eq`.
+ * A device can have several EQs (`capabilities.eqs`). As opened it is viewed as the one its profile
+ * describes, and `eq(id)` gives it viewed as a listed one: every operation, `capabilities.slots` and
+ * `capabilities.perChannel` are the view's. The store's connection is the device viewed as the EQ
+ * the list edits (`eqView`), so nothing past the store names an EQ.
  */
 export interface PeqDevice {
 	readonly capabilities: PeqCapabilities;
@@ -72,25 +72,25 @@ export interface PeqDevice {
 	 * when the EQ is off. Where the EQ switch is its own state (`readsEnabled`), the preset whether
 	 * the EQ is on or off.
 	 */
-	currentSlot(eq?: string): Promise<number | null>;
+	currentSlot(): Promise<number | null>;
 	/** Whether the EQ is on (`readsEnabled`); null when the protocol or device doesn't say. */
-	eqEnabled(eq?: string): Promise<boolean | null>;
-	setEnabled(enabled: boolean, slot?: number, eq?: string): Promise<void>;
+	eqEnabled(): Promise<boolean | null>;
+	setEnabled(enabled: boolean, slot?: number): Promise<void>;
 	/** The presets as they are now: asked of a device that `listsSlots`, with the names it stores. */
-	slots?(eq?: string): Promise<readonly Slot[]>;
+	slots?(): Promise<readonly Slot[]>;
 	/**
 	 * The next three need `editsSlots`. An empty preset after the last one, under a name the device
 	 * side picks; the device may start playing it.
 	 */
-	createSlot?(request?: { name?: string; eq?: string }): Promise<Slot>;
+	createSlot?(request?: { name?: string }): Promise<Slot>;
 	/** A name the device can't store is refused (`invalid-request`), never shortened. */
-	renameSlot?(slot: number, name: string, eq?: string): Promise<void>;
+	renameSlot?(slot: number, name: string): Promise<void>;
 	/** The presets after it move down by one, and the device may switch to another. */
-	deleteSlot?(slot: number, eq?: string): Promise<void>;
+	deleteSlot?(slot: number): Promise<void>;
 	/** The firmware version (`readsFirmware`), read once; null when the device doesn't say. */
 	firmware(): Promise<string | null>;
 	/** The band count the device reports for the EQ (`readsBandCount`); null when it doesn't say. */
-	bandCount(eq?: string): Promise<number | null>;
+	bandCount(): Promise<number | null>;
 	/**
 	 * Every control in `capabilities.controls` by id; null for one the device doesn't have now (its
 	 * firmware range or the control it depends on). Pull and push never touch controls.
@@ -101,6 +101,11 @@ export interface PeqDevice {
 	 * the device (no read-back then). Refuses a value the profile doesn't list.
 	 */
 	writeControl(id: string, value: number): Promise<{ reconnect: boolean }>;
+	/**
+	 * The device viewed as another of its EQs: an id of `capabilities.eqs`, or none for the EQ the
+	 * profile describes. The same connection, and the same view each time it is asked for.
+	 */
+	eq(id?: string): PeqDevice;
 	close(): Promise<void>;
 }
 

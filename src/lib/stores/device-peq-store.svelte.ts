@@ -53,7 +53,7 @@ class DevicePeqStore {
 	} | null>(null);
 	/**
 	 * The connection viewed as the EQ the list edits (`eqView`): that EQ's profile, presets and
-	 * channels, and a device that names it in every operation. Another EQ is another connection
+	 * channels, and the device viewed as it. Another EQ is another connection
 	 * object, so what follows the connection (auto-write, the modernGraphTool link) takes an EQ
 	 * switch for a new target, as it does a new device.
 	 */

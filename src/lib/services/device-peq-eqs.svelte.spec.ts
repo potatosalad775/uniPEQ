@@ -70,7 +70,7 @@ describe('a device with two EQs', () => {
 		expect(devicePeqStore.perChannel).toBe(false);
 	});
 
-	it('switches to the other EQ: every call names it, its bands are the list, no undo back', async () => {
+	it('switches to the other EQ: every call is on it, its bands are the list, no undo back', async () => {
 		const { state, calls } = await connected();
 		eqStore.update(0, { gain: 5 });
 		await devicePeqService.requestWrite();
@@ -135,11 +135,11 @@ describe('a device with two EQs', () => {
 	it('sends the right channel and the EQ in the one write', async () => {
 		const { conn } = await connected();
 		await devicePeqService.selectEq('spk');
-		const push = vi.spyOn(conn.device, 'push');
+		const push = vi.spyOn(conn.device.eq('spk'), 'push');
 		eqStore.update(1, { gain: 1 });
 		await devicePeqService.requestWrite();
 		expect(push).toHaveBeenCalledWith(
-			expect.objectContaining({ eq: 'spk', slot: 22, right: expect.anything() })
+			expect.objectContaining({ slot: 22, right: expect.anything() })
 		);
 	});
 
@@ -250,8 +250,7 @@ describe('changes not written when another EQ is picked', () => {
 		expect(eqStore.linked).toBe(false);
 		// The user EQ can't be read now, so nothing replaces the list: its channels become the left
 		// one's, which the user EQ never held.
-		const pull = conn.device.pull;
-		conn.device.pull = (r) => (r?.eq ? pull(r) : Promise.reject(bridgeError('timeout')));
+		conn.device.pull = () => Promise.reject(bridgeError('timeout'));
 		await devicePeqService.selectEq(undefined);
 		expect(eqStore.linked).toBe(true);
 		flushSync();
@@ -318,7 +317,7 @@ describe('an EQ the device has only in some modes', () => {
 	it("keeps the EQ when another refusal isn't about it", async () => {
 		const { conn } = await connected();
 		await devicePeqService.selectEq('spk');
-		vi.spyOn(conn.device, 'push').mockRejectedValueOnce(bridgeError('unsupported'));
+		vi.spyOn(conn.device.eq('spk'), 'push').mockRejectedValueOnce(bridgeError('unsupported'));
 		eqStore.update(0, { gain: 1 });
 		await devicePeqService.requestWrite();
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -328,10 +327,7 @@ describe('an EQ the device has only in some modes', () => {
 
 	it('treats another failure to answer as a failure, not an absence', async () => {
 		const device = twoEqDevice();
-		device.conn.device.currentSlot = async (eq) => {
-			if (eq === 'spk') throw bridgeError('timeout');
-			return 22;
-		};
+		device.conn.device.eq('spk').currentSlot = () => Promise.reject(bridgeError('timeout'));
 		await connect(device.conn);
 		expect(devicePeqStore.eqs[1].present).toBe(true);
 		await devicePeqService.selectEq('spk');
@@ -454,9 +450,10 @@ describe('an EQ on no stored preset', () => {
 	});
 
 	it("reads the other EQ's own where it is on switching to it", async () => {
-		const { state, pull } = await unsaved();
+		const { conn, state } = await unsaved();
+		const pull = vi.spyOn(conn.device.eq('spk'), 'pull');
 		await devicePeqService.selectEq('spk');
-		expect(pull.mock.calls.at(-1)).toEqual([{ eq: 'spk' }]);
+		expect(pull.mock.calls).toEqual([[{}]]);
 		expect(eqStore.channels.left.filters).toEqual(state.spk.left);
 		expect(eqStore.channels.right.filters).toEqual(state.spk.right);
 		expect(devicePeqStore.selection).toBe('unsaved');
@@ -521,11 +518,7 @@ describe('an EQ on no stored preset', () => {
 
 	it('keeps a preset it failed to ask for unknown', async () => {
 		const device = twoEqDevice({ preset: null });
-		const asked = device.conn.device.currentSlot;
-		device.conn.device.currentSlot = async (eq) => {
-			if (eq === undefined) throw bridgeError('timeout');
-			return asked(eq);
-		};
+		device.conn.device.currentSlot = () => Promise.reject(bridgeError('timeout'));
 		await connect(device.conn);
 		expect(devicePeqStore.selection).toBe(0);
 		expect(devicePeqStore.readTarget).toBeNull();
