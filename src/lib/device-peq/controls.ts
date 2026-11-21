@@ -23,7 +23,14 @@ const ROLE_LABELS: Record<NonNullable<Control['role']>, () => string> = {
 	'noise-control': m.device_control_noise_control,
 	'mic-noise-reduction': m.device_control_mic_noise_reduction,
 	'prompt-tone': m.device_control_prompt_tone,
-	'prompt-tone-volume': m.device_control_prompt_tone_volume
+	'prompt-tone-volume': m.device_control_prompt_tone_volume,
+	mute: m.device_control_mute,
+	input: m.device_control_input,
+	output: m.device_control_output,
+	balance: m.device_control_balance,
+	polarity: m.device_control_polarity,
+	crossfeed: m.device_control_crossfeed,
+	'display-brightness': m.device_control_display_brightness
 };
 
 export function controlLabel(control: Control): string {
