@@ -7,6 +7,7 @@
  * in the app.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { DeviceMatch, MatchResult } from '@potatosalad775/eqcaps-client';
 import type { IndexEntry, Profile } from '@potatosalad775/eqcaps-core';
 import type { HidTransport, StreamTransport } from '@potatosalad775/eqcaps-device-bridge';
 import type { DeviceIoPlugin, NativeUsbDevice } from '#lib/transports/native/device-io.js';
@@ -78,11 +79,26 @@ function entry(id: string, extra: Partial<IndexEntry> = {}): IndexEntry {
 	};
 }
 
-const match = (e: IndexEntry, specificity = 3, group = false) => ({
+const match = (e: IndexEntry, specificity = 3, group = false): DeviceMatch<IndexEntry> => ({
 	id: e.id,
 	specificity,
 	group,
 	entry: e
+});
+
+/**
+ * What the client answers for a device that matches `matches`: one is the best match, several tie
+ * at the top. `firmwareDecides` as the client says it where a tie hangs on the firmware version.
+ */
+const found = (
+	matches: DeviceMatch<IndexEntry>[],
+	firmwareDecides = false
+): MatchResult<IndexEntry> => ({
+	matches,
+	best: matches.length === 1 ? matches[0] : null,
+	ambiguous: matches.length > 1,
+	ties: matches,
+	firmwareDecides
 });
 
 beforeEach(() => {
@@ -102,7 +118,7 @@ describe('connectHid', () => {
 	it('drives a matched device with its profile’s protocol and limits', async () => {
 		const e = entry('crinear-protocol-micro');
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0xc20f, 'Protocol Micro'));
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 
 		const result = await connectHid();
 		expect(result.kind).toBe('connected');
@@ -121,11 +137,7 @@ describe('connectHid', () => {
 	it('says a group match is one', async () => {
 		const e = entry('walkplay-schemeno16-devices', { group: true });
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0x1234, 'Dongle'));
-		client.matchDevice.mockResolvedValue({
-			best: match(e, 3, true),
-			matches: [match(e, 3, true)],
-			ambiguous: false
-		});
+		client.matchDevice.mockResolvedValue(found([match(e, 3, true)]));
 		const result = await connectHid();
 		expect(result.kind === 'connected' && result.connection.profileSource).toBe('group');
 	});
@@ -134,11 +146,7 @@ describe('connectHid', () => {
 		const a = entry('model-a');
 		const b = entry('model-b');
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0x1, 'Twin'));
-		client.matchDevice.mockResolvedValue({
-			best: null,
-			matches: [match(a), match(b)],
-			ambiguous: true
-		});
+		client.matchDevice.mockResolvedValue(found([match(a), match(b)]));
 
 		const result = await connectHid();
 		expect(result.kind).toBe('choose');
@@ -160,7 +168,7 @@ describe('connectHid', () => {
 			protocol: fosi,
 			match: { firmware: { min: '1.4.15' } }
 		});
-		const tie = { best: null, matches: [match(current), match(old)], ambiguous: true };
+		const tie = found([match(current), match(old)], true);
 
 		/** A DS3 that answers Fosi's firmware command (0xA6) with `version`, BCD per part. */
 		function ds3(version: number[] | null): HidTransport {
@@ -174,9 +182,7 @@ describe('connectHid', () => {
 		it('reads the firmware and connects the profile it falls in', async () => {
 			browser.requestHidDevice.mockResolvedValue(ds3([0x01, 0x06, 0x10]));
 			client.matchDevice.mockImplementation(async (identity: { firmware?: string }) =>
-				identity.firmware === '1.6.10'
-					? { best: match(current), matches: [match(current)], ambiguous: false }
-					: tie
+				identity.firmware === '1.6.10' ? found([match(current)]) : tie
 			);
 
 			const result = await connectHid();
@@ -206,7 +212,7 @@ describe('connectHid', () => {
 		const e = entry('crinear-protocol-micro');
 		const t = hid(0x3302, 0xc20f, 'Protocol Micro');
 		browser.requestHidDevice.mockResolvedValue(t);
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 
 		expect((await connectHid()).kind).toBe('connected');
 		expect(t.sendReport).not.toHaveBeenCalled();
@@ -215,7 +221,7 @@ describe('connectHid', () => {
 
 	it('guesses a known vendor’s protocol, with limits from what it can carry', async () => {
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0x9999, 'Mystery DSP '));
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 
 		const result = await connectHid();
 		expect(result.kind).toBe('connected');
@@ -229,7 +235,7 @@ describe('connectHid', () => {
 	it('closes the device and reports it unsupported when nothing can drive it', async () => {
 		const t = hid(0x1234, 0x5678, 'Keyboard');
 		browser.requestHidDevice.mockResolvedValue(t);
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 
 		const result = await connectHid();
 		expect(result.kind).toBe('unsupported');
@@ -239,7 +245,7 @@ describe('connectHid', () => {
 	it('drives the device on its protocol’s own limits when the profile can’t be fetched', async () => {
 		const e = entry('offline-profile');
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0x2, 'X'));
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		client.loadProfile.mockResolvedValue(null);
 		const result = await connectHid();
 		expect(result.kind === 'connected' && result.connection.profileSource).toBe('guess');
@@ -248,7 +254,7 @@ describe('connectHid', () => {
 	it('finds the same device again without the chooser', async () => {
 		const e = entry('crinear-protocol-micro');
 		browser.requestHidDevice.mockResolvedValue(hid(0x3302, 0xc20f, 'Protocol Micro'));
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		const result = await connectHid();
 		if (result.kind !== 'connected') throw new Error('expected a connection');
 
@@ -273,7 +279,7 @@ describe('connectHid', () => {
 			}
 		});
 		browser.requestHidDevice.mockResolvedValue(hid(0x20b1, 0x80d5, 'Fosi Audio DS3'));
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		const result = await connectHid();
 		if (result.kind !== 'connected') throw new Error('expected a connection');
 
@@ -289,7 +295,7 @@ describe('connectHid', () => {
 	it('waits for a device restarting to save, skipping its old handle, every time', async () => {
 		const e = entry('tanchjim-fola');
 		browser.requestHidDevice.mockResolvedValue(hid(0x31b2, 0x1123, 'TANCHJIM-FOLA'));
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		const result = await connectHid();
 		if (result.kind !== 'connected') throw new Error('expected a connection');
 
@@ -315,7 +321,7 @@ describe('connectSerial', () => {
 		});
 		const hidEntry = entry('hid-only');
 		client.loadIndex.mockResolvedValue({ profiles: [serialEntry, hidEntry] });
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 		const stream: StreamTransport = {
 			kind: 'serial',
 			write: vi.fn(async () => {}),
@@ -409,7 +415,7 @@ describe('connectNativeHid', () => {
 	}
 
 	it('reports no device when nothing attached is known', async () => {
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 		const keyboard = usb({ vendorId: 0x046d, productName: 'Keyboard' });
 		const noHid = usb({ hidInterfaces: [] });
 		expect(await connectNativeHid(plugin([keyboard, noHid]))).toEqual({ kind: 'no-device' });
@@ -417,7 +423,7 @@ describe('connectNativeHid', () => {
 
 	it('asks for USB permission, then connects the one known device with its profile', async () => {
 		const e = entry('crinear-protocol-micro');
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		const p = plugin([usb()]);
 
 		const result = await connectNativeHid(p);
@@ -433,14 +439,14 @@ describe('connectNativeHid', () => {
 	});
 
 	it('treats a refused permission as a cancelled chooser', async () => {
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 		const p = plugin([usb()], false);
 		expect(await connectNativeHid(p)).toEqual({ kind: 'cancelled' });
 		expect(p.open).not.toHaveBeenCalled();
 	});
 
 	it('asks which device when several known ones are attached', async () => {
-		client.matchDevice.mockResolvedValue({ best: null, matches: [], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([]));
 		const a = usb({ hasPermission: true });
 		const b = usb({ deviceName: '/dev/bus/usb/001/003', productName: 'Other DSP' });
 		const p = plugin([a, b]);
@@ -460,7 +466,7 @@ describe('connectNativeHid', () => {
 
 	it('reopens a device restarting to save when it attaches at a new path', async () => {
 		const e = entry('crinear-protocol-micro');
-		client.matchDevice.mockResolvedValue({ best: match(e), matches: [match(e)], ambiguous: false });
+		client.matchDevice.mockResolvedValue(found([match(e)]));
 		const old = usb({ hasPermission: true });
 		const p = plugin([old]);
 		let attached: ((e: { device: NativeUsbDevice }) => void) | undefined;
@@ -491,11 +497,7 @@ describe('connectNativeHid', () => {
 		vi.useFakeTimers();
 		try {
 			const e = entry('crinear-protocol-micro');
-			client.matchDevice.mockResolvedValue({
-				best: match(e),
-				matches: [match(e)],
-				ambiguous: false
-			});
+			client.matchDevice.mockResolvedValue(found([match(e)]));
 			const p = plugin([usb({ hasPermission: true })]);
 			const result = await connectNativeHid(p);
 			if (result.kind !== 'connected') throw new Error('expected a connection');

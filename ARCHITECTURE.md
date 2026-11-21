@@ -160,7 +160,8 @@ by index, and the log says so: writing too few bands leaves the rest playing. Re
 
 - `connected`, with a `DeviceConnection` whose `profileSource` is `device` (its own profile),
   `group` (a family profile its identity can't narrow), `guess` (no profile: `guessProtocol` by
-  vendor id and a profile built from the handler's codec, `analyzeCodec`, flagged experimental) or
+  vendor id and a profile built from what the handler's wire carries, `wireConstraints`, flagged
+  experimental) or
   `demo`;
 - `choose`: several profiles fit, or (Android) several devices are attached; the user picks;
 - `cancelled`, `unsupported` (nothing to drive it), `no-device` (Android: nothing drivable attached).
