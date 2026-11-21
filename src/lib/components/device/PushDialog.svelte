@@ -1,7 +1,7 @@
 <!--
 	Adapted from modernGraphTool src/lib/components/features/DevicePeqPushDialog.svelte @ 23ddc4dd:
-	our messages, eqcaps type codes shown as they are, no per-channel line, and Android back closes
-	it (through ModalDialog).
+	our messages, eqcaps type codes shown as they are, a change named by its channel when the
+	channels are written apart, and Android back closes it (through ModalDialog).
 -->
 <script lang="ts">
 	import Button from '#lib/components/atoms/Button.svelte';
@@ -39,7 +39,17 @@
 		return `${Math.round(value * 1000) / 1000}${unit}`;
 	}
 
+	const CHANNEL_LABEL = { left: m.eq_channel_left, right: m.eq_channel_right };
+
+	/** The change, named by channel when the channels are written apart. */
 	function describe(c: PlanChange): string {
+		const change = describeChange(c);
+		return c.channel
+			? m.device_peq_push_on_channel({ channel: CHANNEL_LABEL[c.channel](), change })
+			: change;
+	}
+
+	function describeChange(c: PlanChange): string {
 		if (c.kind === 'dropped') return m.device_peq_push_dropped({ band: c.band });
 		if (c.kind === 'preamp') {
 			return m.device_peq_push_preamp({

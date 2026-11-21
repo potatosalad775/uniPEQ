@@ -7,8 +7,8 @@ import { presetFit, type PresetFit } from '#lib/device-peq/preset-fit.js';
 import type { PeqCapabilities } from '#lib/device-peq/types.js';
 import { formatApo } from '#lib/eq/eq-apo.js';
 import { padToBandCount } from '#lib/eq/eq-constraint.js';
-import { derivePreamp } from '#lib/eq/eq-preamp.js';
-import type { PeqPreset } from '#lib/eq/model.js';
+import { derivePreamp, pregainOf } from '#lib/eq/eq-preamp.js';
+import type { EqFilter, PeqPreset } from '#lib/eq/model.js';
 import {
 	createPreset,
 	editedPreset,
@@ -41,12 +41,17 @@ export class PresetStore {
 		return parsePreset(await this.storage.load(id));
 	}
 
-	/** Save the EQ as it is now under `name`, naming the connected device's profile. */
+	/**
+	 * Save the EQ as it is now under `name`, naming the connected device's profile; with the
+	 * channels apart, both of them.
+	 */
 	async saveCurrent(name: string, tags: string[] = []): Promise<PeqPreset> {
+		const { left, right } = eqStore.channels;
 		const preset = createPreset({
 			name,
-			filters: eqStore.filters,
-			pregain: eqStore.pregain,
+			filters: left.filters,
+			pregain: pregainOf(left),
+			...(eqStore.linked ? {} : { right: { filters: right.filters, pregain: pregainOf(right) } }),
 			deviceId: devicePeqStore.connection?.profileId ?? undefined,
 			tags
 		});
@@ -57,16 +62,24 @@ export class PresetStore {
 
 	/**
 	 * Replace the EQ with a stored preset, as one undoable step. With auto-write on, the device
-	 * follows (after a review when it can't hold the preset as it is).
+	 * follows (after a review when it can't hold the preset as it is). A preset's right channel
+	 * loads apart only onto a device that holds its channels apart; any other gets the left one for
+	 * both, and `leftOnly` says so.
 	 */
-	async apply(id: string): Promise<ParsedPreset> {
+	async apply(id: string): Promise<ParsedPreset & { leftOnly: boolean }> {
 		const parsed = await this.load(id);
+		const { filters, pregain, right } = parsed.preset;
 		// A device's bands are a set number: a shorter preset is padded with flat
 		// bands, which sound the same. What doesn't fit is still only flagged; Fit is the user's.
 		const profile = devicePeqStore.knownDevice?.profile;
-		const filters = parsed.preset.filters;
-		eqStore.replace(profile ? padToBandCount(filters, profile) : filters, parsed.preset.pregain);
-		return parsed;
+		const pad = (list: EqFilter[]) => (profile ? padToBandCount(list, profile) : list);
+		const apart = !!right && devicePeqStore.perChannel;
+		eqStore.load({
+			filters: pad(filters),
+			preamp: pregain,
+			...(right && apart ? { right: { filters: pad(right.filters), preamp: right.pregain } } : {})
+		});
+		return { ...parsed, leftOnly: !!right && !apart };
 	}
 
 	/** Store a preset from a file's text. Throws a `PresetError` when the text is no preset. */
@@ -92,6 +105,7 @@ export class PresetStore {
 			name,
 			filters: preset.filters,
 			pregain: preset.pregain,
+			right: preset.right,
 			deviceId: preset.source?.deviceId,
 			tags: preset.tags
 		});
@@ -108,7 +122,7 @@ export class PresetStore {
 	/** How each listed preset fits a device, by id. A damaged preset is left out. */
 	async fits(
 		profile: Profile,
-		capabilities: Pick<PeqCapabilities, 'writesPreamp'>
+		capabilities: Pick<PeqCapabilities, 'writesPreamp' | 'perChannel'>
 	): Promise<Record<string, PresetFit>> {
 		const out: Record<string, PresetFit> = {};
 		for (const entry of this.index) {
@@ -121,7 +135,10 @@ export class PresetStore {
 		return out;
 	}
 
-	/** A stored preset as a file: uniPEQ JSON, or Equalizer APO text. */
+	/**
+	 * A stored preset as a file: uniPEQ JSON, or Equalizer APO text, where a right channel apart
+	 * goes under its own `Channel:` line (APO's preamp lines follow the channel too).
+	 */
 	async exportFile(
 		id: string,
 		format: 'json' | 'apo'
@@ -131,8 +148,13 @@ export class PresetStore {
 		if (format === 'json') {
 			return { name: `${base}.json`, text: presetJson(preset), type: 'application/json' };
 		}
-		const preamp = preset.pregain === 'auto' ? derivePreamp(preset.filters) : preset.pregain;
-		return { name: `${base}.txt`, text: formatApo(preset.filters, preamp), type: 'text/plain' };
+		const apo = (filters: EqFilter[], pregain: number | 'auto') =>
+			formatApo(filters, pregain === 'auto' ? derivePreamp(filters) : pregain);
+		const { right } = preset;
+		const text = right
+			? `Channel: L\n${apo(preset.filters, preset.pregain)}Channel: R\n${apo(right.filters, right.pregain)}`
+			: apo(preset.filters, preset.pregain);
+		return { name: `${base}.txt`, text, type: 'text/plain' };
 	}
 }
 

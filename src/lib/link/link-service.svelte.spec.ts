@@ -88,7 +88,7 @@ function connect() {
 	devicePeqStore.setConnected(conn, null);
 	// The user lowered the volume: writes go out from here.
 	devicePeqStore.writeConsent = true;
-	eqStore.open([pk(100), pk(1000), pk(10000)], 0);
+	eqStore.open({ filters: [pk(100), pk(1000), pk(10000)], preamp: 0 });
 	devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
 	return conn;
 }
@@ -198,7 +198,7 @@ describe('linkService', () => {
 		flushSync();
 		expect(joiner.changes).toEqual([{ by: 'unipeq', burst: expect.any(String) }]);
 
-		eqStore.open([pk(500)], 0);
+		eqStore.open({ filters: [pk(500)], preamp: 0 });
 		flushSync();
 		expect(joiner.changes.at(-1)).toEqual({ by: 'device', fresh: true });
 	});

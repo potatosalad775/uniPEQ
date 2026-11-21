@@ -6,6 +6,7 @@
 	import SyncBar from '#lib/components/device/SyncBar.svelte';
 	import BandList from '#lib/components/eq/BandList.svelte';
 	import BandSheet from '#lib/components/eq/BandSheet.svelte';
+	import ChannelControl from '#lib/components/eq/ChannelControl.svelte';
 	import EqAppBar from '#lib/components/eq/EqAppBar.svelte';
 	import EqEmptyState from '#lib/components/eq/EqEmptyState.svelte';
 	import EqGraph from '#lib/components/eq/EqGraph.svelte';
@@ -47,7 +48,7 @@
 <!--
 	The app bar, the graph and the sync bar hold still; only the bands scroll.
 	Phone: app bar (device chip), the graph edge to edge (pinned chrome, not a card), the band card
-	(preamp + bands) scrolling, sync bar; the device panel is a sheet from the chip, the selected
+	(channels where the device has an EQ per channel, preamp, bands) scrolling, sync bar; the device panel is a sheet from the chip, the selected
 	band's editor a sheet over the bottom. Before a connection the chip connects directly.
 	Wide: the graph fills the left column over the device panel; the band card scrolls on the right,
 	where the selected row opens the editor in place.
@@ -85,6 +86,7 @@
 		{#if hasDevice}
 			<PageBody class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4 wide:pt-0 wide:pl-0">
 				<div class="divide-y divide-base-content/10 rounded-xl bg-base-100">
+					<ChannelControl />
 					<PreampControl inlineEditor={wide.current} />
 					<BandList inlineEditor={wide.current} />
 				</div>

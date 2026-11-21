@@ -1,5 +1,5 @@
-// Adapted from modernGraphTool src/lib/device-peq/push-plan.ts @ 23ddc4dd: our filter model (no
-// per-channel bands, so nothing is skipped), and our logger.
+// Adapted from modernGraphTool src/lib/device-peq/push-plan.ts @ 23ddc4dd: our filter model, a
+// plan per output channel where the device holds one for each, and our logger.
 /**
  * What a push to a device will actually send, worked out before anything is sent.
  *
@@ -9,15 +9,18 @@
  * when it could be read first — `readLayout` — otherwise with neutral filters). Whatever `fit` had to
  * change is listed here, so the UI can show it before writing instead of the device quietly
  * holding a different EQ from the one on screen.
+ *
+ * A device that holds an EQ per output channel gets each planned on its own, the profile's limits
+ * holding for each (eqcaps SPEC §9: the engine runs once per channel).
  */
 import { complete, fit, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
 import { toCapsFilter } from '#lib/eq/eq-constraint.js';
-import type { EqFilter } from '#lib/eq/model.js';
+import type { Channel, EqState, StereoEq } from '#lib/eq/model.js';
 import { logger } from '#lib/services/logger.js';
 import type { PresetRequest } from './preset';
 import type { PeqCapabilities, PeqDevice } from './types';
 
-export type PlanChange =
+export type PlanChange = (
 	| {
 			kind: 'field';
 			/** 1-based band number, as the band list shows it. */
@@ -28,20 +31,53 @@ export type PlanChange =
 	  }
 	/** The band has no slot left on the device, or the device's rules left no room for it: not sent. */
 	| { kind: 'dropped'; band: number }
-	| { kind: 'preamp'; wanted: number; written: number };
+	| { kind: 'preamp'; wanted: number; written: number }
+) & {
+	/** The channel it is in, when the channels are written apart; left out, it is both channels'. */
+	channel?: Channel;
+};
 
-export interface PushPlan {
+/** What one channel's write sends. */
+export interface ChannelWrite {
 	/** Exactly what to send: one written filter per device band. */
 	filters: Filter[];
 	/** Preamp to send, or undefined when the device takes none (or computes its own). */
 	preamp?: number;
+	/** Device bands nothing on screen fills: `complete` writes them flat, from the layout if given. */
+	emptySlots: number;
+}
+
+export interface PushPlan extends ChannelWrite {
+	/**
+	 * The right channel, for a device that drives its channels apart (`drivesChannelsApart`): sent
+	 * with every write, the left's own while the EQ is linked, so the device holds what is on
+	 * screen. Left out, `filters` and `preamp` go to both channels.
+	 */
+	right?: ChannelWrite;
 	changes: PlanChange[];
 	/** The bands boost, and the device can't be told to lower its level: it may clip. */
 	clipRisk: boolean;
 	/** Something can't be met at all (a cross-band rule); the result breaks it. */
 	infeasible: boolean;
-	/** Device bands nothing on screen fills: `complete` writes them flat, from `hints` if given. */
-	emptySlots: number;
+}
+
+/** What the target preset holds now, per channel, as `planPush` hints. */
+export interface Layout {
+	filters: readonly (Filter | null)[];
+	/** The right channel's, read from a device that drives its channels apart. */
+	right?: readonly (Filter | null)[];
+}
+
+/**
+ * The device holds an EQ per output channel and the bridge drives them apart: its profile says
+ * `channels: "independent"` and its handler is `perChannel`. Only there may the EQ be set apart,
+ * and only there does a write carry the right channel.
+ */
+export function drivesChannelsApart(
+	profile: Profile,
+	capabilities: Pick<PeqCapabilities, 'perChannel'>
+): boolean {
+	return profile.channels === 'independent' && capabilities.perChannel === true;
 }
 
 /**
@@ -58,10 +94,45 @@ export function needsConfirmation(plan: PushPlan): boolean {
 	return needsReview(plan) || plan.clipRisk;
 }
 
-/** Plan a push of the app's band list to a device described by `profile`. */
+/** How many bands the write fills, in the channel that has more. */
+export function bandsWritten(plan: PushPlan): number {
+	const left = plan.filters.length - plan.emptySlots;
+	return plan.right ? Math.max(left, plan.right.filters.length - plan.right.emptySlots) : left;
+}
+
+/**
+ * Plan a push of the EQ to a device described by `profile`. `eq.right`, the right channel set
+ * apart, is planned on its own where the device drives its channels apart, its changes and the
+ * left's then named by channel; elsewhere the device gets the left channel for both.
+ */
 export function planPush(
-	filters: EqFilter[],
-	preamp: number,
+	eq: StereoEq,
+	profile: Profile,
+	capabilities: Pick<PeqCapabilities, 'writesPreamp' | 'perChannel'>,
+	layout?: Layout | null
+): PushPlan {
+	const left = planChannel(eq, profile, capabilities, layout?.filters);
+	if (!drivesChannelsApart(profile, capabilities)) return left;
+	const { changes, clipRisk, infeasible, ...leftWrite } = left;
+	if (!eq.right) return { ...left, right: leftWrite };
+	const right = planChannel(eq.right, profile, capabilities, layout?.right);
+	return {
+		...leftWrite,
+		right: { filters: right.filters, emptySlots: right.emptySlots, ...preampIn(right) },
+		changes: [
+			...changes.map((c) => ({ ...c, channel: 'left' as const })),
+			...right.changes.map((c) => ({ ...c, channel: 'right' as const }))
+		],
+		clipRisk: clipRisk || right.clipRisk,
+		infeasible: infeasible || right.infeasible
+	};
+}
+
+const preampIn = ({ preamp }: ChannelWrite) => (preamp !== undefined ? { preamp } : {});
+
+/** One channel's list, or one for both. */
+function planChannel(
+	{ filters, preamp }: EqState,
 	profile: Profile,
 	capabilities: Pick<PeqCapabilities, 'writesPreamp'>,
 	hints?: readonly (Filter | null)[]
@@ -116,17 +187,19 @@ function sendsPreamp(
 
 /**
  * What the preset a push will write holds now, as `planPush` hints, so the bands the push leaves
- * empty keep the device's own frequencies and Qs instead of reading back as neutral fillers.
- * `request` is `readRequest` for that preset: null when the device can't read it from where it is.
- * A failed read is null too, and the push goes ahead with neutral fillers.
+ * empty keep the device's own frequencies and Qs instead of reading back as neutral fillers. Both
+ * channels where the device reads them apart. `request` is `readRequest` for that preset: null when
+ * the device can't read it from where it is. A failed read is null too, and the push goes ahead
+ * with neutral fillers.
  */
 export async function readLayout(
 	device: Pick<PeqDevice, 'pull'>,
 	request: PresetRequest | null
-): Promise<(Filter | null)[] | null> {
+): Promise<Layout | null> {
 	if (!request) return null;
 	try {
-		return (await device.pull(request)).filters;
+		const held = await device.pull(request);
+		return { filters: held.filters, ...(held.right ? { right: held.right.filters } : {}) };
 	} catch (e) {
 		logger.warn(
 			'could not read the layout to keep, writing neutral fillers:',

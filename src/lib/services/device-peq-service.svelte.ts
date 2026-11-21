@@ -12,10 +12,13 @@ import type { ConnectResult } from '#lib/device-peq/connect.js';
 import { describeDeviceError, errorCode, isConnectionLost } from '#lib/device-peq/errors.js';
 import { readRequest } from '#lib/device-peq/preset.js';
 import {
+	bandsWritten,
+	drivesChannelsApart,
 	needsConfirmation,
 	needsReview,
 	planPush,
 	readLayout,
+	type Layout,
 	type PushPlan
 } from '#lib/device-peq/push-plan.js';
 import {
@@ -28,15 +31,15 @@ import {
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
 import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
 import { sameUsb, usbIdentities } from '#lib/device-peq/usb-identities.js';
-import { derivePreamp } from '#lib/eq/eq-preamp.js';
-import { fromCapsFilter, type EqFilter } from '#lib/eq/model.js';
+import { derivePreamp, pregainOf } from '#lib/eq/eq-preamp.js';
+import { fromCapsFilter, type EqFilter, type EqLoad, type StereoEq } from '#lib/eq/model.js';
 import { headroomPreamp } from '#lib/eq/preamp-control.js';
 import * as m from '#lib/paraglide/messages.js';
 import { appState } from '#lib/platform/app-state.svelte.js';
 import { environment } from '#lib/platform/environment.js';
 import { hapticError, hapticTick } from '#lib/platform/haptics.js';
 import { isNative } from '#lib/platform/native.js';
-import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { devicePeqStore, type DeviceSnapshot } from '#lib/stores/device-peq-store.svelte.js';
 import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
 import { eqStore } from '#lib/stores/eq-store.svelte.js';
 import { noticeStore } from '#lib/stores/notice-store.svelte.js';
@@ -65,7 +68,20 @@ interface RestartMessages {
 }
 
 /** What the auto-writer last saw, to tell an edit from a reconnect or a toggle. */
-type Seen = { filters: EqFilter[]; preamp: number; conn: DeviceConnection | null };
+type Seen = { eq: DeviceSnapshot; conn: DeviceConnection | null };
+
+/**
+ * Whether two snapshots of the EQ are the same lists and preamps, by identity: the lists are
+ * replaced on every edit, never changed in place. Showing the other channel changes neither.
+ */
+function unchanged(a: DeviceSnapshot, b: DeviceSnapshot): boolean {
+	return (
+		a.filters === b.filters &&
+		a.preamp === b.preamp &&
+		a.right?.filters === b.right?.filters &&
+		a.right?.preamp === b.right?.preamp
+	);
+}
 
 /**
  * How long a device that restarts to save gets to come back before Reconnect is offered, ms: a
@@ -100,6 +116,40 @@ function readPreamp(filters: EqFilter[], preamp: number | undefined): number | '
 	return Math.abs(preamp - auto) < 0.01 || Math.abs(preamp - derived) < 0.01 ? 'auto' : preamp;
 }
 
+/** One channel as read: the bands the app edits, and how many it can't (an `x-` type). */
+function readBands(held: readonly (Filter | null)[]): { filters: EqFilter[]; skipped: number } {
+	const bands = held.filter((f) => f !== null);
+	const filters = bands.map(fromCapsFilter).filter((f) => f !== null);
+	return { filters, skipped: bands.length - filters.length };
+}
+
+/** Whether a device's two channels hold the same bands, as it reports them. */
+function sameBands(a: readonly (Filter | null)[], b: readonly (Filter | null)[]): boolean {
+	return (
+		a.length === b.length &&
+		a.every((f, i) => {
+			const g = b[i];
+			if (f === null || g === null) return f === g;
+			return f.type === g.type && f.freq === g.freq && f.q === g.q && f.gain === g.gain;
+		})
+	);
+}
+
+/**
+ * The EQ as a write sends it: each channel's list, and its preamp moved onto the device's grid
+ * (`preampValueOf`). The right channel only while the channels are apart.
+ */
+function writtenEq(): StereoEq {
+	const { left, right } = eqStore.channels;
+	return {
+		filters: left.filters,
+		preamp: eqConstraintStore.preampValueOf(left),
+		...(eqStore.linked
+			? {}
+			: { right: { filters: right.filters, preamp: eqConstraintStore.preampValueOf(right) } })
+	};
+}
+
 /**
  * The preset the device plays and, where its EQ switch is its own state, whether that is on. A
  * failed read is unknown rather than an error: the connection works without it.
@@ -132,8 +182,8 @@ class DevicePeqService {
 
 	/** A write waiting for the user to confirm what doesn't fit (the review dialog shows it). */
 	review = $state.raw<PushPlan | null>(null);
-	/** The list `review` was planned from. */
-	#reviewed: { filters: EqFilter[]; preamp: number } | null = null;
+	/** The EQ `review` was planned from. */
+	#reviewed: DeviceSnapshot | null = null;
 
 	#choice: Choice | null = null;
 	#installed = false;
@@ -283,7 +333,9 @@ class DevicePeqService {
 	 */
 	async #finishConnect(conn: DeviceConnection): Promise<void> {
 		const { slot, enabled } = await playing(conn);
+		const linked = this.#linkFor(conn);
 		devicePeqStore.setConnected(conn, slot, enabled, await listed(conn));
+		if (linked) devicePeqStore.setStatus(m.eq_channels_linked_for({ device: conn.name }));
 		this.#watchLost(conn);
 		this.#dropAsk();
 		this.install();
@@ -294,6 +346,20 @@ class DevicePeqService {
 		);
 		await this.#readControls(conn);
 		if (!devicePeqStore.hasUnwritten) await this.read(true);
+	}
+
+	/**
+	 * The channels may be apart only for a device that drives them apart. Apart when another device
+	 * connects, they become the left channel for both, as a fresh start: an undo would set them
+	 * apart again on a device that can't hold that. Whether it did, for the status line to say so;
+	 * a read that follows replaces the list anyway, as it does for any other device's.
+	 */
+	#linkFor(conn: DeviceConnection): boolean {
+		if (eqStore.linked || drivesChannelsApart(conn.profile, conn.device.capabilities)) return false;
+		const { left } = eqStore.channels;
+		eqStore.open({ filters: left.filters, preamp: pregainOf(left) });
+		logger.info(`${conn.name} has one EQ for both channels: kept the left channel`);
+		return true;
 	}
 
 	/**
@@ -539,10 +605,11 @@ class DevicePeqService {
 
 	// ── Reading and writing ───────────────────────────────────────────────────
 
-	/** Replace the band list with what Device EQ shows. */
 	/**
 	 * Read the preset Device EQ shows into the list. The Read button's read is an undo step; an
 	 * automatic one (`fresh`, on connecting or switching presets) starts a new history instead.
+	 * A device that drives its channels apart opens apart exactly when its channels differ (bands or
+	 * preamp); otherwise, and on every other device, one list for both.
 	 */
 	async read(fresh = false): Promise<void> {
 		const conn = devicePeqStore.connection;
@@ -551,17 +618,29 @@ class DevicePeqService {
 		devicePeqStore.isReading = true;
 		try {
 			const result = await conn.device.pull(request);
-			const bands = result.filters.filter((f) => f !== null);
-			const filters = bands.map(fromCapsFilter).filter((f) => f !== null);
-			const preamp = readPreamp(filters, result.preamp);
-			if (fresh) eqStore.open(filters, preamp);
-			else eqStore.replace(filters, preamp);
-			devicePeqStore.synced = { filters: eqStore.filters, preamp: eqStore.preamp };
-			const skipped = bands.length - filters.length;
+			const left = readBands(result.filters);
+			const held = devicePeqStore.perChannel ? result.right : undefined;
+			const rightPreamp = held?.preamp ?? result.preamp;
+			const apart =
+				!!held && (!sameBands(result.filters, held.filters) || rightPreamp !== result.preamp);
+			const right = held && apart ? readBands(held.filters) : null;
+			const eq: EqLoad = {
+				filters: left.filters,
+				preamp: readPreamp(left.filters, result.preamp),
+				...(right
+					? { right: { filters: right.filters, preamp: readPreamp(right.filters, rightPreamp) } }
+					: {})
+			};
+			if (fresh) eqStore.open(eq);
+			else eqStore.load(eq);
+			devicePeqStore.synced = devicePeqStore.snapshot();
+			const count = Math.max(left.filters.length, right?.filters.length ?? 0);
+			const skipped = left.skipped + (right?.skipped ?? 0);
+			const read = right
+				? m.device_peq_status_read_apart({ count })
+				: m.device_peq_status_read({ count });
 			devicePeqStore.setStatus(
-				skipped > 0
-					? `${m.device_peq_status_read({ count: filters.length })}. ${m.device_peq_read_skipped({ count: skipped })}`
-					: m.device_peq_status_read({ count: filters.length })
+				skipped > 0 ? `${read}. ${m.device_peq_read_skipped({ count: skipped })}` : read
 			);
 		} catch (e) {
 			this.fail(e, 'read');
@@ -579,19 +658,13 @@ class DevicePeqService {
 		const conn = devicePeqStore.connection;
 		if (!conn || !devicePeqStore.writeTarget) return null;
 		const caps = conn.device.capabilities;
-		const plan = (hints?: (Filter | null)[] | null) =>
-			planPush(
-				eqStore.filters,
-				eqConstraintStore.preampValue,
-				conn.profile,
-				caps,
-				hints ?? undefined
-			);
+		const plan = (hints?: Layout | null) => planPush(writtenEq(), conn.profile, caps, hints);
 		const first = plan(devicePeqStore.layout?.hints);
-		if (first.emptySlots === 0 || devicePeqStore.layout) return first;
+		const empty = first.emptySlots + (first.right?.emptySlots ?? 0);
+		if (empty === 0 || devicePeqStore.layout) return first;
 		const slot = devicePeqStore.activeSlot;
 		devicePeqStore.isWriting = true;
-		let hints: (Filter | null)[] | null;
+		let hints: Layout | null;
 		try {
 			hints = await readLayout(conn.device, readRequest(caps, slot, devicePeqStore.deviceSlot));
 		} finally {
@@ -608,7 +681,7 @@ class DevicePeqService {
 	 */
 	async requestWrite(): Promise<void> {
 		if (this.#ask(() => this.requestWrite())) return;
-		const source = { filters: eqStore.filters, preamp: eqStore.preamp };
+		const source = devicePeqStore.snapshot();
 		const plan = await this.prepare();
 		if (!plan) return;
 		if (needsConfirmation(plan)) {
@@ -628,9 +701,7 @@ class DevicePeqService {
 		this.review = null;
 		this.#reviewed = null;
 		if (!confirmed || !plan) return;
-		if (source && (source.filters !== eqStore.filters || source.preamp !== eqStore.preamp)) {
-			return this.requestWrite();
-		}
+		if (source && !unchanged(source, devicePeqStore.snapshot())) return this.requestWrite();
 		await this.write(plan);
 	}
 
@@ -642,17 +713,28 @@ class DevicePeqService {
 		const conn = devicePeqStore.connection;
 		const request = devicePeqStore.writeTarget;
 		if (!conn || !request) return false;
-		const snapshot = { filters: eqStore.filters, preamp: eqStore.preamp };
+		const snapshot = devicePeqStore.snapshot();
+		const { right } = plan;
 		devicePeqStore.isWriting = true;
 		try {
 			const result = await conn.device.push({
 				filters: plan.filters,
 				...(plan.preamp !== undefined ? { preamp: plan.preamp } : {}),
+				// A device that drives its channels apart gets the right one on every write, equal or
+				// not: what it keeps of the two (Topping's L/R-mode flag) follows from it.
+				...(right
+					? {
+							right: {
+								filters: right.filters,
+								...(right.preamp !== undefined ? { preamp: right.preamp } : {})
+							}
+						}
+					: {}),
 				...request
 			});
 			devicePeqStore.synced = snapshot;
 			devicePeqStore.autoPaused = false;
-			const count = plan.filters.length - plan.emptySlots;
+			const count = bandsWritten(plan);
 			if (result.reconnect) {
 				// The device restarts to save. Its transport is gone; `reopen` finds it again.
 				await conn.device.close().catch(() => {});
@@ -986,11 +1068,7 @@ class DevicePeqService {
 		this.#installed = true;
 		$effect.root(() => {
 			$effect(() => {
-				const seen: Seen = {
-					filters: eqStore.filters,
-					preamp: eqStore.preamp,
-					conn: devicePeqStore.connection
-				};
+				const seen: Seen = { eq: devicePeqStore.snapshot(), conn: devicePeqStore.connection };
 				untrack(() => this.#changed(seen));
 			});
 		});
@@ -1001,7 +1079,7 @@ class DevicePeqService {
 		this.#seen = now;
 		// A new connection is a new baseline, never an edit: connecting must not write.
 		if (!before || before.conn !== now.conn || !now.conn) return this.#cancelPending();
-		if (before.filters === now.filters && before.preamp === now.preamp) return;
+		if (unchanged(before.eq, now.eq)) return;
 		if (!this.autoWriting) return;
 		this.#cancelPending();
 		// Nothing to count down before the volume warning is answered: going on writes.

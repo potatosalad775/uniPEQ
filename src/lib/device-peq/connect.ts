@@ -47,7 +47,7 @@ import {
 	listNativeHidDevices,
 	openNativeHid
 } from '#lib/transports/native/native-hid-transport.js';
-import { DEMO_PROFILE, DemoHidTransport, demoDac } from './demo';
+import { DEMO_PROFILE, DemoHidTransport, demoDac, stereo } from './demo';
 import type { DeviceCandidate, DeviceConnection, ProfileSource, ReopenWait } from './types';
 import { sameUsb, usbIdentities } from './usb-identities';
 
@@ -466,8 +466,9 @@ export async function connectBle(): Promise<ConnectResult> {
 // ── Demo ────────────────────────────────────────────────────────────────────
 
 /**
- * The demo device: a simulated FiiO-protocol DAC, driven by the real bridge through
- * `openDevice`. Reopening finds the same simulated device, with what was written to it.
+ * The demo device: a simulated FiiO-protocol DAC with an EQ per channel, driven by the real bridge
+ * through `openDevice`, once per channel. Reopening finds the same simulated device, with what was
+ * written to it.
  */
 export async function connectDemo(): Promise<ConnectResult> {
 	const protocol = protocolOf(DEMO_PROFILE);
@@ -479,8 +480,14 @@ export async function connectDemo(): Promise<ConnectResult> {
 		profileId: DEMO_PROFILE.id,
 		name: `${DEMO_PROFILE.device.brand} ${DEMO_PROFILE.device.model}`
 	};
-	const open = (): Promise<DeviceConnection> =>
-		connection('hid', new DemoHidTransport(demoDac()), r, open);
+	const open = async (): Promise<DeviceConnection> => {
+		const dac = demoDac();
+		const conn = await connection('hid', new DemoHidTransport(dac), r, open);
+		const right = openDevice(new DemoHidTransport(dac, undefined, 'right'), protocol, {
+			profile: { bandCount: r.profile.bandCount }
+		});
+		return { ...conn, device: stereo(conn.device, right) };
+	};
 	return { kind: 'connected', connection: await open() };
 }
 

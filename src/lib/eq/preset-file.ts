@@ -1,6 +1,7 @@
 /**
  * The preset file: schemaVersion 2 (eqcaps type codes), what a stored or
  * imported preset is checked against, and the migration from the prototype's schemaVersion 1.
+ * A v2 preset may hold a right channel apart from its left (`right`).
  *
  * v1 named the types differently (`LSQ`, `HPF`, `NOTCH`, …). Each maps onto its eqcaps code,
  * except `BSF` and `CQ`, which have no v2 equivalent: those bands are dropped and counted, so the
@@ -75,6 +76,23 @@ function parseFilter(raw: unknown, version: 1 | 2, index: number): EqFilter | nu
 	return off ? null : { type: mapped, freq, q, gain };
 }
 
+function parsePregain(raw: unknown, what: string): number | 'auto' {
+	const pregain = raw ?? 'auto';
+	if (pregain !== 'auto' && (typeof pregain !== 'number' || !isFinite(pregain))) {
+		invalid(`${what} must be a number or "auto"`);
+	}
+	return pregain;
+}
+
+/** A v2 preset's right channel; v1 had none. */
+function parseRight(raw: unknown): NonNullable<PeqPreset['right']> {
+	if (!isObject(raw) || !Array.isArray(raw.filters)) invalid('right must hold a filter list');
+	const filters = raw.filters
+		.map((f, i) => parseFilter(f, 2, i))
+		.filter((f) => f !== null && f !== 'lost');
+	return { pregain: parsePregain(raw.pregain, 'right.pregain'), filters };
+}
+
 /**
  * A stored or imported preset as schemaVersion 2, migrating a v1 one. Throws a `PresetError`
  * naming the first problem.
@@ -90,10 +108,8 @@ export function parsePreset(raw: unknown): ParsedPreset {
 	if (typeof raw.id !== 'string' || !raw.id) invalid('the preset has no id');
 	if (typeof raw.name !== 'string') invalid('the preset has no name');
 	if (!Array.isArray(raw.filters)) invalid('filters must be a list');
-	const pregain = raw.pregain ?? 'auto';
-	if (pregain !== 'auto' && (typeof pregain !== 'number' || !isFinite(pregain))) {
-		invalid('pregain must be a number or "auto"');
-	}
+	const pregain = parsePregain(raw.pregain, 'pregain');
+	const right = version === 2 && raw.right != null ? parseRight(raw.right) : null;
 	const tags = Array.isArray(raw.tags) ? raw.tags.filter((t) => typeof t === 'string') : [];
 	const parsed = raw.filters.map((f, i) => parseFilter(f, version, i));
 	const now = new Date().toISOString();
@@ -109,16 +125,18 @@ export function parsePreset(raw: unknown): ParsedPreset {
 			? { source: raw.source as PeqPreset['source'] }
 			: {}),
 		pregain,
-		filters: parsed.filter((f) => f !== null && f !== 'lost')
+		filters: parsed.filter((f) => f !== null && f !== 'lost'),
+		...(right ? { right } : {})
 	};
 	return { preset, dropped: parsed.filter((f) => f === 'lost').length };
 }
 
-/** A new preset holding `filters`, with a fresh id. */
+/** A new preset holding `filters` (and the right channel's apart, if given), with a fresh id. */
 export function createPreset(opts: {
 	name: string;
 	filters: EqFilter[];
 	pregain: number | 'auto';
+	right?: PeqPreset['right'];
 	deviceId?: string;
 	tags?: string[];
 }): PeqPreset {
@@ -136,7 +154,12 @@ export function createPreset(opts: {
 			appVersion: __APP_VERSION__
 		},
 		pregain: opts.pregain,
-		filters: opts.filters.map((f) => ({ ...f }))
+		filters: opts.filters.map((f) => ({ ...f })),
+		...(opts.right
+			? {
+					right: { pregain: opts.right.pregain, filters: opts.right.filters.map((f) => ({ ...f })) }
+				}
+			: {})
 	};
 }
 

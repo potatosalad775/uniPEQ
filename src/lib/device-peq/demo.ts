@@ -2,6 +2,11 @@
  * The demo device: an app-local eqcaps profile and a simulated USB HID device
  * that speaks `fiio-usb-hid`, so the zero-hardware path runs the real bridge, `fit` and push path.
  *
+ * It holds an EQ per output channel, so setting the channels apart can be tried without the one
+ * device that has it. FiiO's protocol carries one channel, so each channel is reached through a
+ * transport of its own into the same simulated DAC (`stereo`): every byte still goes through the
+ * real handler, and only the routing a per-channel handler does itself is added here.
+ *
  * The simulation keeps the device's state for the page's lifetime, so a write survives a
  * disconnect and reads back on the next connection, as on hardware. Only reached through a dynamic
  * `import()`, like the rest of the connect path.
@@ -13,16 +18,19 @@ import {
 	type HidCollectionInfo,
 	type HidTransport
 } from '@potatosalad775/eqcaps-device-bridge';
+import type { Channel } from '#lib/eq/model.js';
+import type { PeqDevice } from './types';
 
 const REPORT_ID = 7;
 const BYPASS = 0;
 
 export const DEMO_PROFILE: Profile = {
-	schemaVersion: '1.0',
+	schemaVersion: '1.4',
 	id: 'unipeq-demo-dac',
 	kind: 'hardware',
 	device: { brand: 'uniPEQ', model: 'Demo DAC' },
 	bandCount: 10,
+	channels: 'independent',
 	band: {
 		types: ['PK', 'LSC', 'HSC'],
 		freq: { min: 20, max: 20000, step: 1 },
@@ -50,7 +58,8 @@ export const DEMO_PROFILE: Profile = {
 				date: '2026-10-07'
 			}
 		],
-		notes: 'Simulated in uniPEQ: a FiiO-protocol DAC with three user presets and a bypass.'
+		notes:
+			'Simulated in uniPEQ: a FiiO-protocol DAC with three user presets and a bypass, and an EQ per output channel.'
 	}
 };
 
@@ -100,37 +109,54 @@ const SEED: Record<number, { preamp: number; filters: Filter[] }> = {
 	3: { preamp: -3, filters: [pk(60, 0.8, 3), pk(3000, 2, -2.5), pk(7000, 5, -4)] }
 };
 
-/** The simulated device: its memories and what it is playing. */
+/** One output channel: its memories, and what it plays (the current one, as edited since). */
+interface ChannelState {
+	memories: Map<number, Memory>;
+	live: Memory;
+}
+
+/**
+ * The simulated device: each output channel's memories and what it is playing. The preset played
+ * is the device's, both channels' at once.
+ */
 export class DemoDac {
-	memories = new Map<number, Memory>();
+	channels: Record<Channel, ChannelState> = {
+		left: { memories: new Map(), live: { preamp: [0, 0], bands: [] } },
+		right: { memories: new Map(), live: { preamp: [0, 0], bands: [] } }
+	};
 	/** The preset being played; `BYPASS` is the EQ off. */
 	current = 1;
-	/** What the device is playing: the current memory, as edited since it was loaded. */
-	live: Memory;
 
 	constructor() {
-		for (const [slot, seed] of Object.entries(SEED)) {
-			// Seeded through the device's own write path, from the bridge's encoder.
-			const frames = HANDLERS['fiio-usb-hid'].codec.encode(
-				{ filters: seed.filters, preamp: seed.preamp, slot: Number(slot) },
-				{ reportId: REPORT_ID }
-			);
-			this.live = { preamp: [0, 0], bands: [] };
-			for (const frame of frames) this.receive(frame.data);
+		// Both channels alike: a device straight from the box plays one EQ on both.
+		for (const channel of ['left', 'right'] as const) {
+			for (const [slot, seed] of Object.entries(SEED)) {
+				// Seeded through the device's own write path, from the bridge's encoder.
+				const frames = HANDLERS['fiio-usb-hid'].codec.encode(
+					{ filters: seed.filters, preamp: seed.preamp, slot: Number(slot) },
+					{ reportId: REPORT_ID }
+				);
+				this.channels[channel].live = { preamp: [0, 0], bands: [] };
+				for (const frame of frames) this.receive(frame.data, channel);
+			}
+			const state = this.channels[channel];
+			state.live = clone(state.memories.get(this.current)!);
 		}
-		this.live = clone(this.memories.get(this.current)!);
 	}
 
-	/** A set command changes the device; a get command returns the answer's data bytes. */
-	receive(d: Uint8Array): number[] | null {
+	/**
+	 * A set command changes the device; a get command returns the answer's data bytes. Bands and
+	 * preamp are `channel`'s; a preset switch is both channels'.
+	 */
+	receive(d: Uint8Array, channel: Channel = 'left'): number[] | null {
 		const cmd = d[4];
 		const data = Array.from(d.subarray(6, 6 + d[5]));
 		if (d[0] === SET) {
-			this.set(cmd, data);
+			this.set(cmd, data, channel);
 			return null;
 		}
 		if (d[0] !== GET) return null;
-		const live = this.live;
+		const live = this.channels[channel].live;
 		switch (cmd) {
 			case PRESET:
 				return [this.current];
@@ -145,13 +171,16 @@ export class DemoDac {
 		}
 	}
 
-	private set(cmd: number, data: number[]): void {
-		const live = this.live;
+	private set(cmd: number, data: number[], channel: Channel): void {
+		const state = this.channels[channel];
+		const live = state.live;
 		switch (cmd) {
 			case PRESET: {
 				this.current = data[0];
-				const memory = this.memories.get(data[0]);
-				if (memory) this.live = clone(memory);
+				for (const each of Object.values(this.channels)) {
+					const memory = each.memories.get(data[0]);
+					if (memory) each.live = clone(memory);
+				}
 				break;
 			}
 			case COUNT:
@@ -164,10 +193,10 @@ export class DemoDac {
 				live.bands[data[0]] = data.slice(1, 8);
 				break;
 			case SAVE: {
-				this.memories.set(data[0], clone(live));
+				state.memories.set(data[0], clone(live));
 				// Saving into another memory doesn't change what plays.
-				const playing = this.memories.get(this.current);
-				if (data[0] !== this.current && playing) this.live = clone(playing);
+				const playing = state.memories.get(this.current);
+				if (data[0] !== this.current && playing) state.live = clone(playing);
 				break;
 			}
 		}
@@ -185,7 +214,10 @@ const COLLECTIONS: HidCollectionInfo[] = [
 	}
 ];
 
-/** A USB HID connection to a `DemoDac`, answering like the device after a short delay. */
+/**
+ * A USB HID connection to a `DemoDac`, answering like the device after a short delay. Its bands
+ * and preamp are `channel`'s.
+ */
 export class DemoHidTransport implements HidTransport {
 	readonly kind = 'hid';
 	/** pid.codes' test vendor and product. */
@@ -199,13 +231,14 @@ export class DemoHidTransport implements HidTransport {
 
 	constructor(
 		readonly dac: DemoDac,
-		private readonly latencyMs = 5
+		private readonly latencyMs = 5,
+		private readonly channel: Channel = 'left'
 	) {}
 
 	async sendReport(reportId: number, data: Uint8Array): Promise<void> {
 		if (this.#closed) throw new BridgeError('transport', 'demo device closed');
 		if (reportId !== REPORT_ID) return;
-		const answer = this.dac.receive(data);
+		const answer = this.dac.receive(data, this.channel);
 		if (!answer) return;
 		const frame = Uint8Array.from([GET, 0x0b, 0, 0, data[4], answer.length, ...answer, 0, 0xee]);
 		setTimeout(() => {
@@ -230,6 +263,45 @@ export class DemoHidTransport implements HidTransport {
 		this.#closed = true;
 		this.#listeners.clear();
 	}
+}
+
+/**
+ * The demo device as one that drives its channels apart (`perChannel`), from the same DAC opened
+ * once per channel. A write's `right` goes to the right channel, and left out, its list goes to
+ * both; a read returns both. The preset, the EQ switch and the rest are the device's, through the
+ * left.
+ */
+export function stereo(left: PeqDevice, right: PeqDevice): PeqDevice {
+	return {
+		capabilities: { ...left.capabilities, perChannel: true },
+		async pull(request) {
+			const held = await left.pull(request);
+			const other = await right.pull(request);
+			const preamp = other.preamp !== undefined ? { preamp: other.preamp } : {};
+			return { ...held, right: { filters: other.filters, ...preamp } };
+		},
+		async push({ right: apart, ...request }) {
+			const result = await left.push(request);
+			const preamp = apart?.preamp ?? request.preamp;
+			await right.push({
+				...request,
+				filters: apart?.filters ?? request.filters,
+				...(preamp !== undefined ? { preamp } : {})
+			});
+			return result;
+		},
+		currentSlot: () => left.currentSlot(),
+		eqEnabled: () => left.eqEnabled(),
+		setEnabled: (enabled, slot) => left.setEnabled(enabled, slot),
+		firmware: () => left.firmware(),
+		bandCount: () => left.bandCount(),
+		readControls: () => left.readControls(),
+		writeControl: (id, value) => left.writeControl(id, value),
+		async close() {
+			await left.close();
+			await right.close();
+		}
+	};
 }
 
 let dac: DemoDac | null = null;

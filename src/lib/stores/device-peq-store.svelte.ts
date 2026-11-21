@@ -9,9 +9,11 @@
  * that don't fit are flagged, never refitted: Fit is the user's call.
  */
 import { readRequest, writeRequest, type PresetRequest } from '#lib/device-peq/preset.js';
+import { drivesChannelsApart, type Layout } from '#lib/device-peq/push-plan.js';
 import type { DeviceConnection, DeviceOperation, PeqCapabilities } from '#lib/device-peq/types.js';
-import { eqFiltersEqual, type EqFilter } from '#lib/eq/model.js';
-import { eqDisabledBy, type Control, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
+import { preampOf } from '#lib/eq/eq-preamp.js';
+import { eqFiltersEqual, type Channel, type EqState, type StereoEq } from '#lib/eq/model.js';
+import { eqDisabledBy, type Control, type Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 import { eqStore } from './eq-store.svelte';
 
@@ -21,11 +23,11 @@ import { eqStore } from './eq-store.svelte';
  */
 export type DeviceEqSelection = number | 'off' | 'other' | null;
 
-/** The band list and preamp as they were when last read from or written to the device. */
-export interface DeviceSnapshot {
-	filters: EqFilter[];
-	preamp: number;
-}
+/**
+ * The band list and preamp as they were when last read from or written to the device; with
+ * `right`, the right channel's too (left out: the same as the left).
+ */
+export type DeviceSnapshot = StereoEq;
 
 class DevicePeqStore {
 	connection = $state.raw<DeviceConnection | null>(null);
@@ -63,7 +65,7 @@ class DevicePeqStore {
 	 * The target preset's bands as read before a write, kept so later writes (auto-write above all)
 	 * don't read again. Null hints: the preset couldn't be read. Dropped on any preset change.
 	 */
-	layout = $state.raw<{ slot: number | null; hints: (Filter | null)[] | null } | null>(null);
+	layout = $state.raw<{ slot: number | null; hints: Layout | null } | null>(null);
 	/**
 	 * When the waiting auto-write fires (`Date.now()` ms), while an edit waits for it; null
 	 * otherwise. The sync bar counts it down.
@@ -161,6 +163,12 @@ class DevicePeqStore {
 		return this.connection?.device.capabilities ?? null;
 	}
 
+	/** The connected device holds an EQ per output channel, driven apart: the EQ may be set apart. */
+	get perChannel(): boolean {
+		const c = this.connection;
+		return !!c && drivesChannelsApart(c.profile, c.device.capabilities);
+	}
+
 	/** The protocol is unconfirmed for this device (a guessed one, or flagged in eqcaps). */
 	get experimental(): boolean {
 		const c = this.connection;
@@ -246,18 +254,30 @@ class DevicePeqStore {
 		return this.unwritten || (this.#baseline !== null && !this.#holds(this.#baseline));
 	}
 
-	/** The list and preamp equal `snapshot` (the preamp only where the device takes one). */
+	/**
+	 * Each channel's list and preamp equal `snapshot`'s (the preamp only where the device takes
+	 * one). Linked, both channels are the list on screen.
+	 */
 	#holds(snapshot: DeviceSnapshot): boolean {
 		const preampMatters = this.connection?.device.capabilities.writesPreamp ?? false;
-		return (
-			snapshot.filters.length === eqStore.filters.length &&
-			snapshot.filters.every((f, i) => eqFiltersEqual(f, eqStore.filters[i])) &&
-			(!preampMatters || snapshot.preamp === eqStore.preamp)
-		);
+		const same = (held: EqState, now: EqState) =>
+			held.filters.length === now.filters.length &&
+			held.filters.every((f, i) => eqFiltersEqual(f, now.filters[i])) &&
+			(!preampMatters || held.preamp === now.preamp);
+		const now = this.snapshot();
+		return same(snapshot, now) && same(snapshot.right ?? snapshot, now.right);
 	}
 
-	#snapshot(): DeviceSnapshot {
-		return { filters: eqStore.filters, preamp: eqStore.preamp };
+	/** Both channels as they are now, as `synced` keeps them. */
+	snapshot(): DeviceSnapshot & { right: EqState } {
+		const { channels, editing } = eqStore;
+		// The list on screen's preamp is the store's own, worked out once per edit: this runs on
+		// every frame of a drag.
+		const state = (side: Channel): EqState => ({
+			filters: channels[side].filters,
+			preamp: editing === 'both' || editing === side ? eqStore.preamp : preampOf(channels[side])
+		});
+		return { ...state('left'), right: state('right') };
 	}
 
 	get selection(): DeviceEqSelection {
@@ -298,7 +318,7 @@ class DevicePeqStore {
 		this.controlValues = {};
 		this.firmware = null;
 		this.synced = null;
-		this.#baseline = this.#snapshot();
+		this.#baseline = this.snapshot();
 		this.layout = null;
 		this.autoPaused = false;
 		this.autoClipRisk = false;
@@ -331,7 +351,7 @@ class DevicePeqStore {
 	target(slot: number): void {
 		if (this.activeSlot === slot) return;
 		this.unwritten = this.hasUnwritten;
-		this.#baseline = this.#snapshot();
+		this.#baseline = this.snapshot();
 		this.activeSlot = slot;
 		this.synced = null;
 		this.layout = null;
@@ -358,7 +378,7 @@ class DevicePeqStore {
 		const listed = this.slots.some((s) => s.id === currentSlot);
 		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
 		this.unwritten = false;
-		this.#baseline = this.#snapshot();
+		this.#baseline = this.snapshot();
 		this.synced = null;
 		this.layout = null;
 		this.autoPaused = false;

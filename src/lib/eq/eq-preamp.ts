@@ -2,7 +2,7 @@
 // its `Equalizer` (so every eqcaps type counts, a resonant high-pass included), no per-ear pass,
 // never a positive preamp, and rounded towards more headroom.
 import { combinedResponseDb } from './biquad';
-import type { EqFilter } from './model';
+import type { ChannelEq, EqFilter } from './model';
 
 /** 1/48 octave, 20 Hz to 20 kHz: where the preamp looks for the largest boost. */
 const PREAMP_GRID = Array.from({ length: 480 }, (_, i) => 20 * Math.pow(1000, i / 479));
@@ -19,4 +19,14 @@ export function derivePreamp(filters: EqFilter[]): number {
 	const peak = Math.max(0, ...combinedResponseDb(filters, freqs));
 	// Round up, so a 6.04 dB peak gets -6.1, not -6.0. The epsilon keeps an exact 6 at -6.
 	return -Math.ceil(peak * 10 - 1e-6) / 10 || 0;
+}
+
+/** A channel's preamp, dB: following its bands while Auto, else as set. */
+export function preampOf(channel: ChannelEq): number {
+	return channel.autoPreamp ? derivePreamp(channel.filters) : channel.manualPreamp;
+}
+
+/** A channel's preamp as a preset stores it. */
+export function pregainOf(channel: ChannelEq): number | 'auto' {
+	return channel.autoPreamp ? 'auto' : channel.manualPreamp;
 }

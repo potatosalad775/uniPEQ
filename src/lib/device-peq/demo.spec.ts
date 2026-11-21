@@ -44,7 +44,8 @@ describe('demo device', () => {
 			canWrite: true,
 			readsSlot: false,
 			writesSlot: true,
-			canEnable: true
+			canEnable: true,
+			perChannel: true
 		});
 		expect(conn.device.capabilities.slots.map((s) => s.name)).toEqual([
 			'USER1',
@@ -55,13 +56,38 @@ describe('demo device', () => {
 		expect(await conn.device.currentSlot()).toBe(1);
 	});
 
-	it('reads its seeded preset', async () => {
+	it('reads its seeded preset, the same on both channels', async () => {
 		const conn = await connect();
-		const { filters, preamp, slot } = await conn.device.pull({});
+		const { filters, preamp, slot, right } = await conn.device.pull({});
 		expect(filters).toHaveLength(10);
 		expect(filters[0]).toEqual({ type: 'LSC', freq: 105, q: 0.7, gain: 4.5 });
 		expect(preamp).toBe(-4.5);
 		expect(slot).toBe(1);
+		expect(right).toEqual({ filters, preamp });
+	});
+
+	it('keeps each channel’s write apart, and writes both alike when given one list', async () => {
+		const { device } = await connect();
+		const band = (gain: number): EqFilter => ({ type: 'PK', freq: 1000, q: 1, gain });
+		const plan = (gain: number) =>
+			planPush({ filters: [band(gain)], preamp: -gain }, DEMO_PROFILE, device.capabilities);
+		const left = plan(3);
+		const right = plan(6);
+		await device.push({
+			filters: left.filters,
+			preamp: left.preamp,
+			right: { filters: right.filters, preamp: right.preamp },
+			slot: 1
+		});
+		const apart = await device.pull({});
+		expect(apart.filters[0]).toEqual(band(3));
+		expect(apart.preamp).toBe(-3);
+		expect(apart.right?.filters[0]).toEqual(band(6));
+		expect(apart.right?.preamp).toBe(-6);
+
+		await device.push({ filters: left.filters, preamp: left.preamp, slot: 1 });
+		const alike = await device.pull({});
+		expect(alike.right).toEqual({ filters: alike.filters, preamp: -3 });
 	});
 
 	it('writes what fit produced and reads it back', async () => {
@@ -74,7 +100,7 @@ describe('demo device', () => {
 			...read.slice(2, 5)
 		];
 		const hints = await readLayout(device, {});
-		const plan = planPush(edited, -6, profile, device.capabilities, hints ?? undefined);
+		const plan = planPush({ filters: edited, preamp: -6 }, profile, device.capabilities, hints);
 
 		expect(needsConfirmation(plan)).toBe(true);
 		expect(plan.changes).toEqual([
@@ -101,8 +127,7 @@ describe('demo device', () => {
 		const { device } = await connect();
 		const before = await device.pull({});
 		const plan = planPush(
-			[{ type: 'PK', freq: 1000, q: 1, gain: 3 }],
-			-3,
+			{ filters: [{ type: 'PK', freq: 1000, q: 1, gain: 3 }], preamp: -3 },
 			DEMO_PROFILE,
 			device.capabilities
 		);

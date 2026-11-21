@@ -10,7 +10,9 @@
 	- keys on a focused node: arrows move it, Page Up/Down change Q, Delete removes it (or, for a
 	  device's set bands, resets it to flat).
 	A drag is one undo step, and moves less than 3 px are a tap, not a drag. While the device is away
-	the graph is read-only: no gestures or keys, dimmed nodes.
+	the graph is read-only: no gestures or keys, dimmed nodes. With the channels apart, the other
+	channel's response is drawn too, faint and dashed, with no nodes: only the channel on screen
+	is edited.
 -->
 <script lang="ts">
 	import { usesGain } from '@potatosalad775/eqcaps-core';
@@ -54,7 +56,15 @@
 	const profile = $derived(eqConstraintStore.profile);
 	const editable = $derived(eqConstraintStore.editable);
 	const response = $derived(combinedResponseDb(filters, FREQS));
-	const liveDb = $derived(dbRange(profile, filters, response));
+	/** With the channels apart, the other one's response, drawn fainter to compare against. */
+	const other = $derived(eqStore.other);
+	const otherResponse = $derived(other ? combinedResponseDb(other.filters, FREQS) : null);
+	const liveDb = $derived(
+		Math.max(
+			dbRange(profile, filters, response),
+			other && otherResponse ? dbRange(profile, other.filters, otherResponse) : 0
+		)
+	);
 	const plot: Plot = $derived({ width, height, db: heldDb ?? liveDb });
 	const xs = $derived(FREQS.map((f) => xOf(f, plot)));
 	const responsePath = $derived(
@@ -62,6 +72,14 @@
 			xs,
 			response.map((r) => yOf(r, plot))
 		)
+	);
+	const otherPath = $derived(
+		otherResponse
+			? pathOf(
+					xs,
+					otherResponse.map((r) => yOf(r, plot))
+				)
+			: ''
 	);
 	const zeroY = $derived(yOf(0, plot));
 	const selected = $derived(eqStore.selected);
@@ -340,8 +358,10 @@
 						x={xOf(f, plot)}
 						y={height - 5}
 						text-anchor="middle"
-						class="fill-graph-grid-text text-[10px]">{freqLabel(f)}</text
+						class="fill-graph-grid-text text-[10px]"
 					>
+						{freqLabel(f)}
+					</text>
 				{/each}
 				{#each gridDbs(plot.db) as d (d)}
 					<line
@@ -355,9 +375,19 @@
 						x={PAD.left - 4}
 						y={yOf(d, plot) + 3}
 						text-anchor="end"
-						class="fill-graph-grid-text text-[10px]">{d > 0 ? `+${d}` : d}</text
+						class="fill-graph-grid-text text-[10px]"
 					>
+						{d > 0 ? `+${d}` : d}
+					</text>
 				{/each}
+				{#if otherPath}
+					<path
+						d={otherPath}
+						class="fill-none stroke-base-content/35"
+						stroke-width="1.5"
+						stroke-dasharray="4 3"
+					/>
+				{/if}
 				{#if selectedArea}
 					<path d={selectedArea} class="fill-primary/10 stroke-primary/40" stroke-width="1" />
 				{/if}
@@ -405,8 +435,10 @@
 						text-anchor="middle"
 						class="pointer-events-none text-[10px] font-semibold {isSelected
 							? 'fill-primary-content'
-							: 'fill-base-100'}">{i + 1}</text
+							: 'fill-base-100'}"
 					>
+						{i + 1}
+					</text>
 				</g>
 			{/each}
 		{/if}

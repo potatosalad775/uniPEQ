@@ -1,6 +1,6 @@
 // Adapted from modernGraphTool src/lib/utils/eq-apo.ts @ 23ddc4dd: every eqcaps type (APO's own
 // codes), Q from `BW Oct`, `Preamp:` kept (a preset carries its pregain), and one-ear sections
-// skipped and counted, since the app has no per-channel bands.
+// skipped and counted: an imported preset is one list for both channels.
 import type { EqFilter, FilterType } from './model';
 
 /**

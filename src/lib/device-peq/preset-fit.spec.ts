@@ -12,7 +12,7 @@ const profile = hardwareProfile('h', {
 		gain: { min: -12, max: 12, step: 0.1 }
 	}
 });
-const caps = { writesPreamp: true };
+const caps = { writesPreamp: true, perChannel: false };
 const band = (type: EqFilter['type'], freq: number, gain: number): EqFilter => ({
 	type,
 	freq,
@@ -38,5 +38,23 @@ describe('presetFit', () => {
 			kind: 'lossy',
 			dropped: 1
 		});
+	});
+});
+
+describe('presetFit with a right channel', () => {
+	const stereo = { ...profile, channels: 'independent' as const };
+	const right = { pregain: -3 as const, filters: [band('LSC', 100, 3)] };
+
+	it('counts the right channel’s changes where the device holds it apart', () => {
+		const preset = { filters: [band('PK', 100, 3)], pregain: -3, right };
+		expect(presetFit(preset, stereo, { writesPreamp: true, perChannel: true })).toEqual({
+			kind: 'adjusted',
+			changes: 1
+		});
+	});
+
+	it('fits only the left channel where it is what loads', () => {
+		const preset = { filters: [band('PK', 100, 3)], pregain: -3, right };
+		expect(presetFit(preset, profile, caps)).toEqual({ kind: 'exact' });
 	});
 });

@@ -120,4 +120,93 @@ describe('PresetStore', () => {
 			tags: ['x']
 		});
 	});
+
+	describe('with the channels apart', () => {
+		const pk = (gain: number) => ({ type: 'PK' as const, freq: 1000, q: 1, gain });
+		const stereo = {
+			...hardwareProfile('dx5', { bandCount: 2 }),
+			channels: 'independent' as const
+		};
+
+		function apart() {
+			eqStore.load({
+				filters: [pk(1), pk(2)],
+				preamp: -2,
+				right: { filters: [pk(3), pk(4)], preamp: 'auto' }
+			});
+		}
+
+		it('saves both channels, and an EQ linked as one list', async () => {
+			apart();
+			const both = await store.saveCurrent('Both');
+			expect(both.filters).toEqual([pk(1), pk(2)]);
+			expect(both.pregain).toBe(-2);
+			expect(both.right).toEqual({ pregain: 'auto', filters: [pk(3), pk(4)] });
+
+			eqStore.edit('both');
+			expect((await store.saveCurrent('One')).right).toBeUndefined();
+		});
+
+		it('loads both channels apart onto a device that holds them apart', async () => {
+			apart();
+			const saved = await store.saveCurrent('Both');
+			devicePeqStore.setConnected(fakeConnection(stereo, { perChannel: true }), null);
+			eqStore.reset();
+			const { leftOnly } = await store.apply(saved.id);
+			expect(leftOnly).toBe(false);
+			expect(eqStore.linked).toBe(false);
+			expect(eqStore.channels.left.filters).toEqual([pk(1), pk(2)]);
+			expect(eqStore.channels.right.filters).toEqual([pk(3), pk(4)]);
+			expect(eqStore.channels.right.autoPreamp).toBe(true);
+		});
+
+		it('loads the left channel onto a device with one EQ for both, and says so', async () => {
+			apart();
+			const saved = await store.saveCurrent('Both');
+			devicePeqStore.setConnected(fakeConnection(hardwareProfile('dac', { bandCount: 2 })), null);
+			eqStore.reset();
+			const { leftOnly } = await store.apply(saved.id);
+			expect(leftOnly).toBe(true);
+			expect(eqStore.linked).toBe(true);
+			expect(eqStore.filters).toEqual([pk(1), pk(2)]);
+		});
+
+		it('loads a one-list preset as one list, even onto a device that holds them apart', async () => {
+			eqStore.load({ filters: [pk(5), pk(6)] });
+			const saved = await store.saveCurrent('One');
+			devicePeqStore.setConnected(fakeConnection(stereo, { perChannel: true }), null);
+			apart();
+			const { leftOnly } = await store.apply(saved.id);
+			expect(leftOnly).toBe(false);
+			expect(eqStore.linked).toBe(true);
+			expect(eqStore.filters).toEqual([pk(5), pk(6)]);
+		});
+
+		it('imports and exports the right channel; APO text gets a section per channel', async () => {
+			apart();
+			const saved = await store.saveCurrent('Both');
+			const json = await store.exportFile(saved.id, 'json');
+			const { preset } = await store.importText(json.text, json.name);
+			expect(preset.right).toEqual(saved.right);
+			expect(preset.id).not.toBe(saved.id);
+
+			const apo = await store.exportFile(saved.id, 'apo');
+			const lines = apo.text.trim().split('\n');
+			expect(lines.filter((l) => !l.startsWith('Filter'))).toEqual([
+				'Channel: L',
+				'Preamp: -2.0 dB',
+				'Channel: R',
+				// Auto: two 1 kHz peaks of 3 and 4 dB.
+				'Preamp: -7.0 dB'
+			]);
+			expect(lines.filter((l) => l.startsWith('Filter'))).toHaveLength(4);
+		});
+
+		it('copies the right channel with a duplicate', async () => {
+			apart();
+			const saved = await store.saveCurrent('Both');
+			const copy = await store.duplicate(saved.id, 'Both (copy)');
+			expect(copy.right).toEqual(saved.right);
+		});
+	});
 });

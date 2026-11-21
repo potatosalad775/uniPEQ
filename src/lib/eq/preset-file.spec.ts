@@ -96,6 +96,19 @@ describe('parsePreset', () => {
 		expect(() => parsePreset({ ...V1, pregain: 'loud' })).toThrow(/pregain/);
 		expect(() => parsePreset({ ...V1, filters: [null] })).toThrow(/filter 1/);
 	});
+
+	it('reads a right channel kept apart, and refuses one that holds no filter list', () => {
+		const right = { pregain: -2, filters: [{ type: 'HSC', freq: 8000, q: 0.7, gain: -3 }] };
+		const { preset } = parsePreset({
+			...createPreset({ name: 'LR', filters: [], pregain: 0 }),
+			right
+		});
+		expect(preset.right).toEqual(right);
+		expect(parsePreset({ ...V1, schemaVersion: 2, filters: [] }).preset.right).toBeUndefined();
+		expect(
+			codeOf(() => parsePreset({ schemaVersion: 2, id: 'x', name: 'x', filters: [], right: {} }))
+		).toBe('invalid');
+	});
 });
 
 describe('createPreset', () => {

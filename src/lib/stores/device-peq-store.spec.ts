@@ -32,6 +32,7 @@ function connection(
 		readsFirmware: false,
 		readsBandCount: false,
 		controls: [],
+		perChannel: false,
 		...over
 	};
 	return {
@@ -217,6 +218,44 @@ describe('devicePeqStore', () => {
 			eqStore.select(0);
 			devicePeqStore.setDisconnected();
 			expect(eqStore.selected).toBeNull();
+		});
+	});
+
+	describe('with an EQ per channel', () => {
+		const band = (gain: number) => ({ type: 'PK' as const, freq: 1000, gain, q: 1 });
+		const stereo = { id: 'topping-dx5-ii', channels: 'independent' } as Profile;
+
+		function connectedAndRead(over: Partial<PeqCapabilities> = { perChannel: true }) {
+			devicePeqStore.forget();
+			eqStore.reset();
+			devicePeqStore.setConnected({ ...connection(over), profile: stereo }, 4);
+			eqStore.open({ filters: [band(3)], preamp: -3 });
+			devicePeqStore.synced = devicePeqStore.snapshot();
+		}
+
+		it('drives the channels apart only where the profile and the bridge both do', () => {
+			connectedAndRead();
+			expect(devicePeqStore.perChannel).toBe(true);
+			connectedAndRead({ perChannel: false });
+			expect(devicePeqStore.perChannel).toBe(false);
+			devicePeqStore.setConnected(connection({ perChannel: true }), 4);
+			expect(devicePeqStore.perChannel).toBe(false);
+		});
+
+		it('is in sync while each channel holds what the device does', () => {
+			connectedAndRead();
+			// Setting the channels apart changes nothing the device plays.
+			eqStore.edit('right');
+			expect(devicePeqStore.inSync).toBe(true);
+			eqStore.update(0, { gain: 5 });
+			expect(devicePeqStore.inSync).toBe(false);
+			eqStore.edit('left');
+			expect(devicePeqStore.inSync).toBe(false);
+			eqStore.edit('right');
+			eqStore.update(0, { gain: 3 });
+			expect(devicePeqStore.inSync).toBe(true);
+			eqStore.setPreamp(-6);
+			expect(devicePeqStore.inSync).toBe(false);
 		});
 	});
 });

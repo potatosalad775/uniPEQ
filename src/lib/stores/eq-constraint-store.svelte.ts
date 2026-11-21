@@ -14,6 +14,8 @@ import {
 	sameFilters,
 	UNCONSTRAINED
 } from '#lib/eq/eq-constraint.js';
+import { preampOf } from '#lib/eq/eq-preamp.js';
+import type { ChannelEq } from '#lib/eq/model.js';
 import { headroomPreamp, preampControl } from '#lib/eq/preamp-control.js';
 import { devicePeqStore } from './device-peq-store.svelte';
 import { eqStore } from './eq-store.svelte';
@@ -59,6 +61,11 @@ class EqConstraintStore {
 	preampValue = $derived(
 		eqStore.autoPreamp ? headroomPreamp(eqStore.preamp, this.preamp) : eqStore.preamp
 	);
+	/** `preampValue` for a channel, on screen or not: what a write sends for it. */
+	preampValueOf(channel: ChannelEq): number {
+		const db = preampOf(channel);
+		return channel.autoPreamp ? headroomPreamp(db, this.preamp) : db;
+	}
 	/** Whether band `i` may be removed, not only reset: always without a set count, else past it. */
 	canRemove(i: number): boolean {
 		return this.editable && (!this.fixedBands || i >= this.maxBands);

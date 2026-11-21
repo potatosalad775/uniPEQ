@@ -27,6 +27,7 @@ export function fakeConnection(
 				readsFirmware: false,
 				readsBandCount: false,
 				controls: [],
+				perChannel: false,
 				...capabilities
 			},
 			pull: async () => ({ filters: [], preamp: 0 }),

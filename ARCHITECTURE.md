@@ -190,8 +190,10 @@ to say.
 - **Writable presets:** eqcaps marks user memories `writable` where a list mixes them with built-in
   curves; `devicePeqStore.writableSlots` takes the marked ones, or every preset but the bypass one
   when none is marked.
-- **Demo device** (`device-peq/demo.ts`): an app-local profile (`unipeq-demo-dac`, 10 bands) and a
-  simulated `fiio-usb-hid` device that runs the real bridge code; its memories live for the page.
+- **Demo device** (`device-peq/demo.ts`): an app-local profile (`unipeq-demo-dac`, 10 bands, an EQ
+  per channel) and a simulated `fiio-usb-hid` device that runs the real bridge code; its memories
+  live for the page. FiiO's protocol carries one channel, so the bridge opens it once per channel
+  and `stereo` routes `right` the way a per-channel handler does; it starts with both alike.
   It ships in every build, release included, because Play's reviewers and most people trying the
   app have no PEQ device, and the EQ tab has nothing to edit without one. The device panel shows a
   "Simulated device" badge instead of an eqcaps status or links.
@@ -217,6 +219,15 @@ changed:
      Write. Connecting never writes. Another device is read regardless.
    - Nothing refits the list on its own: a list that doesn't fit is flagged, and **Fit**
      (`fitFilters`) is the user's action.
+   - **Left and right apart** only on a device that drives them apart: profile `channels:
+     "independent"` and the bridge's `perChannel` (`drivesChannelsApart`). A read opens the
+     channels apart exactly when the device's differ (bands or preamp), else as one list; any other
+     device reads one list. A disconnect keeps them apart, read-only, with the channel row in
+     sight. Connecting a device with one EQ for both while they are apart keeps the left channel,
+     as a fresh start (no undo back to two channels it can't hold), and the sync bar says so; a
+     read then replaces it, as it does any list for another device. Such a device's writes carry
+     `right` every time, equal or not, so the device's own record of the two (Topping's L/R-mode
+     flag) follows.
 4. **One status line**: the EQ tab's sync bar (`device-peq/sync-status.ts`, ranked over
    `panel-status.ts`), also the live region screen readers hear. The device chip's dot repeats it.
    The modernGraphTool link shares the bar rather than adding a row (§10).
@@ -295,9 +306,15 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
   to flat (`flatBand`), not removed; only rows past the count can be removed; shorter presets are
   padded. Add and remove stay for a profile with no band count.
 - **Edits** go through `eqStore` (`update`, `add`, `remove`, `setPreamp`, `setAutoPreamp`,
-  `replace`, `open`, `undo`, `redo`). An edit first projects only the fields it changes onto the
-  band's slot (`editFilter`). Slider drags and held keys coalesce into one undo step by a key; a
-  gesture calls `record()` at its start.
+  `replace`, `load`, `open`, `edit`, `undo`, `redo`). An edit first projects only the fields it
+  changes onto the band's slot (`editFilter`). Slider drags and held keys coalesce into one undo
+  step by a key; a gesture calls `record()` at its start.
+- **Channels:** linked, one list drives both. Apart (`edit('left' | 'right')`, the right starting
+  as a copy of the left), the store's list, preamp and selection are the channel on screen and the
+  other waits beside them (`other`, `channels`), so no edit knows there are two. Setting apart and
+  linking (`edit('both')`: both become the channel on screen) are undo steps, and a snapshot holds
+  both channels. Each channel is fitted and written on its own (`planPush`), its changes named by
+  channel; the graph draws the other's response faint and dashed.
 - **Graph** (`components/eq/EqGraph.svelte`, `eq/graph-scale.ts`): one SVG on pointer events, not
   d3, so touch and mouse share a path and specs drive it with synthetic events. Drag for frequency
   and gain, pinch or wheel for Q, a drag is one undo step, edits run once per animation frame, the
@@ -312,13 +329,17 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
 
 - **Format** (`eq/preset-file.ts`): `PeqPreset` schemaVersion 2 with eqcaps type codes. v1 files
   (the prototype's) are migrated whenever read and stored as v2 on the next save; v1's switched-off
-  bands, `BSF` and `CQ` are dropped with a warning.
+  bands, `BSF` and `CQ` are dropped with a warning. An EQ saved apart keeps its right channel in an
+  optional `right` (no schema bump: an older version loads such a preset as its left channel). It
+  loads apart onto a device that holds the channels apart; any other gets the left one, and the
+  load says so.
 - **Storage** (`services/preset-storage.ts`): an index plus one entry per preset in Web Storage.
   Presets are stored unconstrained; constraints apply only when loaded onto a device.
 - **Import:** JSON (always a fresh id) and EqualizerAPO / AutoEq text (`eq/eq-apo.ts`: every eqcaps
   type plus APO shorthands, Q from `BW Oct`, `Preamp:` summed; one-ear `Channel:` sections and
-  slope variants skipped and counted). **Export:** JSON or APO text, downloaded on the web; on
-  Android written to the cache and handed to the share sheet (`platform/save-file.ts`).
+  slope variants skipped and counted). **Export:** JSON or APO text (a right channel under its own
+  `Channel: L` / `Channel: R` sections), downloaded on the web; on Android written to the cache and
+  handed to the share sheet (`platform/save-file.ts`).
 - **Fit badge** per preset while connected (`device-peq/preset-fit.ts`): the same `planPush` a
   write runs.
 
@@ -336,8 +357,9 @@ panels, supporting text instead of `?` popovers. Colours only from the semantic 
 
 ### 8.1 EQ tab
 - **Phone:** app bar (device chip, undo/redo, overflow with Load preset, Save preset, Fit), the
-  graph pinned edge to edge, the preamp row and band rows as the only scrolling part, the sync bar
-  above the tab bar. Device panel, band editor and preamp editor are sheets.
+  graph pinned edge to edge, the channel row (L+R / L / R, where the device holds an EQ per
+  channel), the preamp row and band rows as the only scrolling part, the sync bar above the tab
+  bar. Device panel, band editor and preamp editor are sheets.
 - **Wide:** graph on the left (a card); device panel and band card on the right, the selected row
   opening its editor in place.
 - **Disconnected:** graph and rows stay, dimmed and read-only.
@@ -356,7 +378,8 @@ the client bundle's module graph, Android libraries listed by hand and shown onl
 ### 8.4 Stores
 - `device-peq-store`: connection, profile, presets (slots), read / write targets, sync flags,
   `knownDevice`, `unwritten`, status.
-- `eq-store`: filters, preamp, Auto preamp, selected band, undo/redo history.
+- `eq-store`: filters, preamp, Auto preamp, selected band (of the channel on screen), the other
+  channel while apart, undo/redo history.
 - `eq-constraint-store`: per-band domains, the fitted list, `editable`; derived.
 - `preset-store`: index and bodies over `preset-storage`.
 - `settings-store`: theme, auto-write, logging; localStorage key `unipeq.settings`.
@@ -434,7 +457,9 @@ gets a tag; then both apps bump.
   mGT's "Open uniPEQ" opens this app with the room in `?link=` (`webLink`); `+layout.svelte`
   joins it through `openAddress` and drops the parameter, so a reload doesn't join again.
 - **Edits** apply through `eqStore`: a band op projected onto its slot as a local edit is, one undo
-  step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited.
+  step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited. The
+  protocol has one band list, so with the channels apart mGT sees and edits the channel on screen,
+  and showing the other one reaches mGT as a list change.
   uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
 - **Device work runs in the handler of the message that asked for it** (`settle` writes through
   `devicePeqService.writeNow`, commands through `devicePeqService`), never behind a timer: in Doze

@@ -41,6 +41,7 @@ export type PeqCapabilities = Pick<
 	| 'readsFirmware'
 	| 'readsBandCount'
 	| 'controls'
+	| 'perChannel'
 > & {
 	/**
 	 * The device keeps its presets as a list with names of its own, which `slots()` reads; `slots`
