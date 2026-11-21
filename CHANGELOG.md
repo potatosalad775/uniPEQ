@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.4.0 [2026-11-21]
+- Added separate left and right channel EQ editing on devices that support it.
+- Added a presets sheet to create, rename and delete the presets stored on the device.
+- Added an EQ picker for devices with more than one EQ, such as Qudelix's headphone EQ.
+- Added support for Topping devices, and more device control options.
+- Fixed a dialog opened over a sheet not dimming the sheet beneath it.
+
 ## v1.3.5 [2026-11-12]
 - Improved compatibility with Walkplay devices.
 
