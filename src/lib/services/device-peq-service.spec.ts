@@ -595,6 +595,33 @@ describe('devicePeqService after a save that restarts the device', () => {
 		settingsStore.autoPushEnabled = true;
 	});
 
+	it('does not look for the device twice when asked to reconnect while it waits', async () => {
+		const conn = restarting();
+		const { reopen, answer } = deferReopen(conn);
+		await connectAndWrite(conn);
+		expect(devicePeqStore.needsReconnect).toBe(true);
+		expect(reopen).toHaveBeenCalledOnce();
+		await devicePeqService.reconnect();
+		expect(reopen).toHaveBeenCalledOnce();
+		expect(devicePeqStore.connection).not.toBeNull();
+		answer(null);
+	});
+
+	it('does not look for the device twice when Reconnect is asked for twice', async () => {
+		const conn = restarting();
+		const first = deferReopen(conn);
+		await connectAndWrite(conn);
+		first.answer(null);
+		await vi.waitFor(() => expect(devicePeqStore.isConnecting).toBe(false));
+		expect(devicePeqStore.needsReconnect).toBe(true);
+		const { reopen, answer } = deferReopen(conn);
+		const a = devicePeqService.reconnect();
+		const b = devicePeqService.reconnect();
+		expect(reopen).toHaveBeenCalledOnce();
+		answer(null);
+		await Promise.all([a, b]);
+	});
+
 	it('waits for the device and reopens it, keeping the volume warning answered', async () => {
 		const conn = restarting();
 		const { reopen, answer } = deferReopen(conn);

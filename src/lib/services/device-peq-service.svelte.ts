@@ -602,7 +602,9 @@ class DevicePeqService {
 	 */
 	async reconnect({ choose = false } = {}): Promise<void> {
 		const conn = devicePeqStore.connection;
-		if (!conn) return;
+		// Already being looked for (a restart awaited, or an earlier press): a second search that
+		// finds nothing would drop the device the first is about to reopen.
+		if (!conn || devicePeqStore.isConnecting) return;
 		devicePeqStore.isConnecting = true;
 		try {
 			const again = conn.reopen ? await conn.reopen() : null;
