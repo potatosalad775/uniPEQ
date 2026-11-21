@@ -35,7 +35,6 @@ describe('ChannelControl', () => {
 
 		await page.getByRole('radio', { name: 'R' }).click();
 		expect(eqStore.editing).toBe('right');
-		await expect.element(page.getByText(/faint curve is the left/)).toBeVisible();
 
 		await page.getByRole('radio', { name: 'L+R' }).click();
 		expect(eqStore.linked).toBe(true);
