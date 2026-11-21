@@ -253,9 +253,10 @@ describe('devicePeqService on a device that keeps a list of presets', () => {
 	/**
 	 * A device with room for four presets that holds `names`, each with one band. As on a Topping
 	 * DAC, a new preset is empty and becomes the one played, and a delete moves the later ones
-	 * down and sends the device back to its first.
+	 * down and sends the device back to its first (a DX5 II), or with `stays` keeps it on the
+	 * preset it played (a DX9).
 	 */
-	async function listDevice(names = ['Bass', 'Airy']) {
+	async function listDevice(names = ['Bass', 'Airy'], { stays = false } = {}) {
 		const held = names.map((name) => ({ name, filters: [BAND] }));
 		let current = 0;
 		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
@@ -283,7 +284,7 @@ describe('devicePeqService on a device that keeps a list of presets', () => {
 		};
 		d.deleteSlot = async (slot) => {
 			held.splice(slot, 1);
-			current = 0;
+			current = stays && slot !== current ? current - Number(slot < current) : 0;
 		};
 		connect.connectNativeHid.mockResolvedValueOnce({ kind: 'connected', connection: conn });
 		await devicePeqService.connect('hid');
@@ -350,12 +351,13 @@ describe('devicePeqService on a device that keeps a list of presets', () => {
 		expect(held).toHaveLength(4);
 	});
 
-	it('renames the preset shown, and says so when the device refuses the name', async () => {
+	it('renames a preset, and says so when the device refuses the name', async () => {
 		await listDevice();
-		expect(await devicePeqService.renamePreset(' Warm ')).toBe(true);
-		expect(names()).toEqual(['Warm', 'Airy']);
-		expect(await devicePeqService.renamePreset('a name far too long')).toBe(false);
-		expect(names()).toEqual(['Warm', 'Airy']);
+		expect(await devicePeqService.renamePreset(1, ' Warm ')).toBe(true);
+		expect(names()).toEqual(['Bass', 'Warm']);
+		expect(devicePeqStore.activeSlot).toBe(0);
+		expect(await devicePeqService.renamePreset(0, 'a name far too long')).toBe(false);
+		expect(names()).toEqual(['Bass', 'Warm']);
 		expect(devicePeqStore.statusIsError).toBe(true);
 		expect(devicePeqStore.failure).toEqual({ op: 'preset', code: 'invalid-request' });
 	});
@@ -365,16 +367,41 @@ describe('devicePeqService on a device that keeps a list of presets', () => {
 		held[0].filters = [BAND, BAND];
 		await devicePeqService.switchTo('p1');
 		eqStore.update(0, { gain: 5 });
-		await devicePeqService.deletePreset();
+		await devicePeqService.deletePreset(1);
 		expect(names()).toEqual(['Bass', 'Warm']);
 		expect(devicePeqStore.activeSlot).toBe(0);
 		expect(devicePeqStore.hasUnwritten).toBe(false);
 		expect(eqStore.filters).toHaveLength(2);
 	});
 
+	it('deletes another preset and keeps the one shown, with its unwritten changes', async () => {
+		const { conn } = await listDevice(['Bass', 'Airy', 'Warm'], { stays: true });
+		await devicePeqService.switchTo('p2');
+		eqStore.update(0, { gain: 5 });
+		const pull = vi.spyOn(conn.device, 'pull');
+		await devicePeqService.deletePreset(0);
+		expect(names()).toEqual(['Airy', 'Warm']);
+		expect(devicePeqStore.activeSlot).toBe(1);
+		expect(devicePeqStore.selection).toBe(1);
+		expect(devicePeqStore.hasUnwritten).toBe(true);
+		expect(eqStore.filters[0].gain).toBe(5);
+		expect(pull).not.toHaveBeenCalled();
+	});
+
+	it('follows a device that goes back to its first preset after another is deleted', async () => {
+		const { held } = await listDevice(['Bass', 'Airy', 'Warm']);
+		held[0].filters = [BAND, BAND];
+		await devicePeqService.switchTo('p2');
+		await devicePeqService.deletePreset(1);
+		expect(names()).toEqual(['Bass', 'Warm']);
+		expect(devicePeqStore.activeSlot).toBe(0);
+		expect(devicePeqStore.selection).toBe(0);
+		expect(eqStore.filters).toHaveLength(2);
+	});
+
 	it("leaves the device's last preset alone", async () => {
 		const { held } = await listDevice(['Only']);
-		await devicePeqService.deletePreset();
+		await devicePeqService.deletePreset(0);
 		expect(held).toHaveLength(1);
 	});
 });

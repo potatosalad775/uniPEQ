@@ -193,11 +193,6 @@ class DevicePeqStore {
 		return !!this.connection?.device.capabilities.editsSlots && this.deviceSlots !== null;
 	}
 
-	/** The preset Read and Write target, as the device lists it. */
-	get targetSlot(): Slot | null {
-		return this.slots.find((s) => s.id === this.activeSlot) ?? null;
-	}
-
 	/** The preset that turns the device's EQ off, if it has one. */
 	get bypass(): Slot | null {
 		return this.connection?.device.capabilities.slots.find((s) => s.bypass) ?? null;
@@ -370,18 +365,38 @@ class DevicePeqStore {
 	}
 
 	/**
-	 * The target preset was deleted. The ids after it moved down, so the target is the preset the
-	 * device went to, and whatever the list held for the deleted one has nowhere left to go.
+	 * Preset `removed` was deleted: the ids after it moved down, and the device may have gone to
+	 * another preset. Another preset deleted, the target keeps its own under its new id, and follows
+	 * the device only if the device moved, as a switch would, keeping the list's unwritten changes.
+	 * The target deleted, it is the preset the device went to, and whatever the list held for the
+	 * deleted one has nowhere left to go. True when the target is another preset now.
 	 */
-	deleted(slots: Slot[], currentSlot: number | null, enabled: boolean | null): void {
+	deleted(
+		removed: number,
+		slots: Slot[],
+		currentSlot: number | null,
+		enabled: boolean | null
+	): boolean {
+		const shift = (id: number | null) => (id !== null && id > removed ? id - 1 : id);
+		const kept = this.activeSlot === removed ? null : shift(this.activeSlot);
+		const moved = this.deviceSlot === removed || currentSlot !== shift(this.deviceSlot);
 		this.relisted(slots, currentSlot, enabled);
 		const listed = this.slots.some((s) => s.id === currentSlot);
+		if (kept !== null) {
+			this.activeSlot = kept;
+			if (this.layout) this.layout = { ...this.layout, slot: kept };
+			const went = moved && listed ? currentSlot : null;
+			if (went === null || went === kept) return false;
+			this.target(went);
+			return true;
+		}
 		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
 		this.unwritten = false;
 		this.#baseline = this.snapshot();
 		this.synced = null;
 		this.layout = null;
 		this.autoPaused = false;
+		return true;
 	}
 
 	/**

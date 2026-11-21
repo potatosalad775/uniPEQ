@@ -925,12 +925,12 @@ class DevicePeqService {
 	}
 
 	/**
-	 * Rename the preset Device EQ shows; true when the device took the name. A name the device
-	 * can't store is refused as it is, not shortened to fit.
+	 * Rename preset `id`; true when the device took the name. A name the device can't store is
+	 * refused as it is, not shortened to fit.
 	 */
-	async renamePreset(name: string): Promise<boolean> {
+	async renamePreset(id: number, name: string): Promise<boolean> {
 		const conn = devicePeqStore.connection;
-		const slot = devicePeqStore.targetSlot;
+		const slot = devicePeqStore.slots.find((s) => s.id === id);
 		if (!conn?.device.renameSlot || !slot || !devicePeqStore.canEditPresets) return false;
 		if (devicePeqStore.isBusy) return false;
 		const next = name.trim();
@@ -959,29 +959,30 @@ class DevicePeqService {
 	}
 
 	/**
-	 * Delete the preset Device EQ shows, for good. The device moves to another of its presets, which
-	 * is then read: what the list held was the deleted one's.
+	 * Delete preset `id`, for good. The device may move to another of its presets: the target then
+	 * follows it (`devicePeqStore.deleted`), and the preset it went to is read unless the list holds
+	 * changes not written yet.
 	 */
-	async deletePreset(): Promise<void> {
+	async deletePreset(id: number): Promise<void> {
 		const conn = devicePeqStore.connection;
-		const slot = devicePeqStore.targetSlot;
+		const slot = devicePeqStore.slots.find((s) => s.id === id);
 		if (!conn?.device.deleteSlot || !slot || !devicePeqStore.canEditPresets) return;
 		if (devicePeqStore.isBusy || devicePeqStore.slots.length <= 1) return;
+		// A waiting auto-write was aimed at the target's id, which the delete may move.
 		this.#cancelPending();
-		// The device goes over to another preset: as audible as a write.
-		if (this.#ask(() => this.deletePreset())) return;
+		// The device may go over to another preset: as audible as a write.
+		if (this.#ask(() => this.deletePreset(id))) return;
 		devicePeqStore.isEditingPresets = true;
 		devicePeqStore.setStatus(null);
-		let done = false;
+		let retargeted = false;
 		try {
 			await conn.device.deleteSlot(slot.id);
 			const slots = await conn.device.slots!();
 			const now = await playing(conn);
 			if (devicePeqStore.connection !== conn) return;
-			devicePeqStore.deleted([...slots], now.slot, now.enabled);
+			retargeted = devicePeqStore.deleted(slot.id, [...slots], now.slot, now.enabled);
 			logger.info(`deleted preset ${slot.id} "${slot.name}", the device is on ${now.slot}`);
 			devicePeqStore.setStatus(m.device_peq_presets_deleted({ name: slot.name }));
-			done = true;
 		} catch (e) {
 			this.fail(e, 'preset');
 			hapticError();
@@ -989,7 +990,7 @@ class DevicePeqService {
 		} finally {
 			devicePeqStore.isEditingPresets = false;
 		}
-		if (done) await this.read(true);
+		if (retargeted && !devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
 	// ── Auto-write ────────────────────────────────────────────────────────────

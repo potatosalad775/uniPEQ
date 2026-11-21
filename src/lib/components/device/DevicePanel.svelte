@@ -3,35 +3,24 @@
 	(plus the demo device), device row, Device EQ, Read and Write, auto-write and the push dialog.
 	Added: the profile's status and experimental badges, links to the profile in the eqcaps
 	inspector and to its wrong-constraint form, list rows with the switch trailing and hints as
-	supporting text, Device EQ as a select menu, the connection facts inline rather than in a
-	popover; the status line moved to the EQ tab's sync bar (with the review dialog, now
+	supporting text, Device EQ as a select menu (on a device that edits its presets, a row opening
+	`DevicePresetsSheet`), the connection facts inline rather than in a popover; the status line
+	moved to the EQ tab's sync bar (with the review dialog, now
 	`devicePeqService.review`); the device's own settings (`DeviceControls`) and its firmware. On a
 	phone this is the device sheet's body. The demo device (offered in every build) shows as
 	simulated, without a status or eqcaps links: eqcaps doesn't list its profile.
 -->
 <script lang="ts">
-	import {
-		ChevronDown,
-		EllipsisVertical,
-		FlaskConical,
-		Plus,
-		SquarePen,
-		Trash2,
-		TriangleAlert,
-		Usb
-	} from '@lucide/svelte';
+	import { ChevronDown, ChevronRight, FlaskConical, TriangleAlert, Usb } from '@lucide/svelte';
 	import { domainBounds } from '@potatosalad775/eqcaps-core';
+	import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 	import Badge from '#lib/components/atoms/Badge.svelte';
 	import Button from '#lib/components/atoms/Button.svelte';
-	import Input from '#lib/components/atoms/Input.svelte';
 	import ListRow from '#lib/components/atoms/ListRow.svelte';
-	import Menu from '#lib/components/atoms/Menu.svelte';
-	import MenuItem from '#lib/components/atoms/MenuItem.svelte';
-	import MenuSeparator from '#lib/components/atoms/MenuSeparator.svelte';
-	import ModalDialog from '#lib/components/atoms/ModalDialog.svelte';
 	import SelectMenu from '#lib/components/atoms/SelectMenu.svelte';
 	import Switch from '#lib/components/atoms/Switch.svelte';
 	import DeviceControls from './DeviceControls.svelte';
+	import DevicePresetsSheet from './DevicePresetsSheet.svelte';
 	import * as m from '#lib/paraglide/messages.js';
 	import { environmentCopy } from '#lib/components/intro/environment-copy.js';
 	import { ANDROID_DOWNLOAD_URL, environment } from '#lib/platform/environment.js';
@@ -61,7 +50,7 @@
 	// ── Device EQ: what the device plays, and what Read reaches ──────────────
 	const eqOptions = $derived.by(() => {
 		if (!caps) return [];
-		const out: { value: string; label: string; disabled?: boolean }[] = [];
+		const out: { value: string; label: string; disabled?: boolean; preset?: Slot }[] = [];
 		const selection = devicePeqStore.selection;
 		if (selection === null && caps.canEnable) {
 			out.push({ value: 'unknown', label: m.device_peq_eq_unknown(), disabled: true });
@@ -69,7 +58,9 @@
 		if (selection === 'other') {
 			out.push({ value: 'other', label: m.device_peq_eq_other(), disabled: true });
 		}
-		for (const slot of devicePeqStore.slots) out.push({ value: `p${slot.id}`, label: slot.name });
+		for (const slot of devicePeqStore.slots) {
+			out.push({ value: `p${slot.id}`, label: slot.name, preset: slot });
+		}
 		if (caps.canEnable) out.push({ value: 'off', label: m.device_peq_eq_off() });
 		return out;
 	});
@@ -153,28 +144,11 @@
 	/** Auto-write needs a device that can be written without restarting after each save. */
 	const canAutoWrite = $derived(!!caps?.canWrite && !caps.disconnectOnSave);
 
-	/** Device EQ's choices for its menu: the listed presets, and off where it can be. */
-	const eqChoices = $derived(
-		eqOptions.flatMap((o) => (o.disabled ? [] : [{ value: o.value, label: o.label }]))
-	);
+	/** Device EQ's choices for its menu or sheet: the listed presets, and off where it can be. */
+	const eqChoices = $derived(eqOptions.filter((o) => !o.disabled));
 	const eqCurrentLabel = $derived(eqOptions.find((o) => o.value === eqValue)?.label ?? '');
-
-	// ── The device's own list of presets: add one, rename or delete the one shown ──
-	const presetRoom = $derived(devicePeqStore.slotRoom);
-	const presetCount = $derived(devicePeqStore.slots.length);
-	const presetsFull = $derived(presetRoom !== null && presetCount >= presetRoom);
-	/** The preset Rename and Delete are about: the one Read and Write target. */
-	const targetPreset = $derived(devicePeqStore.targetSlot);
-	let renaming = $state(false);
-	let newName = $state('');
-	/** The device refused the name just tried: said in the dialog, which stays open. */
-	let renameRefused = $state(false);
-	let deleting = $state(false);
-
-	async function rename() {
-		renameRefused = !(await devicePeqService.renamePreset(newName));
-		if (!renameRefused) renaming = false;
-	}
+	/** The device's presets sheet, where it edits them: Device EQ opens it instead of a menu. */
+	let presetsOpen = $state(false);
 </script>
 
 {#snippet link(href: string, text: string)}
@@ -399,7 +373,20 @@
 		{:else}
 			<section class="flex flex-col gap-2">
 				<div class="-mx-4 flex flex-col divide-y divide-base-content/10">
-					{#if hasPresets}
+					{#if devicePeqStore.canEditPresets}
+						<ListRow
+							label={eqLabel}
+							description={m.device_peq_presets_hint()}
+							disabled={devicePeqStore.isBusy}
+							onclick={() => (presetsOpen = true)}
+							buttonProps={{ 'aria-haspopup': 'dialog' }}
+						>
+							{#snippet trailing()}
+								<span class="max-w-32 truncate">{eqCurrentLabel}</span>
+								<ChevronRight class="ml-1 size-4" aria-hidden="true" />
+							{/snippet}
+						</ListRow>
+					{:else if hasPresets}
 						<SelectMenu
 							label={eqLabel}
 							value={eqValue}
@@ -435,53 +422,6 @@
 								/>
 							{/snippet}
 						</ListRow>
-					{/if}
-					{#if devicePeqStore.canEditPresets}
-						<Menu class="min-w-52">
-							{#snippet trigger(props)}
-								<ListRow
-									label={m.device_peq_presets_manage()}
-									description={presetRoom === null
-										? undefined
-										: m.device_peq_presets_count({ count: presetCount, max: presetRoom })}
-									disabled={devicePeqStore.isBusy}
-									buttonProps={props}
-								>
-									{#snippet trailing()}
-										<EllipsisVertical class="size-4" aria-hidden="true" />
-									{/snippet}
-								</ListRow>
-							{/snippet}
-							<MenuItem
-								disabled={presetsFull}
-								description={presetsFull ? m.device_peq_presets_full() : undefined}
-								onSelect={() => void devicePeqService.createPreset()}
-							>
-								{#snippet icon()}<Plus class="size-4" aria-hidden="true" />{/snippet}
-								{m.device_peq_presets_new()}
-							</MenuItem>
-							{#if targetPreset}
-								<MenuItem
-									onSelect={() => {
-										newName = targetPreset.name;
-										renameRefused = false;
-										renaming = true;
-									}}
-								>
-									{#snippet icon()}<SquarePen class="size-4" aria-hidden="true" />{/snippet}
-									{m.device_peq_presets_rename({ name: targetPreset.name })}
-								</MenuItem>
-								<MenuSeparator />
-								<MenuItem
-									destructive
-									disabled={presetCount <= 1}
-									onSelect={() => (deleting = true)}
-								>
-									{#snippet icon()}<Trash2 class="size-4" aria-hidden="true" />{/snippet}
-									{m.device_peq_presets_delete({ name: targetPreset.name })}
-								</MenuItem>
-							{/if}
-						</Menu>
 					{/if}
 					{#if canAutoWrite}
 						<ListRow
@@ -538,64 +478,4 @@
 	{/if}
 </section>
 
-<ModalDialog
-	bind:open={renaming}
-	title={m.device_peq_presets_rename_title()}
-	description={m.device_peq_presets_rename_body()}
->
-	<form
-		id="device-preset-rename"
-		onsubmit={(event) => {
-			event.preventDefault();
-			void rename();
-		}}
-	>
-		<Input bind:value={newName} aria-label={m.presets_name_label()} autocomplete="off" />
-	</form>
-	{#if renameRefused && devicePeqStore.statusIsError}
-		<p class="text-sm text-error" role="alert">{devicePeqStore.statusMessage}</p>
-	{/if}
-	{#snippet footer()}
-		<Button
-			title={m.device_peq_presets_cancel()}
-			variant="ghost"
-			onclick={() => (renaming = false)}
-		>
-			{m.device_peq_presets_cancel()}
-		</Button>
-		<Button
-			title={m.device_peq_presets_rename_confirm()}
-			type="submit"
-			form="device-preset-rename"
-			disabled={!newName.trim() || devicePeqStore.isBusy}
-		>
-			{m.device_peq_presets_rename_confirm()}
-		</Button>
-	{/snippet}
-</ModalDialog>
-
-<ModalDialog
-	bind:open={deleting}
-	title={m.device_peq_presets_delete_title({ name: targetPreset?.name ?? '' })}
-	description={m.device_peq_presets_delete_body({ device: connection?.name ?? '' })}
->
-	{#snippet footer()}
-		<Button
-			title={m.device_peq_presets_cancel()}
-			variant="ghost"
-			onclick={() => (deleting = false)}
-		>
-			{m.device_peq_presets_cancel()}
-		</Button>
-		<Button
-			title={m.device_peq_presets_delete_confirm()}
-			variant="destructive"
-			onclick={() => {
-				deleting = false;
-				void devicePeqService.deletePreset();
-			}}
-		>
-			{m.device_peq_presets_delete_confirm()}
-		</Button>
-	{/snippet}
-</ModalDialog>
+<DevicePresetsSheet bind:open={presetsOpen} choices={eqChoices} value={eqValue} />
