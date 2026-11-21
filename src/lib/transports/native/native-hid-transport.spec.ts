@@ -13,6 +13,13 @@ const WALKPLAY_DESCRIPTOR = [
 	0x02, 0xc0
 ];
 
+const hexBytes = (hex: string) => hex.match(/../g)!.map((b) => parseInt(b, 16));
+
+// A Topping DX5 II's two interfaces, as the device reports them: media keys (consumer control,
+// one byte in, nothing out) and the control interface (generic desktop, 16 bytes each way).
+const DX5_KEYS_DESCRIPTOR = hexBytes('050c0901a1011500250109cd09b509b6750195038102750595018101c0');
+const DX5_CONTROL_DESCRIPTOR = hexBytes('05010900a101150025ff19012908951075088102190129089102c0');
+
 const b64 = (bytes: ArrayLike<number>) => btoa(String.fromCharCode(...Array.from(bytes)));
 const unb64 = (data: string) => Array.from(atob(data), (c) => c.charCodeAt(0));
 
@@ -146,6 +153,29 @@ const device: NativeUsbDevice = {
 };
 
 describe('openNativeHid', () => {
+	it('opens the interface that takes reports when none is vendor-defined', async () => {
+		const { plugin } = fakePlugin([]);
+		let opened = -1;
+		const transport = await openNativeHid(device, {
+			...plugin,
+			describe: async () => ({
+				interfaces: [
+					{ number: 4, claimed: true, endpoints: 1, reportDescriptor: b64(DX5_KEYS_DESCRIPTOR) },
+					{ number: 5, claimed: true, endpoints: 2, reportDescriptor: b64(DX5_CONTROL_DESCRIPTOR) }
+				]
+			}),
+			open: async ({ interfaceNumber }) => {
+				opened = interfaceNumber;
+				return { handle: 7, inputEndpoint: true, outputEndpoint: true };
+			}
+		});
+		expect(opened).toBe(5);
+		expect(transport.collections[0]).toMatchObject({
+			usagePage: 1,
+			outputReports: [{ reportId: 0, size: 16 }]
+		});
+	});
+
 	it('runs the eqcaps walkplay pull over the plugin', async () => {
 		const sent: { reportId: number; data: number[] }[] = [];
 		const { plugin, listeners } = fakePlugin(sent);

@@ -34,9 +34,19 @@ export async function listNativeHidDevices(
 }
 
 /**
+ * How likely an interface is the one a handler drives, as the bridge's `requestHidDevice` ranks
+ * them: a vendor-defined one first, then one that takes output or feature reports. Every handler
+ * sends something, so an interface that takes none (the media keys of a Topping DX5 II, whose
+ * control interface is on the generic desktop page) can't be it.
+ */
+function rank({ collections, sizes }: ParsedReportDescriptor): number {
+	if (collections.some((c) => c.usagePage >= 0xff00)) return 2;
+	return sizes.output.size > 0 || sizes.feature.size > 0 ? 1 : 0;
+}
+
+/**
  * Asks for USB permission if needed, reads the HID interfaces' report descriptors and opens the
- * one with a vendor-defined collection (as the bridge's `requestHidDevice` prefers), else the
- * first readable one.
+ * best-ranked one, the first among equals.
  */
 export async function openNativeHid(
 	device: NativeUsbDevice,
@@ -56,9 +66,10 @@ export async function openNativeHid(
 			? [{ number: i.number, descriptor: parseReportDescriptor(fromBase64(i.reportDescriptor)) }]
 			: []
 	);
-	const chosen =
-		readable.find((i) => i.descriptor.collections.some((c) => c.usagePage >= 0xff00)) ??
-		readable[0];
+	const chosen = readable.reduce<(typeof readable)[number] | undefined>(
+		(best, i) => (best && rank(best.descriptor) >= rank(i.descriptor) ? best : i),
+		undefined
+	);
 	if (!chosen) {
 		throw new BridgeError(
 			'transport',
