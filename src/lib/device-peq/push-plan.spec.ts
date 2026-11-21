@@ -226,7 +226,7 @@ describe('planPush for a device that holds an EQ per channel', () => {
 			{ ...eq([pk(1000, 3)], -3), right: eq([pk(1000, 2)], -2) },
 			STEREO,
 			APART,
-			{ filters: held(0.7), right: held(2) }
+			{ filters: held(0.7), right: { filters: held(2) } }
 		);
 		expect(plan.filters[1]).toEqual({ type: 'PK', freq: 62, q: 0.7, gain: 0 });
 		expect(plan.right?.filters[1]).toEqual({ type: 'PK', freq: 62, q: 2, gain: 0 });
@@ -253,6 +253,6 @@ describe('readLayout from a device that reads its channels apart', () => {
 		const device = {
 			pull: vi.fn<PeqDevice['pull']>(async () => ({ filters: left, right: { filters: right } }))
 		};
-		expect(await readLayout(device, {})).toEqual({ filters: left, right });
+		expect(await readLayout(device, {})).toEqual({ filters: left, right: { filters: right } });
 	});
 });

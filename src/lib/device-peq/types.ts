@@ -55,8 +55,8 @@ export type PeqCapabilities = Pick<
 
 /**
  * A connected device. The bridge's `BridgeDevice` satisfies this as is. Every value in and out is a
- * written value in eqcaps units (Hz, dB, RBJ Q, `LSC`/`HSC`); pushes are `fit` + `complete`d
- * first, since the bridge never clamps or pads (`push-plan.ts`).
+ * written value in eqcaps units (Hz, dB, RBJ Q, `LSC`/`HSC`); pushes are planned first (eqcaps'
+ * `plan`), since the bridge never clamps or pads (`push-plan.ts`).
  *
  * A device can have several EQs (`capabilities.eqs`). As opened it is viewed as the one its profile
  * describes, and `eq(id)` gives it viewed as a listed one: every operation, `capabilities.slots` and

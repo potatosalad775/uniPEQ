@@ -4,16 +4,20 @@
  * What a push to a device will actually send, worked out before anything is sent.
  *
  * The bridge writes exactly what it is given — no clamping, padding or type conversion — so every
- * push goes through eqcaps' `fit` (the wanted bands, moved onto the device's slots and domains)
- * and `complete` (every slot filled: unused ones with what the device held there, written flat,
- * when it could be read first — `readLayout` — otherwise with neutral filters). Whatever `fit` had to
+ * push goes through eqcaps' `plan`: `fit` (the wanted bands, moved onto the device's slots and
+ * domains), then `complete` (every slot filled: unused ones with what the device held there,
+ * written flat, when it could be read first — `readLayout` — otherwise with neutral filters), for
+ * each channel that is written, and the preamp where the device takes one. Whatever `fit` had to
  * change is listed here, so the UI can show it before writing instead of the device quietly
  * holding a different EQ from the one on screen.
- *
- * A device that holds an EQ per output channel gets each planned on its own, the profile's limits
- * holding for each (eqcaps SPEC §9: the engine runs once per channel).
  */
-import { complete, fit, type Filter, type Profile } from '@potatosalad775/eqcaps-core';
+import {
+	plan,
+	type Filter,
+	type PlanChannel,
+	type PlanHeld,
+	type Profile
+} from '@potatosalad775/eqcaps-core';
 import { toCapsFilter } from '#lib/eq/eq-constraint.js';
 import type { Channel, EqState, StereoEq } from '#lib/eq/model.js';
 import { logger } from '#lib/services/logger.js';
@@ -61,12 +65,8 @@ export interface PushPlan extends ChannelWrite {
 	infeasible: boolean;
 }
 
-/** What the target preset holds now, per channel, as `planPush` hints. */
-export interface Layout {
-	filters: readonly (Filter | null)[];
-	/** The right channel's, read from a device that drives its channels apart. */
-	right?: readonly (Filter | null)[];
-}
+/** What the target preset holds now, per channel, as `planPush` hints: a read of it, as it is. */
+export type Layout = PlanHeld;
 
 /**
  * The device holds an EQ per output channel and the bridge drives them apart: its profile says
@@ -111,43 +111,56 @@ export function planPush(
 	capabilities: Pick<PeqCapabilities, 'writesPreamp' | 'perChannel'>,
 	layout?: Layout | null
 ): PushPlan {
-	const left = planChannel(eq, profile, capabilities, layout?.filters);
-	if (!drivesChannelsApart(profile, capabilities)) return left;
-	const { changes, clipRisk, infeasible, ...leftWrite } = left;
-	if (!eq.right) return { ...left, right: leftWrite };
-	const right = planChannel(eq.right, profile, capabilities, layout?.right);
+	const wanted = ({ filters, preamp }: EqState) => ({ filters: filters.map(toCapsFilter), preamp });
+	const lists = [wanted(eq), ...(eq.right ? [wanted(eq.right)] : [])];
+	const { write, channels, sendsPreamp } = plan(
+		profile,
+		{ ...lists[0], ...(lists[1] ? { right: lists[1] } : {}) },
+		{ writesPreamp: capabilities.writesPreamp, perChannel: capabilities.perChannel, held: layout }
+	);
+	const [left, right] = channels.map((channel, i) =>
+		channelReport(channel, lists[i].filters, profile, sendsPreamp)
+	);
+	const leftWrite = { filters: write.filters, ...preampIn(write), emptySlots: left.emptySlots };
+	if (!write.right || !right) {
+		// The left's own for the right of a device that drives its channels apart, which `plan`
+		// leaves to the bridge: what such a device keeps of the two follows from a write naming both.
+		const both = drivesChannelsApart(profile, capabilities) ? { right: leftWrite } : {};
+		return { ...leftWrite, ...both, ...left.report };
+	}
 	return {
 		...leftWrite,
-		right: { filters: right.filters, emptySlots: right.emptySlots, ...preampIn(right) },
+		right: {
+			filters: write.right.filters,
+			...preampIn(write.right),
+			emptySlots: right.emptySlots
+		},
 		changes: [
-			...changes.map((c) => ({ ...c, channel: 'left' as const })),
-			...right.changes.map((c) => ({ ...c, channel: 'right' as const }))
+			...left.report.changes.map((c) => ({ ...c, channel: 'left' as const })),
+			...right.report.changes.map((c) => ({ ...c, channel: 'right' as const }))
 		],
-		clipRisk: clipRisk || right.clipRisk,
-		infeasible: infeasible || right.infeasible
+		clipRisk: left.report.clipRisk || right.report.clipRisk,
+		infeasible: left.report.infeasible || right.report.infeasible
 	};
 }
 
-const preampIn = ({ preamp }: ChannelWrite) => (preamp !== undefined ? { preamp } : {});
+const preampIn = ({ preamp }: { preamp?: number }) => (preamp !== undefined ? { preamp } : {});
 
-/** One channel's list, or one for both. */
-function planChannel(
-	{ filters, preamp }: EqState,
+/** How one written channel's fit came out: what the review lists, and the bands left unfilled. */
+function channelReport(
+	{ fit }: PlanChannel,
+	wanted: readonly Filter[],
 	profile: Profile,
-	capabilities: Pick<PeqCapabilities, 'writesPreamp'>,
-	hints?: readonly (Filter | null)[]
-): PushPlan {
-	const wanted = filters.map(toCapsFilter);
-	const mode = profile.preamp.mode;
-	const result = fit(profile, wanted, preamp);
+	sendsPreamp: boolean
+): { report: Pick<PushPlan, 'changes' | 'clipRisk' | 'infeasible'>; emptySlots: number } {
 	const changes: PlanChange[] = [];
 	const dropped = new Set<number>();
-	result.slotOf.forEach((slot, k) => {
+	fit.slotOf.forEach((slot, k) => {
 		if (slot === null) dropped.add(k);
 	});
-	for (const c of result.changes) {
+	for (const c of fit.changes) {
 		if (c.filter === null) {
-			if (c.field === 'preamp' && sendsPreamp(mode, capabilities)) {
+			if (c.field === 'preamp' && sendsPreamp) {
 				changes.push({ kind: 'preamp', wanted: Number(c.wanted), written: Number(c.written) });
 			}
 			continue;
@@ -166,23 +179,15 @@ function planChannel(
 		if (wanted[k].gain !== 0) changes.push({ kind: 'dropped', band: k + 1 });
 	}
 
-	const boosts = result.slots.some((f) => f !== null && f.gain > 0);
+	const boosts = fit.slots.some((f) => f !== null && f.gain > 0);
 	return {
-		filters: complete(profile, result.slots, hints ? { hints } : {}).filters,
-		...(sendsPreamp(mode, capabilities) ? { preamp: result.preamp } : {}),
-		changes,
-		clipRisk: boosts && mode !== 'auto' && !sendsPreamp(mode, capabilities),
-		infeasible: !result.feasible,
-		emptySlots: profile.bandCount === null ? 0 : result.slots.filter((f) => f === null).length
+		report: {
+			changes,
+			clipRisk: boosts && profile.preamp.mode !== 'auto' && !sendsPreamp,
+			infeasible: !fit.feasible
+		},
+		emptySlots: profile.bandCount === null ? 0 : fit.slots.filter((f) => f === null).length
 	};
-}
-
-/** Send a preamp when the device takes one we control and the protocol can write it. */
-function sendsPreamp(
-	mode: Profile['preamp']['mode'],
-	capabilities: Pick<PeqCapabilities, 'writesPreamp'>
-): boolean {
-	return capabilities.writesPreamp && (mode === 'manual' || mode === 'unknown');
 }
 
 /**
@@ -198,8 +203,7 @@ export async function readLayout(
 ): Promise<Layout | null> {
 	if (!request) return null;
 	try {
-		const held = await device.pull(request);
-		return { filters: held.filters, ...(held.right ? { right: held.right.filters } : {}) };
+		return await device.pull(request);
 	} catch (e) {
 		logger.warn(
 			'could not read the layout to keep, writing neutral fillers:',

@@ -206,8 +206,9 @@ to say.
 `src/lib/device-peq/` follows modernGraphTool's `device-peq/AGENTS.md` invariants, the third one
 changed:
 
-1. **Fit before every write.** The bridge never clamps or pads. `push-plan.ts` runs eqcaps `fit`
-   and `complete` and reports what changed; a write whose values had to change waits for review.
+1. **Fit before every write.** The bridge never clamps or pads. `push-plan.ts` runs eqcaps `plan`
+   (`fit`, then `complete`) and reports what changed; a write whose values had to change waits for
+   review.
 2. **Never retarget.** Read and write only a reachable preset: on a built-in preset Write is off,
    never redirected to another slot. Picking a writable preset is the user's call.
    - **On no stored preset** (an EQ changed since a preset was loaded and saved nowhere: a Qudelix
