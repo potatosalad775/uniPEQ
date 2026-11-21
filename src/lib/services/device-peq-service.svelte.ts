@@ -972,6 +972,15 @@ class DevicePeqService {
 	async switchTo(value: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		if (!conn || devicePeqStore.operation !== null) return;
+		// The value also comes over the modernGraphTool link: only what Device EQ offers is taken, so
+		// nothing else turns the EQ on or aims at a preset the device doesn't list.
+		const offered =
+			value === 'on' || value === 'off'
+				? conn.device.capabilities.canEnable
+				: value === 'unsaved'
+					? devicePeqStore.unsaved
+					: devicePeqStore.slots.some((s) => `p${s.id}` === value);
+		if (!offered) return;
 		// An edit waiting to be auto-written belongs to the preset it was made on.
 		this.#cancelPending();
 		const slot = value.startsWith('p')

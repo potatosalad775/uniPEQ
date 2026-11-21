@@ -65,3 +65,39 @@ describe('every operation says its result', () => {
 		expect(devicePeqStore.statusMessage).not.toBe(read);
 	});
 });
+
+describe('switching to a value Device EQ does not offer', () => {
+	afterEach(() => devicePeqStore.forget());
+
+	function withPresets() {
+		const slots = [
+			{ id: 1, name: 'One', writable: true },
+			{ id: 2, name: 'Two', writable: true }
+		];
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 8 }), {
+			canEnable: true,
+			slots
+		});
+		devicePeqStore.setConnected(conn, 1, true);
+		devicePeqStore.writeConsent = true;
+		return vi.spyOn(conn.device, 'setEnabled');
+	}
+
+	it.each(['other', 'unknown', 'unsaved', '', 'nonsense', 'p99', 'pzz', 'p'])(
+		'leaves the device alone for %j',
+		async (value) => {
+			const setEnabled = withPresets();
+			await devicePeqService.switchTo(value);
+			expect(setEnabled).not.toHaveBeenCalled();
+			expect(devicePeqStore.activeSlot).toBe(1);
+		}
+	);
+
+	it('still switches to a listed preset, and the EQ off and on', async () => {
+		const setEnabled = withPresets();
+		await devicePeqService.switchTo('p2');
+		await devicePeqService.switchTo('off');
+		await devicePeqService.switchTo('on');
+		expect(setEnabled.mock.calls).toEqual([[true, 2], [false], [true, 1]]);
+	});
+});
