@@ -42,6 +42,7 @@ export type PeqCapabilities = Pick<
 	| 'readsBandCount'
 	| 'controls'
 	| 'perChannel'
+	| 'eqs'
 > & {
 	/**
 	 * The device keeps its presets as a list with names of its own, which `slots()` reads; `slots`
@@ -56,6 +57,11 @@ export type PeqCapabilities = Pick<
  * A connected device. The bridge's `BridgeDevice` satisfies this as is. Every value in and out is a
  * written value in eqcaps units (Hz, dB, RBJ Q, `LSC`/`HSC`); pushes are `fit` + `complete`d
  * first, since the bridge never clamps or pads (`push-plan.ts`).
+ *
+ * A device can have several EQs (`capabilities.eqs`): each operation on one takes its id as `eq`
+ * (in the request for `pull`, `push` and `createSlot`), the profile's own EQ without one. The
+ * store's connection is the device viewed as one EQ (`eqView`), whose device names it in every
+ * call, so nothing past the store passes `eq`.
  */
 export interface PeqDevice {
 	readonly capabilities: PeqCapabilities;
@@ -66,25 +72,25 @@ export interface PeqDevice {
 	 * when the EQ is off. Where the EQ switch is its own state (`readsEnabled`), the preset whether
 	 * the EQ is on or off.
 	 */
-	currentSlot(): Promise<number | null>;
+	currentSlot(eq?: string): Promise<number | null>;
 	/** Whether the EQ is on (`readsEnabled`); null when the protocol or device doesn't say. */
-	eqEnabled(): Promise<boolean | null>;
-	setEnabled(enabled: boolean, slot?: number): Promise<void>;
+	eqEnabled(eq?: string): Promise<boolean | null>;
+	setEnabled(enabled: boolean, slot?: number, eq?: string): Promise<void>;
 	/** The presets as they are now: asked of a device that `listsSlots`, with the names it stores. */
-	slots?(): Promise<readonly Slot[]>;
+	slots?(eq?: string): Promise<readonly Slot[]>;
 	/**
 	 * The next three need `editsSlots`. An empty preset after the last one, under a name the device
 	 * side picks; the device may start playing it.
 	 */
-	createSlot?(request?: { name?: string }): Promise<Slot>;
+	createSlot?(request?: { name?: string; eq?: string }): Promise<Slot>;
 	/** A name the device can't store is refused (`invalid-request`), never shortened. */
-	renameSlot?(slot: number, name: string): Promise<void>;
+	renameSlot?(slot: number, name: string, eq?: string): Promise<void>;
 	/** The presets after it move down by one, and the device may switch to another. */
-	deleteSlot?(slot: number): Promise<void>;
+	deleteSlot?(slot: number, eq?: string): Promise<void>;
 	/** The firmware version (`readsFirmware`), read once; null when the device doesn't say. */
 	firmware(): Promise<string | null>;
-	/** The band count the device reports (`readsBandCount`); null when it doesn't say. */
-	bandCount(): Promise<number | null>;
+	/** The band count the device reports for the EQ (`readsBandCount`); null when it doesn't say. */
+	bandCount(eq?: string): Promise<number | null>;
 	/**
 	 * Every control in `capabilities.controls` by id; null for one the device doesn't have now (its
 	 * firmware range or the control it depends on). Pull and push never touch controls.
@@ -114,7 +120,11 @@ export interface DeviceConnection {
 	connectionType: ConnectionType;
 	/** "FiiO KA17", or the USB product name for a guessed device. */
 	name: string;
-	/** What the device accepts. Always present: a guessed device gets one from its protocol. */
+	/**
+	 * What the device accepts. Always present: a guessed device gets one from its protocol. As
+	 * opened, the device's profile as the data gives it, every EQ it lists; viewed as one EQ
+	 * (`eqView`), that EQ's, with the band count the device reports for it.
+	 */
 	profile: Profile;
 	profileSource: ProfileSource;
 	/** The eqcaps id of `profile`, when it came from the database (or the demo's own id). */
@@ -154,6 +164,7 @@ export interface ReopenWait {
 
 /**
  * A device operation under way. Each one is reported in the sync bar while it runs (`syncStatus`
- * names it), so one added here can't run without the bar saying so.
+ * names it), so one added here can't run without the bar saying so. `switch` picks a preset;
+ * `eq` another of the device's EQs.
  */
-export type DeviceOperation = 'read' | 'write' | 'switch' | 'control' | 'preset';
+export type DeviceOperation = 'read' | 'write' | 'switch' | 'control' | 'preset' | 'eq';

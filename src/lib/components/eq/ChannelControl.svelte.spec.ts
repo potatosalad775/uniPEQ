@@ -13,7 +13,7 @@ import EqGraph from './EqGraph.svelte';
 const pk = (gain: number) => ({ type: 'PK' as const, freq: 1000, q: 1, gain });
 const STEREO = { ...hardwareProfile('dx5', { bandCount: 2 }), channels: 'independent' as const };
 
-const channels = () => page.getByRole('radiogroup', { name: 'Channels' });
+const channels = () => page.getByRole('group', { name: 'Channels' });
 
 describe('ChannelControl', () => {
 	beforeEach(() => {
@@ -38,6 +38,30 @@ describe('ChannelControl', () => {
 
 		await page.getByRole('radio', { name: 'L+R' }).click();
 		expect(eqStore.linked).toBe(true);
+	});
+
+	it('asks before L+R replaces a channel that differs, and keeps both on Cancel', async () => {
+		devicePeqStore.setConnected(fakeConnection(STEREO, { perChannel: true }), null);
+		render(ChannelControl);
+		await page.getByRole('radio', { name: 'R' }).click();
+		eqStore.update(0, { gain: 6 });
+
+		await page.getByRole('radio', { name: 'L+R' }).click();
+		await expect.element(page.getByText(/replaces the left channel/)).toBeVisible();
+		expect(eqStore.linked).toBe(false);
+		await expect.element(page.getByRole('radio', { name: 'R' })).toBeChecked();
+
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		expect(eqStore.channels.left.filters[0].gain).toBe(3);
+		expect(eqStore.channels.right.filters[0].gain).toBe(6);
+
+		await page.getByRole('radio', { name: 'L+R' }).click();
+		await page.getByRole('button', { name: 'Use for both' }).click();
+		expect(eqStore.linked).toBe(true);
+		expect(eqStore.channels.left.filters[0].gain).toBe(6);
+		eqStore.undo();
+		expect(eqStore.channels.left.filters[0].gain).toBe(3);
+		expect(eqStore.channels.right.filters[0].gain).toBe(6);
 	});
 
 	it('draws the other channel’s curve while they are apart', async () => {

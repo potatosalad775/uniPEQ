@@ -111,7 +111,7 @@ src/
     │   ├── link/           # LinkSheet (code), LinkApprovalDialog, LinkBatteryDialog
     │   ├── presets/        # PresetsPanel, picker / save / edit dialogs
     │   └── settings/       # LogDialog, licenses
-    ├── device-peq/         # connect, push-plan, sync-status, panel-status, preset-fit, errors, demo
+    ├── device-peq/         # connect, device-eqs, push-plan, sync-status, panel-status, preset-fit, errors, demo
     ├── link/               # the modernGraphTool link: store, service, bar status, self-check
     ├── eq/                 # model, biquad, eq-constraint, eq-preamp, preset-file, eq-apo, graph-scale, nudge
     ├── services/           # device-peq-service, eqcaps-client, preset-storage, undo-redo-stack, logger
@@ -152,10 +152,11 @@ profiles; the profile's `protocol` picks the handler; the bridge's `openDevice` 
 matched profile has a firmware range and the top matches share a handler that reads the firmware
 (USB HID only, already open), the firmware is read and the device matched again with it, so
 profiles that only the firmware tells apart (the Fosi DS3's 8- and 32-band firmware) don't ask.
-Only then: a device that doesn't answer costs the handler's timeout. A device that reports its own
-band count (`readsBandCount`, FiiO's protocols) overrides the profile's when they differ, unless the
-profile sets slots by index, and the log says so: writing too few bands leaves the rest playing.
-Results:
+Only then: a device that doesn't answer costs the handler's timeout. The connection keeps the
+profile as the data gives it. A device that reports its own band count (`readsBandCount`, FiiO's
+and Qudelix's protocols) overrides the count of the EQ being opened when they differ, each time one
+is (connecting, reopening, switching EQ: a Qudelix's mode changes it), unless the profile sets slots
+by index, and the log says so: writing too few bands leaves the rest playing. Results:
 
 - `connected`, with a `DeviceConnection` whose `profileSource` is `device` (its own profile),
   `group` (a family profile its identity can't narrow), `guess` (no profile: `guessProtocol` by
@@ -209,14 +210,45 @@ changed:
    and `complete` and reports what changed; a write whose values had to change waits for review.
 2. **Never retarget.** Read and write only a reachable preset: on a built-in preset Write is off,
    never redirected to another slot. Picking a writable preset is the user's call.
+   - **On no stored preset** (an EQ changed since a preset was loaded and saved nowhere: a Qudelix
+     after any edit, its own app's included) the device is read and written where it is, naming
+     no preset, so a write leaves it on none and never saves into a memory nobody picked. Device
+     EQ shows "Unsaved EQ"; with the EQ off, picking it turns the EQ back on as it was, where a
+     preset picked is loaded over it. `currentSlot()` answers null for this state and for "can't
+     say" alike, so a null counts as no preset only where nothing else can mean it
+     (`device-peq/preset.ts`, `tellsUnsaved`): the protocol asks the device, its EQ switch is its
+     own state, and its reads name no preset (they read what plays). A failed ask stays unknown.
+     Such a device leaves its preset whenever anything edits its EQ, so the Read button asks
+     where it is first, and Device EQ follows it as a switch would.
 3. **The device's EQ is what the list edits.** The app is a companion to one device, so:
    - Connecting, and picking another preset in Device EQ, reads it into the list as a fresh start
      (`eqStore.open`: no undo back past it, which would hand the device another device's or
      preset's bands). The Read button's read stays an undo step.
    - **Except over unwritten changes.** `devicePeqStore.hasUnwritten` compares the list with the
      last read or write; a disconnect or preset change records `unwritten`. Reconnecting the same
-     device (name and profile) with unwritten changes doesn't read: the sync bar offers Read and
-     Write. Connecting never writes. Another device is read regardless.
+     device (name and profile) on the same EQ with unwritten changes doesn't read: the sync bar
+     offers Read and Write. Connecting never writes. Another device or EQ is read regardless.
+   - **One EQ at a time.** A device can have several EQs (eqcaps `protocol.eqs`, the bridge's
+     `capabilities.eqs`): a Qudelix 5K has its user EQ and a headphone EQ with its own bands,
+     presets, switch and left and right. `devicePeqStore` keeps the connection as opened
+     (`opened`) and the EQ the list edits (`eq`); its `connection` is the device viewed as that EQ
+     (`device-peq/device-eqs.ts`, `eqView`): the EQ's profile (`eqProfile`, with the band count the
+     device reports for it), presets and `perChannel`, and a device that names the EQ in every
+     operation. The document, sync state, constraint, Device EQ, presets sheet, channel row and
+     link all read that view and never see an EQ id; only what is the device's (its going away,
+     its controls) reads `opened`. Every connection starts on the profile's own EQ; a reopen keeps
+     the EQ while the device still has it. Picking another (the band card's EQ row) is like
+     connecting another device: its preset, switch and presets are read, the sync state starts
+     over, its bands come in as a fresh start, and auto-write and the link take the new view for a
+     new connection. Changes the EQ on screen never got are never carried to the other (a 10-band
+     list doesn't belong on a 20-band left and right EQ): one waiting for auto-write goes out
+     first; otherwise a dialog asks to Write them to the EQ left (then switch), Discard them, or
+     Cancel. `knownDevice` names the EQ, so a reconnect keeps changes only for the same one.
+   - **An EQ the device's mode lacks** answers `unsupported` (a Qudelix in single-EQ mode has no
+     headphone EQ). Connecting and reopening ask each listed EQ once (`currentSlot(eq)`); a missing
+     one shows disabled in the EQ row, and any other failure is a failure, not an absence. An
+     operation refused as `unsupported` on a listed EQ that is gone (the mode changed on the device
+     or in its own app) falls back to the profile's own EQ, reads it, and the sync bar says so.
    - Nothing refits the list on its own: a list that doesn't fit is flagged, and **Fit**
      (`fitFilters`) is the user's action.
    - **Left and right apart** only on a device that drives them apart: profile `channels:
@@ -231,8 +263,9 @@ changed:
 4. **One status line**: the EQ tab's sync bar (`device-peq/sync-status.ts`, ranked over
    `panel-status.ts`), also the live region screen readers hear. The device chip's dot repeats it.
    The modernGraphTool link shares the bar rather than adding a row (§10).
-   Every device operation (`DeviceOperation`: read, write, switch, control) shows busy there while
-   it runs, and its result after, even one that leaves the EQ alone ("Set Mic gain to 12 dB"); the
+   Every device operation (`DeviceOperation`: read, write, switch a preset, control, preset list,
+   eq to switch EQ) shows busy there while it runs, and its result after, even one that leaves
+   the EQ alone ("Set Mic gain to 12 dB"); the
    result stands for "in sync" until the list changes. `syncStatus` keys its busy text by the
    operation, so a new one doesn't type-check until the bar can say it.
    No toast per write; a failure gets a toast and an error haptic.
@@ -357,9 +390,11 @@ panels, supporting text instead of `?` popovers. Colours only from the semantic 
 
 ### 8.1 EQ tab
 - **Phone:** app bar (device chip, undo/redo, overflow with Load preset, Save preset, Fit), the
-  graph pinned edge to edge, the channel row (L+R / L / R, where the device holds an EQ per
-  channel), the preamp row and band rows as the only scrolling part, the sync bar above the tab
-  bar. Device panel, band editor and preamp editor are sheets.
+  graph pinned edge to edge, the EQ row (a segment per EQ, by the data's names, where the device
+  has several; disabled during a device operation, an EQ its mode lacks disabled with a line
+  saying so), the channel row (L+R / L / R, where the EQ holds one per channel), the preamp row
+  and band rows as the only scrolling part, the sync bar above the tab bar. Device panel, band
+  editor and preamp editor are sheets.
 - **Wide:** graph on the left (a card); device panel and band card on the right, the selected row
   opening its editor in place.
 - **Disconnected:** graph and rows stay, dimmed and read-only.
@@ -376,8 +411,10 @@ GPL text, then `virtual:third-party-licenses` (`scripts/third-party-licenses.ts`
 the client bundle's module graph, Android libraries listed by hand and shown only in the app).
 
 ### 8.4 Stores
-- `device-peq-store`: connection, profile, presets (slots), read / write targets, sync flags,
-  `knownDevice`, `unwritten`, status.
+- `device-peq-store`: the connection as opened, the EQ edited and the device's EQs, `connection`
+  (derived: the device viewed as that EQ), profile, presets (slots), where the device is (a
+  preset, none, or unknown) and the read / write targets, sync flags, `knownDevice` (with its
+  EQ), `unwritten`, status.
 - `eq-store`: filters, preamp, Auto preamp, selected band (of the channel on screen), the other
   channel while apart, undo/redo history.
 - `eq-constraint-store`: per-band domains, the fitted list, `editable`; derived.
@@ -459,7 +496,9 @@ gets a tag; then both apps bump.
 - **Edits** apply through `eqStore`: a band op projected onto its slot as a local edit is, one undo
   step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited. The
   protocol has one band list, so with the channels apart mGT sees and edits the channel on screen,
-  and showing the other one reaches mGT as a list change.
+  and showing the other one reaches mGT as a list change. Likewise it sees the device's EQ on
+  screen: switching EQ reaches mGT as a new device (the view's profile and capabilities) and a
+  `fresh` list.
   uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
 - **Device work runs in the handler of the message that asked for it** (`settle` writes through
   `devicePeqService.writeNow`, commands through `devicePeqService`), never behind a timer: in Doze

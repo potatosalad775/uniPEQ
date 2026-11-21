@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { webLink, WEB_LINK_PARAM as CLIENT_WEB_LINK_PARAM } from 'peq-link/client';
 import type { Change, EditOp, JoinerOptions } from 'peq-link/client';
 import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { twoEqDevice } from '#lib/device-peq/__fixtures__/two-eq.js';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
 import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
@@ -294,6 +295,25 @@ describe('linkService', () => {
 		flushSync();
 		expect(joiner.sent.device).toBe(device + 1);
 		expect(joiner.options.handlers.device()).toBeNull();
+	});
+
+	it("sends another of the device's EQs as a new device, with that EQ's profile and presets", async () => {
+		devicePeqService.install();
+		settingsStore.autoPushEnabled = false;
+		devicePeqStore.setConnected(twoEqDevice().conn, 22);
+		const joiner = link();
+		const sent = joiner.sent.device;
+		await devicePeqService.selectEq('spk');
+		flushSync();
+		expect(joiner.sent.device).toBe(sent + 1);
+		expect(joiner.options.handlers.device()).toMatchObject({
+			profile: { engine: 'SPK EQ', bandCount: 20 },
+			capabilities: {
+				slots: [{ name: 'Flat' }, { name: 'Custom #1' }, { name: 'Custom #2' }]
+			}
+		});
+		// The list it shares is that EQ's, sent as a fresh start.
+		expect(joiner.changes.at(-1)).toMatchObject({ fresh: true });
 	});
 
 	it('asks before replacing a link, and ends the old one as replaced', () => {

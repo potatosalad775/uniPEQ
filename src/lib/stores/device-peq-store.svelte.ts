@@ -1,5 +1,6 @@
 // Adapted from modernGraphTool src/lib/stores/device-peq-store.svelte.ts @ 23ddc4dd: no separate
-// constraint store (the connected profile is the constraint), and writable presets.
+// constraint store (the connected profile is the constraint), writable presets, and a device on no
+// stored preset.
 /**
  * The connected EQ device and what the app is doing with it.
  *
@@ -7,8 +8,17 @@
  * EQ is what the list edits: it is read on connecting unless the list holds changes
  * the device never got (`unwritten`), and it can't be edited while disconnected (`canEdit`). Bands
  * that don't fit are flagged, never refitted: Fit is the user's call.
+ *
+ * A device with several EQs is edited one EQ at a time (`eq`): `connection` is the device viewed
+ * as that EQ, so the rest of this store, and everything that reads it, has one EQ to think about.
  */
-import { readRequest, writeRequest, type PresetRequest } from '#lib/device-peq/preset.js';
+import { deviceEqs, eqView, OWN_EQ, type EqTarget } from '#lib/device-peq/device-eqs.js';
+import {
+	readRequest,
+	writeRequest,
+	type CurrentSlot,
+	type PresetRequest
+} from '#lib/device-peq/preset.js';
 import { drivesChannelsApart, type Layout } from '#lib/device-peq/push-plan.js';
 import type { DeviceConnection, DeviceOperation, PeqCapabilities } from '#lib/device-peq/types.js';
 import { preampOf } from '#lib/eq/eq-preamp.js';
@@ -19,9 +29,10 @@ import { eqStore } from './eq-store.svelte';
 
 /**
  * What the Device EQ control shows: a listed preset (by id), the EQ off, a preset the device is
- * on that isn't listed (a built-in one), or null when the device can't say.
+ * on that isn't listed (a built-in one), no preset (`unsaved`: its EQ changed since a preset was
+ * loaded), or null when the device can't say.
  */
-export type DeviceEqSelection = number | 'off' | 'other' | null;
+export type DeviceEqSelection = number | 'off' | 'other' | 'unsaved' | null;
 
 /**
  * The band list and preamp as they were when last read from or written to the device; with
@@ -30,25 +41,57 @@ export type DeviceEqSelection = number | 'off' | 'other' | null;
 export type DeviceSnapshot = StereoEq;
 
 class DevicePeqStore {
-	connection = $state.raw<DeviceConnection | null>(null);
+	/**
+	 * The connection as the bridge opened it (every EQ the device has), which of its EQs the list
+	 * edits, and the ones its current mode lacks. Replaced whole, so `connection` never pairs a
+	 * device with another's EQ.
+	 */
+	#opened = $state.raw<{
+		conn: DeviceConnection;
+		eq: EqTarget;
+		absent: readonly string[];
+	} | null>(null);
+	/**
+	 * The connection viewed as the EQ the list edits (`eqView`): that EQ's profile, presets and
+	 * channels, and a device that names it in every operation. Another EQ is another connection
+	 * object, so what follows the connection (auto-write, the modernGraphTool link) takes an EQ
+	 * switch for a new target, as it does a new device.
+	 */
+	connection = $derived(this.#opened && eqView(this.#opened.conn, this.#opened.eq));
+	/** The EQ the list edits, with the band count the device reported for it; null while disconnected. */
+	get openedEq(): EqTarget | null {
+		return this.#opened?.eq ?? null;
+	}
+	/** The listed EQs the device's mode lacked when it was last asked. */
+	get absent(): readonly string[] {
+		return this.#opened?.absent ?? [];
+	}
+	/** The device's EQs, for the EQ row; empty while disconnected. */
+	eqs = $derived(this.#opened ? deviceEqs(this.#opened.conn, this.#opened.absent) : []);
 	/**
 	 * The device the EQ is edited for: the connected one, or after a disconnect the
 	 * last one, so a dropped cable doesn't take the editor with it. Null until a first connection:
-	 * the EQ tab then asks for a device.
+	 * the EQ tab then asks for a device. `profile` and `eq` are the EQ the list was for.
 	 */
-	knownDevice = $state.raw<{ name: string; profile: Profile } | null>(null);
+	knownDevice = $state.raw<{ name: string; profile: Profile; eq: string | undefined } | null>(null);
 	isConnecting = $state(false);
 	isReading = $state(false);
 	isWriting = $state(false);
 	isSwitching = $state(false);
-	/** The listed preset reads and writes target; null when the device lists none. */
+	/** Another of the device's EQs is being opened. */
+	isSwitchingEq = $state(false);
+	/**
+	 * The listed preset reads and writes target; null for none, the EQ where the device is: on a
+	 * device that lists no presets, or one on none of them (`deviceSlot` `'unsaved'`), where naming
+	 * one would save into a memory the user never picked.
+	 */
 	activeSlot = $state<number | null>(null);
 	/**
 	 * The preset the device is on, as it last reported or was told: may be unlisted (a built-in
-	 * preset) or the bypass preset. Null when unknown. Protocols that only read and write the
-	 * current preset can reach `activeSlot` only while this equals it.
+	 * preset), the bypass preset, or none (`'unsaved'`). Null when unknown. Protocols that only read
+	 * and write the current preset can reach `activeSlot` only while this equals it.
 	 */
-	deviceSlot = $state<number | null>(null);
+	deviceSlot = $state<CurrentSlot>(null);
 	/** Whether the device's EQ is on, when known. */
 	eqEnabled = $state<boolean | null>(null);
 	/** What the device held after the last read or write, to tell whether the list has moved on. */
@@ -118,6 +161,19 @@ class DevicePeqStore {
 	}
 
 	/**
+	 * The connection as opened, every EQ: for what is about the device rather than one EQ (it
+	 * going away, its controls).
+	 */
+	get opened(): DeviceConnection | null {
+		return this.#opened?.conn ?? null;
+	}
+
+	/** The EQ the list edits: its id among `eqs`, undefined for the profile's own. */
+	get eq(): string | undefined {
+		return this.#opened?.eq.id;
+	}
+
+	/**
 	 * The list can be edited: a device is connected and reachable. Disconnected, the
 	 * list stays on screen read-only, to look at or save as a preset.
 	 */
@@ -132,6 +188,7 @@ class DevicePeqStore {
 		if (this.isSwitching) return 'switch';
 		if (this.isControlling) return 'control';
 		if (this.isEditingPresets) return 'preset';
+		if (this.isSwitchingEq) return 'eq';
 		return null;
 	}
 
@@ -208,7 +265,7 @@ class DevicePeqStore {
 		return marked.length ? marked : this.slots;
 	}
 
-	/** Whether the target preset is one the user may write; true for a device without presets. */
+	/** Whether the target preset is one the user may write; true for none, the EQ where it is. */
 	get targetWritable(): boolean {
 		const slot = this.activeSlot;
 		return slot === null || this.writableSlots.some((s) => s.id === slot);
@@ -275,50 +332,111 @@ class DevicePeqStore {
 		return { ...state('left'), right: state('right') };
 	}
 
+	/**
+	 * The device is on no stored preset, and reads and writes reach its EQ there. Not while a preset
+	 * is the target: they reach that preset then, not where the device is.
+	 */
+	get unsaved(): boolean {
+		return this.deviceSlot === 'unsaved' && this.activeSlot === null;
+	}
+
 	get selection(): DeviceEqSelection {
 		if (this.eqEnabled === false) return 'off';
+		if (this.unsaved) return 'unsaved';
 		const d = this.deviceSlot;
-		if (d !== null && this.slots.length > 0 && !this.slots.some((s) => s.id === d)) return 'other';
+		if (typeof d === 'number' && this.slots.length > 0 && !this.#listed(d)) return 'other';
 		if (this.eqEnabled === null && this.connection?.device.capabilities.canEnable) return null;
 		return this.activeSlot;
 	}
 
+	#listed(slot: CurrentSlot): slot is number {
+		return this.slots.some((s) => s.id === slot);
+	}
+
 	/**
-	 * `enabled` is the device's EQ switch where it reads one (`readsEnabled`); otherwise whether the
-	 * EQ is on follows from the preset.
+	 * What reads and writes target on a device that is on `current`: that preset where it is listed;
+	 * none on no preset, so they reach the EQ where it is; else (a built-in preset, or unknown) the
+	 * first listed, or none on a device that lists none.
+	 */
+	#targetOf(current: CurrentSlot): number | null {
+		if (current === 'unsaved') return null;
+		return this.#listed(current) ? current : (this.slots[0]?.id ?? null);
+	}
+
+	/**
+	 * `connection` as opened, edited as `eq` (the profile's own unless a reopen keeps another), with
+	 * the listed EQs its mode lacks. `enabled` is that EQ's switch where the device reads one
+	 * (`readsEnabled`); otherwise whether the EQ is on follows from the preset.
 	 */
 	setConnected(
 		connection: DeviceConnection,
-		currentSlot: number | null,
+		currentSlot: CurrentSlot,
 		enabled: boolean | null = null,
-		deviceSlots: Slot[] | null = null
+		deviceSlots: Slot[] | null = null,
+		eq: EqTarget = OWN_EQ,
+		absent: readonly string[] = []
 	): void {
-		// Unwritten changes carry over only to the same device: another one's EQ is read regardless.
+		// Unwritten changes carry over only to the same EQ of the same device: another's is read
+		// regardless.
 		const known = this.knownDevice;
-		const same = known?.name === connection.name && known.profile.id === connection.profile.id;
+		const same =
+			known?.name === connection.name &&
+			known.profile.id === connection.profile.id &&
+			known.eq === eq.id;
 		const carried = this.connection ? this.hasUnwritten : this.unwritten;
 		this.unwritten = same && carried;
-		this.connection = connection;
-		this.deviceSlots = deviceSlots;
-		this.knownDevice = { name: connection.name, profile: connection.profile };
+		this.#opened = { conn: connection, eq, absent };
 		this.isConnecting = false;
 		this.needsReconnect = false;
+		this.controlValues = {};
+		this.firmware = null;
+		this.writeConsent = false;
+		this.#newEq(currentSlot, enabled, deviceSlots);
+	}
+
+	/**
+	 * Edit another of the connected device's EQs, read just now as a connect reads one; `gone` is
+	 * one found missing from the device's mode, shown as absent from now on; `absent`, where the
+	 * device was asked again, is every one its mode lacks now. The list's changes
+	 * were settled before (written to the EQ left, or dropped), so nothing is unwritten. The
+	 * controls and the volume warning's answer stay: they are the device's, not an EQ's.
+	 */
+	selectEq(
+		eq: EqTarget,
+		currentSlot: CurrentSlot,
+		enabled: boolean | null,
+		deviceSlots: Slot[] | null,
+		gone?: string,
+		absent: readonly string[] = this.absent
+	): void {
+		const opened = this.#opened;
+		if (!opened) return;
+		if (gone !== undefined && !absent.includes(gone)) absent = [...absent, gone];
+		this.unwritten = false;
+		this.#opened = { ...opened, eq, absent };
+		this.#newEq(currentSlot, enabled, deviceSlots);
+	}
+
+	/**
+	 * The EQ `connection` views is new: its presets and what it plays, and nothing known yet of
+	 * what it holds. Auto-write starts over with it, a write that failed on another EQ included.
+	 */
+	#newEq(currentSlot: CurrentSlot, enabled: boolean | null, deviceSlots: Slot[] | null): void {
+		const connection = this.connection!;
+		this.deviceSlots = deviceSlots;
+		this.knownDevice = { name: connection.name, profile: connection.profile, eq: this.eq };
 		const bypass = connection.device.capabilities.slots.find((s) => s.bypass);
 		// A device reading back its bypass preset has its EQ off, and no memory is selected.
 		const onBypass = bypass !== undefined && currentSlot === bypass.id;
-		const listed = this.slots.some((s) => s.id === currentSlot);
 		this.deviceSlot = currentSlot;
-		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
+		this.activeSlot = this.#targetOf(currentSlot);
 		this.eqEnabled = enabled ?? (onBypass ? false : currentSlot !== null ? true : null);
-		this.controlValues = {};
-		this.firmware = null;
 		this.synced = null;
 		this.#baseline = this.snapshot();
 		this.layout = null;
 		this.autoPaused = false;
 		this.autoClipRisk = false;
 		this.autoStopped = false;
-		this.writeConsent = false;
 		this.statusMessage = null;
 		this.statusIsError = false;
 	}
@@ -340,10 +458,24 @@ class DevicePeqStore {
 	}
 
 	/**
-	 * Read and write `slot` from now on. What the device held there is no longer known, and the last
-	 * read or write's message ("Wrote 6 bands") was about another preset.
+	 * The device said where it is when asked again (before a Read): it may have moved since, its own
+	 * app's edit leaving its preset for none. The target follows it there, as a switch would, keeping
+	 * the list's unwritten changes; unknown leaves things as they were.
 	 */
-	target(slot: number): void {
+	reported(current: CurrentSlot, enabled: boolean | null): void {
+		if (enabled !== null) this.eqEnabled = enabled;
+		if (current === null || current === this.deviceSlot) return;
+		this.deviceSlot = current;
+		this.layout = null;
+		this.target(this.#targetOf(current));
+	}
+
+	/**
+	 * Read and write `slot` from now on (null: no preset, the EQ where the device is). What the
+	 * device held there is no longer known, and the last read or write's message ("Wrote 6 bands")
+	 * was about another preset.
+	 */
+	target(slot: number | null): void {
 		if (this.activeSlot === slot) return;
 		this.unwritten = this.hasUnwritten;
 		this.#baseline = this.snapshot();
@@ -358,7 +490,7 @@ class DevicePeqStore {
 	 * The device's presets as it lists them now, after one was created or renamed, and what it
 	 * plays. The target stays: its id still names the same preset.
 	 */
-	relisted(slots: Slot[], currentSlot: number | null, enabled: boolean | null): void {
+	relisted(slots: Slot[], currentSlot: CurrentSlot, enabled: boolean | null): void {
 		this.deviceSlots = slots;
 		this.deviceSlot = currentSlot;
 		if (enabled !== null) this.eqEnabled = enabled;
@@ -369,28 +501,30 @@ class DevicePeqStore {
 	 * another preset. Another preset deleted, the target keeps its own under its new id, and follows
 	 * the device only if the device moved, as a switch would, keeping the list's unwritten changes.
 	 * The target deleted, it is the preset the device went to, and whatever the list held for the
-	 * deleted one has nowhere left to go. True when the target is another preset now.
+	 * deleted one has nowhere left to go. A target of no preset (the EQ where the device is) is
+	 * never deleted. True when the target is another preset now.
 	 */
 	deleted(
 		removed: number,
 		slots: Slot[],
-		currentSlot: number | null,
+		currentSlot: CurrentSlot,
 		enabled: boolean | null
 	): boolean {
-		const shift = (id: number | null) => (id !== null && id > removed ? id - 1 : id);
-		const kept = this.activeSlot === removed ? null : shift(this.activeSlot);
+		const shift = <T extends CurrentSlot>(id: T) =>
+			typeof id === 'number' && id > removed ? id - 1 : id;
 		const moved = this.deviceSlot === removed || currentSlot !== shift(this.deviceSlot);
+		const lost = this.activeSlot === removed;
+		const kept = shift(this.activeSlot);
 		this.relisted(slots, currentSlot, enabled);
-		const listed = this.slots.some((s) => s.id === currentSlot);
-		if (kept !== null) {
+		if (!lost) {
 			this.activeSlot = kept;
 			if (this.layout) this.layout = { ...this.layout, slot: kept };
-			const went = moved && listed ? currentSlot : null;
+			const went = moved && this.#listed(currentSlot) ? currentSlot : null;
 			if (went === null || went === kept) return false;
 			this.target(went);
 			return true;
 		}
-		this.activeSlot = listed ? currentSlot : (this.slots[0]?.id ?? null);
+		this.activeSlot = this.#targetOf(currentSlot);
 		this.unwritten = false;
 		this.#baseline = this.snapshot();
 		this.synced = null;
@@ -407,11 +541,12 @@ class DevicePeqStore {
 		if (this.connection) this.unwritten = this.hasUnwritten;
 		this.#baseline = null;
 		eqStore.select(null);
-		this.connection = null;
+		this.#opened = null;
 		this.isConnecting = false;
 		this.isReading = false;
 		this.isWriting = false;
 		this.isSwitching = false;
+		this.isSwitchingEq = false;
 		this.isControlling = false;
 		this.isEditingPresets = false;
 		this.deviceSlots = null;

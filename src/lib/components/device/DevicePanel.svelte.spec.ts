@@ -4,6 +4,7 @@ import { page } from 'vitest/browser';
 import type { Profile } from '@potatosalad775/eqcaps-core';
 import type { Slot } from '@potatosalad775/eqcaps-device-bridge';
 import { fakeConnection } from '#lib/device-peq/__fixtures__/connection.js';
+import { twoEqDevice } from '#lib/device-peq/__fixtures__/two-eq.js';
 import { resetDemoDac } from '#lib/device-peq/demo.js';
 import type { DeviceConnection, PeqCapabilities, PeqDevice } from '#lib/device-peq/types.js';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
@@ -52,7 +53,8 @@ function ka17(): DeviceConnection & { device: { [k: string]: ReturnType<typeof v
 		readsFirmware: false,
 		readsBandCount: false,
 		controls: [],
-		perChannel: false
+		perChannel: false,
+		eqs: []
 	};
 	return {
 		device: {
@@ -249,6 +251,59 @@ describe('DevicePanel writing', () => {
 		await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
 		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
 		expect(push).not.toHaveBeenCalled();
+	});
+});
+
+describe('DevicePanel with an EQ on no stored preset', () => {
+	/** A Qudelix-like device whose EQ is on no preset, opened as connecting opens one. */
+	async function connectUnsaved() {
+		const device = twoEqDevice({ preset: null });
+		// A reopen opens it as a connect does, without the browser's chooser.
+		devicePeqStore.setConnected({ ...device.conn, reopen: async () => device.conn }, null);
+		await devicePeqService.reconnect();
+		return device;
+	}
+
+	const deviceEq = (shows: string) =>
+		page.getByRole('button', { name: new RegExp(`^Device EQ.*${shows}$`) });
+
+	afterEach(async () => {
+		await devicePeqService.disconnect();
+		devicePeqStore.forget();
+	});
+
+	it('shows it as Device EQ, read and written where it is', async () => {
+		await connectUnsaved();
+		renderPanel();
+
+		await expect.element(deviceEq('Unsaved EQ')).toBeVisible();
+		await expect
+			.element(page.getByRole('button', { name: "Replace the band list with the device's EQ" }))
+			.toBeEnabled();
+		await expect
+			.element(page.getByRole('button', { name: 'Send the band list to the device' }))
+			.toBeEnabled();
+		await deviceEq('Unsaved EQ').click();
+		await expect.element(page.getByRole('menuitemradio', { name: 'Custom #1' })).toBeVisible();
+		await expect
+			.element(page.getByRole('menuitemradio', { name: 'Unsaved EQ' }))
+			.not.toBeInTheDocument();
+	});
+
+	it('turns the EQ off, and back on without loading a preset over it', async () => {
+		const { state } = await connectUnsaved();
+		renderPanel();
+
+		await deviceEq('Unsaved EQ').click();
+		await page.getByRole('menuitemradio', { name: 'Off (EQ bypassed)' }).click();
+		await expect.element(deviceEq('Off \\(EQ bypassed\\)')).toBeVisible();
+		expect(state.enabled.usr).toBe(false);
+
+		await deviceEq('Off \\(EQ bypassed\\)').click();
+		await page.getByRole('menuitemradio', { name: 'Unsaved EQ' }).click();
+		await expect.element(deviceEq('Unsaved EQ')).toBeVisible();
+		expect(state.enabled.usr).toBe(true);
+		expect(state.preset.usr).toBeNull();
 	});
 });
 

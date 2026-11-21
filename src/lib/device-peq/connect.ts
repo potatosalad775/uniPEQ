@@ -20,7 +20,6 @@ import {
 	protocolOf,
 	transportsOf,
 	usbHex,
-	type BridgeDevice,
 	type DeviceIdentity,
 	type Protocol,
 	type Transport
@@ -218,18 +217,10 @@ async function resolve(
 }
 
 /**
- * `profile` with the band count the device reports, where they differ: writing fewer bands than the
- * device has would leave the rest playing what they held. A profile that sets slots by index keeps
- * its count, since those slots would no longer line up.
+ * The device opened on its protocol, with the profile as the data gives it. The band count it
+ * reports for an EQ is read when that EQ is opened for editing (the service's `openEq`), since a
+ * device's mode can change it.
  */
-async function withDeviceBands(device: BridgeDevice, profile: Profile): Promise<Profile> {
-	if (!device.capabilities.readsBandCount || profile.bands?.length) return profile;
-	const bandCount = await device.bandCount();
-	if (bandCount === null || bandCount === profile.bandCount) return profile;
-	logger.warn(`${profile.id}: the device reports ${bandCount} bands, not ${profile.bandCount}`);
-	return { ...profile, bandCount };
-}
-
 async function connection(
 	transportKind: BridgeConnectionType,
 	transport: Transport,
@@ -244,7 +235,7 @@ async function connection(
 		device,
 		connectionType: transportKind,
 		name: r.name,
-		profile: await withDeviceBands(device, r.profile),
+		profile: r.profile,
 		profileSource: r.profileSource,
 		profileId: r.profileId,
 		identity: device.identity,

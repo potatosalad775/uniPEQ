@@ -33,6 +33,7 @@ function connection(
 		readsBandCount: false,
 		controls: [],
 		perChannel: false,
+		eqs: [],
 		...over
 	};
 	return {
@@ -130,6 +131,46 @@ describe('devicePeqStore', () => {
 		devicePeqStore.target(8);
 		expect(devicePeqStore.readTarget).toEqual({ slot: 8 });
 		expect(devicePeqStore.writeTarget).toEqual({ slot: 8 });
+	});
+
+	describe('on no stored preset (a Qudelix after an edit)', () => {
+		// Its EQ switch is its own state: no bypass preset.
+		const slots = KA17_SLOTS.filter((s) => !s.bypass);
+		const qudelix = (over: Partial<PeqCapabilities> = {}) =>
+			connection({ writesSlot: true, readsEnabled: true, slots, ...over });
+
+		it('reads and writes the EQ where it is, naming no preset, until a preset is played', () => {
+			devicePeqStore.setConnected(qudelix(), 'unsaved', true);
+			expect(devicePeqStore.selection).toBe('unsaved');
+			expect(devicePeqStore.readTarget).toEqual({});
+			expect(devicePeqStore.writeTarget).toEqual({});
+
+			devicePeqStore.played(8);
+			expect(devicePeqStore.selection).toBe(8);
+			expect(devicePeqStore.writeTarget).toEqual({ slot: 8 });
+		});
+
+		it('is still where the EQ comes back to once switched off', () => {
+			devicePeqStore.setConnected(qudelix(), 'unsaved', true);
+			devicePeqStore.played('off');
+			expect(devicePeqStore.selection).toBe('off');
+			devicePeqStore.played(undefined);
+			expect(devicePeqStore.selection).toBe('unsaved');
+			expect(devicePeqStore.writeTarget).toEqual({});
+		});
+
+		it('keeps no preset the target when another is deleted, unless the device goes to one', () => {
+			const listed = (...names: string[]) =>
+				names.map((name, id) => ({ id, name, writable: true }));
+			const caps = { listsSlots: true, editsSlots: true, slots: listed('A', 'B', 'C', 'D') };
+			devicePeqStore.setConnected(qudelix(caps), 'unsaved', true, listed('A', 'B', 'C'));
+			expect(devicePeqStore.deleted(1, listed('A', 'C'), 'unsaved', true)).toBe(false);
+			expect(devicePeqStore.selection).toBe('unsaved');
+			expect(devicePeqStore.writeTarget).toEqual({});
+
+			expect(devicePeqStore.deleted(0, listed('C'), 0, true)).toBe(true);
+			expect(devicePeqStore.selection).toBe(0);
+		});
 	});
 
 	it('counts a guessed device as experimental', () => {

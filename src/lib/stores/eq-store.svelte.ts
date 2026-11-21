@@ -13,7 +13,7 @@
  * `#lib/eq/eq-constraint.js`), and nothing here ever folds the list onto a profile on its own
  * (device-peq invariant 3).
  */
-import { derivePreamp } from '#lib/eq/eq-preamp.js';
+import { derivePreamp, preampOf } from '#lib/eq/eq-preamp.js';
 import {
 	eqFiltersEqual,
 	type Channel,
@@ -108,6 +108,22 @@ class EqStore {
 	}
 
 	/** Each channel as a write or a preset takes it. While linked, both are the list on screen. */
+	/**
+	 * The channels are apart and hold different EQs, so linking them (`edit('both')`) would replace
+	 * the one off screen. Apart but equal, linking loses nothing.
+	 */
+	get differ(): boolean {
+		const apart = this.#apart;
+		if (!apart) return false;
+		const shown = this.#shown();
+		const { other } = apart;
+		return !(
+			preampOf(shown) === preampOf(other) &&
+			shown.filters.length === other.filters.length &&
+			shown.filters.every((f, i) => eqFiltersEqual(f, other.filters[i]))
+		);
+	}
+
 	get channels(): Record<Channel, ChannelEq> {
 		const shown = this.#shown();
 		const apart = this.#apart;

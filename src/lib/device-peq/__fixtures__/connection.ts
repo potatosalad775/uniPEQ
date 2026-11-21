@@ -2,13 +2,31 @@
  * A connection to a device that does nothing, for specs that need a profile to be the active
  * constraint (`devicePeqStore.setConnected(fakeConnection(profile), null)`).
  */
-import type { Profile } from '@potatosalad775/eqcaps-core';
+import type { Eq, Profile } from '@potatosalad775/eqcaps-core';
 import type { DeviceConnection, PeqCapabilities } from '../types';
+
+/**
+ * Another EQ of the device, as its profile lists it (`protocol.eqs`), plus whether the bridge
+ * drives its channels apart: it goes into both the profile and `capabilities.eqs`.
+ */
+export type FakeEq = Eq & { perChannel?: boolean };
 
 export function fakeConnection(
 	profile: Profile,
-	capabilities: Partial<PeqCapabilities> = {}
+	capabilities: Partial<PeqCapabilities> = {},
+	eqs: readonly FakeEq[] = []
 ): DeviceConnection {
+	const listed: Profile =
+		eqs.length === 0
+			? profile
+			: {
+					...profile,
+					protocol: {
+						handler: 'fake',
+						...profile.protocol,
+						eqs: eqs.map(({ perChannel: _, ...eq }) => eq)
+					}
+				};
 	return {
 		device: {
 			capabilities: {
@@ -28,6 +46,13 @@ export function fakeConnection(
 				readsBandCount: false,
 				controls: [],
 				perChannel: false,
+				eqs: eqs.map(({ id, name, bandCount, presets, perChannel }) => ({
+					id,
+					name,
+					...(bandCount !== undefined ? { bandCount } : {}),
+					slots: presets ?? [],
+					perChannel: perChannel ?? false
+				})),
 				...capabilities
 			},
 			pull: async () => ({ filters: [], preamp: 0 }),
@@ -42,10 +67,10 @@ export function fakeConnection(
 			close: async () => {}
 		},
 		connectionType: 'hid',
-		name: `${profile.device.brand} ${profile.device.model}`,
-		profile,
+		name: `${listed.device.brand} ${listed.device.model}`,
+		profile: listed,
 		profileSource: 'device',
-		profileId: profile.id,
+		profileId: listed.id,
 		identity: {}
 	} as unknown as DeviceConnection;
 }

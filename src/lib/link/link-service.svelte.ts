@@ -333,7 +333,8 @@ class Session {
 			knownDevice: store.knownDevice?.name ?? null,
 			editable: eqConstraintStore.editable,
 			activeSlot: store.activeSlot,
-			deviceSlot: store.deviceSlot,
+			// The link has no word for a device on no preset: to modernGraphTool it is unknown.
+			deviceSlot: typeof store.deviceSlot === 'number' ? store.deviceSlot : null,
 			eqEnabled: store.eqEnabled,
 			busy: store.isConnecting
 				? 'connect'
@@ -341,7 +342,7 @@ class Session {
 					? 'read'
 					: store.isWriting
 						? 'write'
-						: store.isSwitching
+						: store.isSwitching || store.isSwitchingEq
 							? 'switch'
 							: null,
 			inSync: store.inSync,

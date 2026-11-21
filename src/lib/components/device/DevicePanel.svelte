@@ -58,6 +58,12 @@
 		if (selection === 'other') {
 			out.push({ value: 'other', label: m.device_peq_eq_other(), disabled: true });
 		}
+		// The EQ the device holds on no preset. With the EQ off, picking it turns the EQ back on as
+		// it was: any preset picked would be loaded over it.
+		if (devicePeqStore.unsaved) {
+			const disabled = selection !== 'off';
+			out.push({ value: 'unsaved', label: m.device_peq_eq_unsaved(), disabled });
+		}
 		for (const slot of devicePeqStore.slots) {
 			out.push({ value: `p${slot.id}`, label: slot.name, preset: slot });
 		}
@@ -75,7 +81,7 @@
 	const eqValue = $derived.by(() => {
 		const selection = devicePeqStore.selection;
 		if (selection === null) return caps?.canEnable ? 'unknown' : '';
-		if (selection === 'off' || selection === 'other') return selection;
+		if (typeof selection === 'string') return selection;
 		return `p${selection}`;
 	});
 
