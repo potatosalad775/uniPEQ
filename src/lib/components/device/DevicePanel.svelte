@@ -456,7 +456,7 @@
 							disabled={!readTarget || devicePeqStore.isBusy}
 							onclick={() => devicePeqService.read()}
 						>
-							{devicePeqStore.isReading ? m.device_peq_reading() : m.device_peq_read()}
+							{devicePeqStore.operation === 'read' ? m.device_peq_reading() : m.device_peq_read()}
 						</Button>
 					{/if}
 					{#if caps?.canWrite}
@@ -470,7 +470,7 @@
 							disabled={!writeTarget || devicePeqStore.isBusy}
 							onclick={() => devicePeqService.requestWrite()}
 						>
-							{devicePeqStore.isWriting ? m.device_peq_writing() : m.device_peq_write()}
+							{devicePeqStore.operation === 'write' ? m.device_peq_writing() : m.device_peq_write()}
 						</Button>
 					{/if}
 				</div>

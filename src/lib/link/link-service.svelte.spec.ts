@@ -284,11 +284,23 @@ describe('linkService', () => {
 		expect(joiner.options.handlers.status().failure).toEqual({ op: 'read', code: 'timeout' });
 	});
 
+	it('refuses a device command as busy while another operation is under way', async () => {
+		const conn = connect();
+		const joiner = link();
+		const pull = vi.spyOn(conn.device, 'pull');
+		devicePeqStore.operation = 'write';
+		expect(await joiner.options.handlers.command('read', undefined)).toEqual({
+			ok: false,
+			code: 'busy'
+		});
+		expect(pull).not.toHaveBeenCalled();
+	});
+
 	it('tells mGT when the device or its status changes', () => {
 		connect();
 		const joiner = link();
 		const { device, status } = joiner.sent;
-		devicePeqStore.isReading = true;
+		devicePeqStore.operation = 'read';
 		flushSync();
 		expect(joiner.sent.status).toBe(status + 1);
 		devicePeqStore.setDisconnected();

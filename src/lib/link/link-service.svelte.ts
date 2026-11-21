@@ -124,6 +124,8 @@ function deviceName(): string | null {
 /** A device command: its effects reach mGT as `eq`, `status` and `device`; `re` says if it failed. */
 async function deviceCommand(work: () => Promise<unknown>): Promise<CommandResult> {
 	if (!devicePeqStore.connection) return { ok: false, code: 'no-device' };
+	// One operation at a time: the one under way would refuse this one without a word.
+	if (devicePeqStore.operation !== null) return { ok: false, code: 'busy' };
 	const before = devicePeqStore.failure;
 	await whileAwake(work);
 	const failure = devicePeqStore.failure;
@@ -338,13 +340,11 @@ class Session {
 			eqEnabled: store.eqEnabled,
 			busy: store.isConnecting
 				? 'connect'
-				: store.isReading
-					? 'read'
-					: store.isWriting
-						? 'write'
-						: store.isSwitching || store.isSwitchingEq
-							? 'switch'
-							: null,
+				: store.operation === 'read' || store.operation === 'write'
+					? store.operation
+					: store.operation === 'switch' || store.operation === 'eq'
+						? 'switch'
+						: null,
 			inSync: store.inSync,
 			unwritten: store.unwritten,
 			needsReconnect: store.needsReconnect,

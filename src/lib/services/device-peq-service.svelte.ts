@@ -30,7 +30,7 @@ import {
 	controlValueLabel
 } from '#lib/device-peq/controls.js';
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
-import type { DeviceCandidate, DeviceConnection } from '#lib/device-peq/types.js';
+import type { DeviceCandidate, DeviceConnection, DeviceOperation } from '#lib/device-peq/types.js';
 import { sameUsb, usbIdentities } from '#lib/device-peq/usb-identities.js';
 import { derivePreamp, pregainOf } from '#lib/eq/eq-preamp.js';
 import { fromCapsFilter, type EqFilter, type EqLoad, type StereoEq } from '#lib/eq/model.js';
@@ -261,6 +261,8 @@ class DevicePeqService {
 	#again = false;
 	#seen: Seen | null = null;
 	#asking = $state(false);
+	/** Settles when the operation under way ends. */
+	#operating: Promise<void> = Promise.resolve();
 	/** What the user asked for when the volume warning came up, run once they go on. */
 	#afterConsent: (() => Promise<void>) | null = null;
 
@@ -332,6 +334,33 @@ class DevicePeqService {
 	/** Load the connect module and the device database before a click needs them. */
 	warmUp(): void {
 		void loadConnect().then((mod) => mod.warmUp());
+	}
+
+	/**
+	 * Run one device operation. One at a time: with another under way this one isn't started, and
+	 * undefined comes back, as it does when `work` throws. The sync bar names it while it runs, and
+	 * the last operation's line goes as it starts, so the bar never describes an older one after it.
+	 * A throw goes to `failed`, which says it in the status line.
+	 */
+	async #operate<T>(
+		op: DeviceOperation,
+		work: () => Promise<T>,
+		failed: (error: unknown) => void | Promise<void> = (e) => this.fail(e, op)
+	): Promise<T | undefined> {
+		if (devicePeqStore.operation !== null) return undefined;
+		let done = () => {};
+		this.#operating = new Promise((resolve) => (done = resolve));
+		devicePeqStore.operation = op;
+		devicePeqStore.setStatus(null);
+		try {
+			return await work();
+		} catch (e) {
+			await failed(e);
+			return undefined;
+		} finally {
+			devicePeqStore.operation = null;
+			done();
+		}
 	}
 
 	/** Report a failed operation in the status line. `note` says what else it caused. */
@@ -499,31 +528,31 @@ class DevicePeqService {
 		if (!conn || changes.length === 0 || devicePeqStore.isBusy) return;
 		if (!changes.every(([id]) => all.some((c) => c.id === id))) return;
 		let control = all[0];
-		devicePeqStore.isControlling = true;
-		devicePeqStore.setStatus(null);
 		let restarts = false;
-		try {
-			for (const [id, value] of changes) {
-				control = all.find((c) => c.id === id)!;
-				restarts = (await conn.device.writeControl(id, value)).reconnect;
-				logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
-				if (restarts) break;
+		await this.#operate(
+			'control',
+			async () => {
+				for (const [id, value] of changes) {
+					control = all.find((c) => c.id === id)!;
+					restarts = (await conn.device.writeControl(id, value)).reconnect;
+					logger.info(`set ${id} to ${value}${restarts ? ', the device restarts' : ''}`);
+					if (restarts) break;
+				}
+				if (!restarts) {
+					devicePeqStore.controlValues = await conn.device.readControls();
+					devicePeqStore.setStatus(this.#controlSet(changes));
+				}
+			},
+			async (e) => {
+				this.fail(e, 'control');
+				hapticError();
+				// Show what the device holds, whatever the write did.
+				if (!devicePeqStore.needsReconnect) {
+					const values = await conn.device.readControls().catch(() => null);
+					if (values && devicePeqStore.connection === conn) devicePeqStore.controlValues = values;
+				}
 			}
-			if (!restarts) {
-				devicePeqStore.controlValues = await conn.device.readControls();
-				devicePeqStore.setStatus(this.#controlSet(changes));
-			}
-		} catch (e) {
-			this.fail(e, 'control');
-			hapticError();
-			// Show what the device holds, whatever the write did.
-			if (!devicePeqStore.needsReconnect) {
-				const values = await conn.device.readControls().catch(() => null);
-				if (values && devicePeqStore.connection === conn) devicePeqStore.controlValues = values;
-			}
-		} finally {
-			devicePeqStore.isControlling = false;
-		}
+		);
 		if (!restarts) return;
 		// Before the close: the device leaving now is the restart, not an unplug.
 		if (devicePeqStore.connection === conn) devicePeqStore.needsReconnect = true;
@@ -639,8 +668,9 @@ class DevicePeqService {
 	 */
 	async #lost(conn: DeviceConnection): Promise<void> {
 		if (devicePeqStore.opened !== conn) return;
-		const saving = devicePeqStore.isWriting && conn.device.capabilities.disconnectOnSave;
-		if (devicePeqStore.needsReconnect || saving || devicePeqStore.isControlling) {
+		const op = devicePeqStore.operation;
+		const saving = op === 'write' && conn.device.capabilities.disconnectOnSave;
+		if (devicePeqStore.needsReconnect || saving || op === 'control') {
 			logger.info(`${conn.name} went, waiting to be reconnected`);
 			return;
 		}
@@ -700,8 +730,7 @@ class DevicePeqService {
 		// The Read button also asks which EQs the device has now: its mode may have moved.
 		if (!fresh && (await this.#modeMoved())) return;
 		if (devicePeqStore.connection !== conn || !devicePeqStore.readTarget) return;
-		devicePeqStore.isReading = true;
-		try {
+		await this.#operate('read', async () => {
 			// The Read button reads where the device is now. One whose EQ can be on no preset leaves
 			// its preset on any edit, its own app's included, so it is asked first and Device EQ
 			// follows it. An automatic read comes just after connecting or a switch, which asked.
@@ -736,17 +765,14 @@ class DevicePeqService {
 				: m.device_peq_status_read({ count });
 			const said = skipped > 0 ? `${read}. ${m.device_peq_read_skipped({ count: skipped })}` : read;
 			devicePeqStore.setStatus(note ? `${note} ${said}` : said);
-		} catch (e) {
-			this.fail(e, 'read');
-		} finally {
-			devicePeqStore.isReading = false;
-		}
+		});
 	}
 
 	/**
 	 * The plan for writing the list as it is now. When it leaves device bands empty, the target
 	 * preset is read once first (and kept in `devicePeqStore.layout` until the preset changes), so
-	 * those bands keep the device's own layout. Null when the device went away meanwhile.
+	 * those bands keep the device's own layout. Null when the device went away meanwhile, or is busy
+	 * with another operation.
 	 */
 	async prepare(): Promise<PushPlan | null> {
 		const conn = devicePeqStore.connection;
@@ -757,14 +783,10 @@ class DevicePeqService {
 		const empty = first.emptySlots + (first.right?.emptySlots ?? 0);
 		if (empty === 0 || devicePeqStore.layout) return first;
 		const slot = devicePeqStore.activeSlot;
-		devicePeqStore.isWriting = true;
-		let hints: Layout | null;
-		try {
-			hints = await readLayout(conn.device, readRequest(caps, slot, devicePeqStore.deviceSlot));
-		} finally {
-			devicePeqStore.isWriting = false;
-		}
-		if (devicePeqStore.connection !== conn) return null;
+		const hints = await this.#operate('write', () =>
+			readLayout(conn.device, readRequest(caps, slot, devicePeqStore.deviceSlot))
+		);
+		if (hints === undefined || devicePeqStore.connection !== conn) return null;
 		if (devicePeqStore.activeSlot === slot) devicePeqStore.layout = { slot, hints };
 		return plan(hints);
 	}
@@ -814,70 +836,72 @@ class DevicePeqService {
 		if (!conn || !request) return false;
 		const snapshot = devicePeqStore.snapshot();
 		const { right } = plan;
-		devicePeqStore.isWriting = true;
-		try {
-			const result = await conn.device.push({
-				filters: plan.filters,
-				...(plan.preamp !== undefined ? { preamp: plan.preamp } : {}),
-				// A device that drives its channels apart gets the right one on every write, equal or
-				// not: what it keeps of the two (Topping's L/R-mode flag) follows from it.
-				...(right
-					? {
-							right: {
-								filters: right.filters,
-								...(right.preamp !== undefined ? { preamp: right.preamp } : {})
+		const written = await this.#operate(
+			'write',
+			async () => {
+				const result = await conn.device.push({
+					filters: plan.filters,
+					...(plan.preamp !== undefined ? { preamp: plan.preamp } : {}),
+					// A device that drives its channels apart gets the right one on every write, equal or
+					// not: what it keeps of the two (Topping's L/R-mode flag) follows from it.
+					...(right
+						? {
+								right: {
+									filters: right.filters,
+									...(right.preamp !== undefined ? { preamp: right.preamp } : {})
+								}
 							}
-						}
-					: {}),
-				...request
-			});
-			devicePeqStore.synced = snapshot;
-			devicePeqStore.autoPaused = false;
-			const count = bandsWritten(plan);
-			if (result.reconnect) {
-				// The device restarts to save. Its transport is gone; `reopen` finds it again.
-				await conn.device.close().catch(() => {});
-				// Unless the user disconnected while it wrote.
-				if (devicePeqStore.connection === conn) {
-					devicePeqStore.needsReconnect = true;
-					void this.#awaitRestart(conn, {
-						waiting: m.device_peq_status_saved_reconnecting(),
-						back: m.device_peq_status_saved_reconnected({ count }),
-						manual: m.device_peq_status_saved_reconnect()
-					});
+						: {}),
+					...request
+				});
+				devicePeqStore.synced = snapshot;
+				devicePeqStore.autoPaused = false;
+				const count = bandsWritten(plan);
+				if (result.reconnect) {
+					// The device restarts to save. Its transport is gone; `reopen` finds it again.
+					await conn.device.close().catch(() => {});
+					// Unless the user disconnected while it wrote.
+					if (devicePeqStore.connection === conn) {
+						devicePeqStore.needsReconnect = true;
+						void this.#awaitRestart(conn, {
+							waiting: m.device_peq_status_saved_reconnecting(),
+							back: m.device_peq_status_saved_reconnected({ count }),
+							manual: m.device_peq_status_saved_reconnect()
+						});
+					}
+				} else {
+					// Written to a listed preset while the device sits on a built-in one: switch to it,
+					// so what was written is what plays.
+					const slot = devicePeqStore.activeSlot;
+					if (
+						devicePeqStore.selection === 'other' &&
+						conn.device.capabilities.canEnable &&
+						slot !== null
+					) {
+						await conn.device.setEnabled(true, slot);
+						devicePeqStore.played(slot);
+					}
+					devicePeqStore.setStatus(
+						devicePeqStore.eqEnabled === false
+							? m.device_peq_status_written_off({ count })
+							: m.device_peq_status_written({ count })
+					);
 				}
-			} else {
-				// Written to a listed preset while the device sits on a built-in one: switch to it,
-				// so what was written is what plays.
-				const slot = devicePeqStore.activeSlot;
-				if (
-					devicePeqStore.selection === 'other' &&
-					conn.device.capabilities.canEnable &&
-					slot !== null
-				) {
-					await conn.device.setEnabled(true, slot);
-					devicePeqStore.played(slot);
-				}
-				devicePeqStore.setStatus(
-					devicePeqStore.eqEnabled === false
-						? m.device_peq_status_written_off({ count })
-						: m.device_peq_status_written({ count })
-				);
+				logger.info(`wrote ${count} band(s) to ${conn.name}${auto ? ' (auto)' : ''}`);
+				hapticTick();
+				return true;
+			},
+			(e) => {
+				if (auto) devicePeqStore.autoStopped = true;
+				this.fail(e, 'write', auto ? m.device_peq_auto_stopped() : undefined);
+				hapticError();
+				// An automatic write fails while the user looks at something else (the band editor
+				// covers the sync bar): say so where they are.
+				if (auto && devicePeqStore.statusMessage)
+					noticeStore.say(devicePeqStore.statusMessage, true);
 			}
-			logger.info(`wrote ${count} band(s) to ${conn.name}${auto ? ' (auto)' : ''}`);
-			hapticTick();
-			return true;
-		} catch (e) {
-			if (auto) devicePeqStore.autoStopped = true;
-			this.fail(e, 'write', auto ? m.device_peq_auto_stopped() : undefined);
-			hapticError();
-			// An automatic write fails while the user looks at something else (the band editor
-			// covers the sync bar): say so where they are.
-			if (auto && devicePeqStore.statusMessage) noticeStore.say(devicePeqStore.statusMessage, true);
-			return false;
-		} finally {
-			devicePeqStore.isWriting = false;
-		}
+		);
+		return written ?? false;
 	}
 
 	/**
@@ -947,7 +971,7 @@ class DevicePeqService {
 	 */
 	async switchTo(value: string): Promise<void> {
 		const conn = devicePeqStore.connection;
-		if (!conn) return;
+		if (!conn || devicePeqStore.operation !== null) return;
 		// An edit waiting to be auto-written belongs to the preset it was made on.
 		this.#cancelPending();
 		const slot = value.startsWith('p')
@@ -964,22 +988,16 @@ class DevicePeqService {
 		}
 		// Another preset, or the EQ on or off, changes what plays as much as a write does.
 		if (this.#ask(() => this.switchTo(value))) return;
-		devicePeqStore.isSwitching = true;
-		let switched = false;
-		try {
+		const switched = await this.#operate('switch', async () => {
 			if (value === 'off') {
 				await conn.device.setEnabled(false);
 				devicePeqStore.played('off');
-			} else {
-				await conn.device.setEnabled(true, slot);
-				devicePeqStore.played(slot);
-				switched = true;
+				return false;
 			}
-		} catch (e) {
-			this.fail(e, 'switch');
-		} finally {
-			devicePeqStore.isSwitching = false;
-		}
+			await conn.device.setEnabled(true, slot);
+			devicePeqStore.played(slot);
+			return true;
+		});
 		if (switched && !devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
@@ -1005,23 +1023,27 @@ class DevicePeqService {
 		this.#cancelPending();
 		// The device goes over to the new preset, which is flat: as audible as a write.
 		if (this.#ask(() => this.createPreset())) return;
-		devicePeqStore.isEditingPresets = true;
-		devicePeqStore.setStatus(null);
-		let made: Slot | null = null;
-		try {
-			made = await conn.device.createSlot();
-			await this.#relist(conn);
-			logger.info(`created preset ${made.id} "${made.name}"`);
-			devicePeqStore.setStatus(m.device_peq_presets_created({ name: made.name }));
-		} catch (e) {
-			this.fail(e, 'preset');
-			hapticError();
-			// Show what the device holds, whatever the attempt did.
-			if (!devicePeqStore.needsReconnect) await this.#relist(conn);
-		} finally {
-			devicePeqStore.isEditingPresets = false;
-		}
+		const create = conn.device.createSlot.bind(conn.device);
+		// Kept even when listing again fails: the device has the preset by then.
+		let made = null as Slot | null;
+		await this.#operate(
+			'preset',
+			async () => {
+				made = await create();
+				await this.#relist(conn);
+				logger.info(`created preset ${made.id} "${made.name}"`);
+				devicePeqStore.setStatus(m.device_peq_presets_created({ name: made.name }));
+			},
+			(e) => this.#presetFailed(e, conn)
+		);
 		if (made && devicePeqStore.connection === conn) await this.switchTo(`p${made.id}`);
+	}
+
+	/** A preset could not be made or deleted: say so, and show what the device holds whatever it did. */
+	async #presetFailed(error: unknown, conn: DeviceConnection): Promise<void> {
+		this.fail(error, 'preset');
+		hapticError();
+		if (!devicePeqStore.needsReconnect) await this.#relist(conn);
 	}
 
 	/**
@@ -1035,27 +1057,28 @@ class DevicePeqService {
 		if (devicePeqStore.isBusy) return false;
 		const next = name.trim();
 		if (next === slot.name) return true;
-		devicePeqStore.isEditingPresets = true;
-		devicePeqStore.setStatus(null);
-		try {
-			await conn.device.renameSlot(slot.id, next);
-			await this.#relist(conn);
-			logger.info(`renamed preset ${slot.id} to "${next}"`);
-			devicePeqStore.setStatus(m.device_peq_presets_renamed({ name: next }));
-			return true;
-		} catch (e) {
-			if (errorCode(e) === 'invalid-request') {
-				logger.error('device preset failed:', e instanceof Error ? e.message : String(e));
-				devicePeqStore.setStatus(m.device_peq_presets_name_refused(), true);
-				devicePeqStore.failure = { op: 'preset', code: 'invalid-request' };
-			} else {
-				this.fail(e, 'preset');
+		const rename = conn.device.renameSlot.bind(conn.device);
+		const renamed = await this.#operate(
+			'preset',
+			async () => {
+				await rename(slot.id, next);
+				await this.#relist(conn);
+				logger.info(`renamed preset ${slot.id} to "${next}"`);
+				devicePeqStore.setStatus(m.device_peq_presets_renamed({ name: next }));
+				return true;
+			},
+			(e) => {
+				if (errorCode(e) === 'invalid-request') {
+					logger.error('device preset failed:', e instanceof Error ? e.message : String(e));
+					devicePeqStore.setStatus(m.device_peq_presets_name_refused(), true);
+					devicePeqStore.failure = { op: 'preset', code: 'invalid-request' };
+				} else {
+					this.fail(e, 'preset');
+				}
+				hapticError();
 			}
-			hapticError();
-			return false;
-		} finally {
-			devicePeqStore.isEditingPresets = false;
-		}
+		);
+		return renamed ?? false;
 	}
 
 	/**
@@ -1072,24 +1095,21 @@ class DevicePeqService {
 		this.#cancelPending();
 		// The device may go over to another preset: as audible as a write.
 		if (this.#ask(() => this.deletePreset(id))) return;
-		devicePeqStore.isEditingPresets = true;
-		devicePeqStore.setStatus(null);
-		let retargeted = false;
-		try {
-			await conn.device.deleteSlot(slot.id);
-			const slots = await conn.device.slots!();
-			const now = await playing(conn);
-			if (devicePeqStore.connection !== conn) return;
-			retargeted = devicePeqStore.deleted(slot.id, [...slots], now.slot, now.enabled);
-			logger.info(`deleted preset ${slot.id} "${slot.name}", the device is on ${now.slot}`);
-			devicePeqStore.setStatus(m.device_peq_presets_deleted({ name: slot.name }));
-		} catch (e) {
-			this.fail(e, 'preset');
-			hapticError();
-			if (!devicePeqStore.needsReconnect) await this.#relist(conn);
-		} finally {
-			devicePeqStore.isEditingPresets = false;
-		}
+		const remove = conn.device.deleteSlot.bind(conn.device);
+		const retargeted = await this.#operate(
+			'preset',
+			async () => {
+				await remove(slot.id);
+				const slots = await conn.device.slots!();
+				const now = await playing(conn);
+				if (devicePeqStore.connection !== conn) return false;
+				const moved = devicePeqStore.deleted(slot.id, [...slots], now.slot, now.enabled);
+				logger.info(`deleted preset ${slot.id} "${slot.name}", the device is on ${now.slot}`);
+				devicePeqStore.setStatus(m.device_peq_presets_deleted({ name: slot.name }));
+				return moved;
+			},
+			(e) => this.#presetFailed(e, conn)
+		);
 		if (retargeted && !devicePeqStore.hasUnwritten) await this.read(true);
 	}
 
@@ -1133,35 +1153,35 @@ class DevicePeqService {
 		if (!conn || !devicePeqStore.canEdit) return;
 		// An edit waiting to be auto-written belongs to the EQ it was made on.
 		this.#cancelPending();
-		devicePeqStore.isSwitchingEq = true;
-		devicePeqStore.setStatus(null);
 		let note: string | undefined;
-		try {
-			let target = id;
-			if (target !== undefined && !(await eqThere(conn, target))) {
-				gone = target;
-				target = undefined;
+		const opened = await this.#operate(
+			'eq',
+			async () => {
+				let target = id;
+				if (target !== undefined && !(await eqThere(conn, target))) {
+					gone = target;
+					target = undefined;
+				}
+				const { eq, view, slot, enabled, slots } = await openEq(conn, target);
+				if (devicePeqStore.opened !== conn) return false;
+				this.#linkFor(view);
+				devicePeqStore.selectEq(eq, slot, enabled, slots, gone, absent);
+				const named = (of: string | undefined) =>
+					eqLabel(devicePeqStore.eqs.find((e) => e.id === of) ?? {});
+				if (gone !== undefined) {
+					note = m.device_peq_status_eq_gone({ eq: named(gone), own: named(eq.id) });
+				}
+				// The read that follows says what it read; this stands where it can't read.
+				devicePeqStore.setStatus(note ?? m.device_peq_status_eq({ eq: named(eq.id) }));
+				logger.info(`${conn.name}: editing EQ ${eq.id ?? '(own)'}${gone ? `, ${gone} gone` : ''}`);
+				return true;
+			},
+			(e) => {
+				this.fail(e, 'eq');
+				hapticError();
 			}
-			const { eq, view, slot, enabled, slots } = await openEq(conn, target);
-			if (devicePeqStore.opened !== conn) return;
-			this.#linkFor(view);
-			devicePeqStore.selectEq(eq, slot, enabled, slots, gone, absent);
-			const named = (of: string | undefined) =>
-				eqLabel(devicePeqStore.eqs.find((e) => e.id === of) ?? {});
-			if (gone !== undefined) {
-				note = m.device_peq_status_eq_gone({ eq: named(gone), own: named(eq.id) });
-			}
-			// The read that follows says what it read; this stands where it can't read.
-			devicePeqStore.setStatus(note ?? m.device_peq_status_eq({ eq: named(eq.id) }));
-			logger.info(`${conn.name}: editing EQ ${eq.id ?? '(own)'}${gone ? `, ${gone} gone` : ''}`);
-		} catch (e) {
-			this.fail(e, 'eq');
-			hapticError();
-			return;
-		} finally {
-			devicePeqStore.isSwitchingEq = false;
-		}
-		await this.read(true, note);
+		);
+		if (opened) await this.read(true, note);
 	}
 
 	/**
@@ -1203,6 +1223,8 @@ class DevicePeqService {
 		const id = devicePeqStore.eq;
 		if (!conn || id === undefined) return;
 		if (await eqThere(conn, id).catch(() => true)) return;
+		// The operation that failed may still be showing what the device holds.
+		await this.#operating;
 		// Another device, or another EQ, by now: nothing to fall back from.
 		if (devicePeqStore.opened !== conn || devicePeqStore.eq !== id) return;
 		await this.#openEq(undefined, id);

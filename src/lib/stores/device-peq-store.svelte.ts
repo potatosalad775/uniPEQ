@@ -75,11 +75,8 @@ class DevicePeqStore {
 	 */
 	knownDevice = $state.raw<{ name: string; profile: Profile; eq: string | undefined } | null>(null);
 	isConnecting = $state(false);
-	isReading = $state(false);
-	isWriting = $state(false);
-	isSwitching = $state(false);
-	/** Another of the device's EQs is being opened. */
-	isSwitchingEq = $state(false);
+	/** The operation under way, one at a time; the service's runner sets it and the sync bar names it. */
+	operation = $state<DeviceOperation | null>(null);
 	/**
 	 * The listed preset reads and writes target; null for none, the EQ where the device is: on a
 	 * device that lists no presets, or one on none of them (`deviceSlot` `'unsaved'`), where naming
@@ -146,15 +143,11 @@ class DevicePeqStore {
 	controlValues = $state.raw<Record<string, number | null>>({});
 	/** The device's firmware version, when it says. */
 	firmware = $state<string | null>(null);
-	/** A control is being written. */
-	isControlling = $state(false);
 	/**
 	 * The presets the device holds, as it last listed them, for a device that keeps a list with
 	 * names of its own (`listsSlots`); null for one whose presets are the profile's.
 	 */
 	deviceSlots = $state.raw<Slot[] | null>(null);
-	/** A preset is being created, renamed or deleted. */
-	isEditingPresets = $state(false);
 
 	get isConnected(): boolean {
 		return this.connection !== null;
@@ -179,17 +172,6 @@ class DevicePeqStore {
 	 */
 	get canEdit(): boolean {
 		return this.connection !== null && !this.needsReconnect;
-	}
-
-	/** The operation under way. A new `is…` flag belongs here, and so in `isBusy` and the sync bar. */
-	get operation(): DeviceOperation | null {
-		if (this.isReading) return 'read';
-		if (this.isWriting) return 'write';
-		if (this.isSwitching) return 'switch';
-		if (this.isControlling) return 'control';
-		if (this.isEditingPresets) return 'preset';
-		if (this.isSwitchingEq) return 'eq';
-		return null;
 	}
 
 	get isBusy(): boolean {
@@ -543,12 +525,7 @@ class DevicePeqStore {
 		eqStore.select(null);
 		this.#opened = null;
 		this.isConnecting = false;
-		this.isReading = false;
-		this.isWriting = false;
-		this.isSwitching = false;
-		this.isSwitchingEq = false;
-		this.isControlling = false;
-		this.isEditingPresets = false;
+		this.operation = null;
 		this.deviceSlots = null;
 		this.activeSlot = null;
 		this.deviceSlot = null;

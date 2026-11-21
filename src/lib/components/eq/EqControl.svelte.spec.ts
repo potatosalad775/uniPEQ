@@ -83,9 +83,9 @@ describe('EqControl', () => {
 	it('holds still while a device operation runs', async () => {
 		await onUserEq();
 		render(EqControl);
-		devicePeqStore.isReading = true;
+		devicePeqStore.operation = 'read';
 		await expect.element(spk()).toBeDisabled();
-		devicePeqStore.isReading = false;
+		devicePeqStore.operation = null;
 		await expect.element(spk()).toBeEnabled();
 	});
 
