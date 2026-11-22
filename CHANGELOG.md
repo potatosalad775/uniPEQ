@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.4.1 [2026-11-22]
+- Added headroom, crossfeed, DAC filter and gain options for Qudelix devices.
+- Fixed bugs and improved stability.
+
 ## v1.4.0 [2026-11-21]
 - Added separate left and right channel EQ editing on devices that support it.
 - Added a presets sheet to create, rename and delete the presets stored on the device.
