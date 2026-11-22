@@ -12,6 +12,7 @@
  * A device with several EQs is edited one EQ at a time (`eq`): `connection` is the device viewed
  * as that EQ, so the rest of this store, and everything that reads it, has one EQ to think about.
  */
+import { deviceControls, eqControls } from '#lib/device-peq/controls.js';
 import { deviceEqs, eqView, OWN_EQ, type EqTarget } from '#lib/device-peq/device-eqs.js';
 import {
 	readRequest,
@@ -182,6 +183,20 @@ class DevicePeqStore {
 	get controls(): Control[] {
 		const all = this.connection?.device.capabilities.controls ?? [];
 		return all.filter((c) => typeof this.controlValues[c.id] === 'number');
+	}
+
+	/** The device's own settings among `controls`, for the device panel. */
+	get deviceControls(): Control[] {
+		return deviceControls(this.controls);
+	}
+
+	/**
+	 * The settings of the EQ the list edits among `controls` (its headroom, its crossfeed), shown
+	 * with it on the band card. The device takes them at once: they are no part of the list, of
+	 * what a write sends or of whether the list is in sync.
+	 */
+	get eqControls(): Control[] {
+		return eqControls(this.controls, this.eq);
 	}
 
 	/** The controls whose current value stops the device applying its EQ (upsampling, say). */

@@ -164,6 +164,7 @@
 	"device_control_polarity": "극성",
 	"device_control_crossfeed": "크로스피드",
 	"device_control_display_brightness": "화면 밝기",
+	"device_control_headroom": "헤드룸",
 	"device_control_balance": "좌우 밸런스",
 	"device_control_balance_center": "중앙",
 	"device_control_balance_left": "왼쪽 {gain}",

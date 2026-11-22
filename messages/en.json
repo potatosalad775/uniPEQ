@@ -164,6 +164,7 @@
 	"device_control_polarity": "Polarity",
 	"device_control_crossfeed": "Crossfeed",
 	"device_control_display_brightness": "Display brightness",
+	"device_control_headroom": "Headroom",
 	"device_control_balance": "Balance",
 	"device_control_balance_center": "Center",
 	"device_control_balance_left": "Left {gain}",

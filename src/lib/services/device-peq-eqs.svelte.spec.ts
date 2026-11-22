@@ -553,6 +553,105 @@ describe('the band count the device reports', () => {
 	});
 });
 
+describe("an EQ's own settings", () => {
+	const ids = (controls: { id: string }[]) => controls.map((c) => c.id);
+	/** Count the control reads from here on, whichever view they go through. */
+	function countReads(conn: DeviceConnection) {
+		const reads = { count: 0 };
+		for (const eq of [undefined, 'spk']) {
+			const view = conn.device.eq(eq);
+			const read = view.readControls.bind(view);
+			view.readControls = () => ((reads.count += 1), read());
+		}
+		return reads;
+	}
+
+	it("are those of the EQ on screen, apart from the device's, and follow the EQ picked", async () => {
+		await connected();
+		expect(ids(devicePeqStore.eqControls)).toEqual(['headroom', 'crossfeed']);
+		expect(ids(devicePeqStore.deviceControls)).toEqual(['dacFilter', 'gain']);
+		expect(devicePeqStore.controlValues).toMatchObject({ headroom: -6, crossfeed: 20 });
+
+		await devicePeqService.selectEq('spk');
+		expect(ids(devicePeqStore.eqControls)).toEqual(['headroomSpk']);
+		expect(ids(devicePeqStore.deviceControls)).toEqual(['dacFilter', 'gain']);
+	});
+
+	it('are read once on connecting, and again by Read', async () => {
+		const device = twoEqDevice();
+		const reads = countReads(device.conn);
+		await connect(device.conn);
+		expect(reads.count).toBe(1);
+
+		// Changed in the device's own app since.
+		device.state.controls.headroom = -12;
+		await devicePeqService.read();
+		expect(reads.count).toBe(2);
+		expect(devicePeqStore.controlValues.headroom).toBe(-12);
+		// The bar still says what was read: the settings are no part of it.
+		expect(devicePeqStore.statusMessage).toBe('Read 10 band(s) from the device');
+	});
+
+	it('are read again once a preset of the EQ is selected, edits waiting or not', async () => {
+		const { conn } = await connected();
+		const reads = countReads(conn);
+		await devicePeqService.switchTo('p23');
+		expect(devicePeqStore.controlValues.crossfeed).toBe(35);
+		expect(reads.count).toBe(1);
+
+		// Unwritten changes keep the list from being read over; the settings are the device's.
+		eqStore.update(0, { gain: 4 });
+		conn.device.readControls = async () => ({ ...devicePeqStore.controlValues, crossfeed: 5 });
+		await devicePeqService.switchTo('p22');
+		expect(eqStore.filters[0].gain).toBe(4);
+		expect(devicePeqStore.controlValues.crossfeed).toBe(5);
+	});
+
+	it("come and go with the device's mode", async () => {
+		const { state } = await connected({ single: true });
+		expect(devicePeqStore.controlValues.headroomSpk).toBeNull();
+		expect(ids(devicePeqStore.controls)).not.toContain('headroomSpk');
+
+		state.single = false;
+		await devicePeqService.read();
+		await devicePeqService.selectEq('spk');
+		expect(ids(devicePeqStore.eqControls)).toEqual(['headroomSpk']);
+	});
+
+	it('are refused by the device while their EQ is off, and the bar says so', async () => {
+		const { state } = await connected();
+		// Switched off in the device's own app, behind this one.
+		state.enabled.usr = false;
+		await devicePeqService.setControl('headroom', 0);
+		expect(devicePeqStore.failure).toEqual({ op: 'control', code: 'rejected' });
+		expect(devicePeqService.sync).toMatchObject({
+			tone: 'error',
+			text: 'The device refused the request.'
+		});
+		expect(devicePeqStore.controlValues.headroom).toBe(-6);
+	});
+
+	it('leave the list, its history and its sync state alone when one is set', async () => {
+		const { calls } = await connected();
+		await devicePeqService.setControl('headroom', -12);
+		expect(devicePeqService.sync?.text).toBe('Set Headroom to -12 dB.');
+		expect(devicePeqStore.inSync).toBe(true);
+		expect(eqStore.canUndo).toBe(false);
+		expect(pushes(calls)).toEqual([]);
+	});
+
+	it('are not asked for again on a device that has only its own settings', async () => {
+		const conn = fakeConnection(hardwareProfile('dac', { bandCount: 5 }), {
+			controls: [{ id: 'led', name: 'LED', kind: 'toggle', role: 'light' }]
+		});
+		const readControls = vi.fn(async () => ({ led: 1 }));
+		conn.device.readControls = readControls;
+		await connect(conn);
+		await devicePeqService.read();
+		expect(readControls).toHaveBeenCalledOnce();
+	});
+});
+
 describe('a device with one EQ', () => {
 	it('lists just the one, and the demo device still reads and writes', async () => {
 		await devicePeqService.connect('demo');

@@ -306,7 +306,20 @@ Device controls (eqcaps `protocol.controls`: volume, gain, DAC filter, USB mode,
 - **Written only when the user changes one** (`devicePeqService.setControl`; a slider when let
   go), said in the sync bar as the value read back, then all are read again: one control can decide which others exist (the DS3's USB mode
   hides its DAC filter and shows its game mode). `DeviceControls` in the device panel shows only
-  the ones the device has now, named by `role` (`device-peq/controls.ts`).
+  the ones the device has now, named by `role` (`device-peq/controls.ts`); its rows
+  (`ControlRows`) are the band card's too.
+- **A setting of one EQ** (eqcaps `control.eq`: a Qudelix's headroom per EQ, its user EQ's
+  crossfeed; `true` names the profile's own EQ) is on the band card under the EQ row
+  (`EqSettings`), only the ones of the EQ on screen, and not in the device panel
+  (`deviceControls`, `eqControls`): the place says whose it is, so each EQ's is plainly
+  "Headroom". It is a control like the others, written at once through `setControl` and said in
+  the sync bar, and no part of the list: no undo step, nothing for Write to send, no change to
+  whether the list is in sync. Off while that EQ is switched off, when the device refuses it.
+  Read again by the Read button, after a preset of the EQ is selected or the one it was on is
+  deleted (a device can hold them with the preset), and on picking another EQ (the mode that
+  brings an EQ brings its settings). The clipping warning and Auto preamp don't count a headroom.
+- **A range of two or three values** is a segmented choice rather than a slider (`rangeChoices`),
+  the unit once after it; one that only cuts runs from 0 down.
 - **A control that restarts the device** (`reconnect`) asks first, then is followed as a save
   that restarts: the device is closed, waited for and reopened, or the sync bar offers Reconnect.
   Some come back under other USB ids (the DS3's USB mode), so reopening looks for every exact
@@ -396,7 +409,8 @@ panels, supporting text instead of `?` popovers. Colours only from the semantic 
 - **Phone:** app bar (device chip, undo/redo, overflow with Load preset, Save preset, Fit), the
   graph pinned edge to edge, the EQ row (a segment per EQ, by the data's names, where the device
   has several; disabled during a device operation, an EQ its mode lacks disabled with a line
-  saying so), the channel row (L+R / L / R, where the EQ holds one per channel), the preamp row
+  saying so), that EQ's own settings (its headroom, its crossfeed: device controls, not edits to
+  write), the channel row (L+R / L / R, where the EQ holds one per channel), the preamp row
   and band rows as the only scrolling part, the sync bar above the tab bar. Device panel, band
   editor and preamp editor are sheets.
 - **Wide:** graph on the left (a card); device panel and band card on the right, the selected row

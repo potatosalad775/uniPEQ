@@ -27,7 +27,8 @@ import {
 	balanceOf,
 	balanceValue,
 	controlLabel,
-	controlValueLabel
+	controlValueLabel,
+	eqControls
 } from '#lib/device-peq/controls.js';
 import { syncStatus, type SyncStatus } from '#lib/device-peq/sync-status.js';
 import type { DeviceCandidate, DeviceConnection, DeviceOperation } from '#lib/device-peq/types.js';
@@ -510,6 +511,24 @@ class DevicePeqService {
 	}
 
 	/**
+	 * The controls again, where the EQ on screen has settings of its own (a headroom, a crossfeed):
+	 * the device may hold them with the preset it plays, its own app may have changed them, and its
+	 * mode decides which exist. Run inside the operation that may have moved them, so the rows are
+	 * held until they show what the device holds. A failed read leaves them as they were.
+	 */
+	async #readEqControls(conn: DeviceConnection): Promise<void> {
+		if (eqControls(conn.device.capabilities.controls, devicePeqStore.eq).length === 0) return;
+		try {
+			const values = await conn.device.readControls();
+			if (devicePeqStore.connection !== conn) return;
+			devicePeqStore.controlValues = values;
+			logger.info(`controls ${JSON.stringify(values)}`);
+		} catch (e) {
+			logger.warn('reading the controls failed:', e instanceof Error ? e.message : String(e));
+		}
+	}
+
+	/**
 	 * Set a control the user changed. The others are read again after it, since one can decide
 	 * which others exist (the DS3's USB mode). A control that restarts the device (`reconnect`) is
 	 * followed by reopening it, as after a save; the panel asks before it.
@@ -767,6 +786,9 @@ class DevicePeqService {
 				: m.device_peq_status_read({ count });
 			const said = skipped > 0 ? `${read}. ${m.device_peq_read_skipped({ count: skipped })}` : read;
 			devicePeqStore.setStatus(note ? `${note} ${said}` : said);
+			// The Read button reads the EQ's own settings with its bands. An automatic read follows a
+			// connect or a switch, which read them.
+			if (!fresh) await this.#readEqControls(conn);
 		});
 	}
 
@@ -1007,6 +1029,8 @@ class DevicePeqService {
 			}
 			await conn.device.setEnabled(true, slot);
 			devicePeqStore.played(slot);
+			// A device can hold an EQ's settings with its preset (a 5K Plus its crossfeed).
+			await this.#readEqControls(conn);
 			return true;
 		});
 		if (switched && !devicePeqStore.hasUnwritten) await this.read(true);
@@ -1117,6 +1141,8 @@ class DevicePeqService {
 				const moved = devicePeqStore.deleted(slot.id, [...slots], now.slot, now.enabled);
 				logger.info(`deleted preset ${slot.id} "${slot.name}", the device is on ${now.slot}`);
 				devicePeqStore.setStatus(m.device_peq_presets_deleted({ name: slot.name }));
+				// On another preset now, the EQ's settings may be that one's.
+				if (moved) await this.#readEqControls(conn);
 				return moved;
 			},
 			(e) => this.#presetFailed(e, conn)
@@ -1177,6 +1203,9 @@ class DevicePeqService {
 				if (devicePeqStore.opened !== conn) return false;
 				this.#linkFor(view);
 				devicePeqStore.selectEq(eq, slot, enabled, slots, gone, absent);
+				// This EQ's settings as they are now: the mode that brought or took an EQ did the same
+				// to its settings.
+				if (devicePeqStore.connection) await this.#readEqControls(devicePeqStore.connection);
 				const named = (of: string | undefined) =>
 					eqLabel(devicePeqStore.eqs.find((e) => e.id === of) ?? {});
 				if (gone !== undefined) {

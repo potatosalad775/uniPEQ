@@ -30,7 +30,8 @@ const ROLE_LABELS: Record<NonNullable<Control['role']>, () => string> = {
 	balance: m.device_control_balance,
 	polarity: m.device_control_polarity,
 	crossfeed: m.device_control_crossfeed,
-	'display-brightness': m.device_control_display_brightness
+	'display-brightness': m.device_control_display_brightness,
+	headroom: m.device_control_headroom
 };
 
 export function controlLabel(control: Control): string {
@@ -46,6 +47,46 @@ export function controlValueLabel(control: Control, value: number): string {
 	const named = control.values?.find((v) => v.value === value);
 	if (named) return named.name;
 	return control.unit === 'dB' ? `${value} dB` : String(value);
+}
+
+/**
+ * Where a control is shown. One with `eq` is a setting of one of the device's EQs rather than of
+ * the device (a Qudelix's headroom per EQ, its user EQ's crossfeed): it goes on the band card with
+ * that EQ, so its place says whose it is and two EQs' headrooms never sit side by side under one
+ * name. The rest are the device's own, in the device panel.
+ */
+export function deviceControls(controls: readonly Control[]): Control[] {
+	return controls.filter((c) => c.eq === undefined);
+}
+
+/**
+ * The settings of EQ `eq` among `controls`: an id of the device's listed EQs, or undefined for the
+ * EQ the profile describes, which has no id and which the data marks `eq: true`.
+ */
+export function eqControls(controls: readonly Control[], eq: string | undefined): Control[] {
+	return controls.filter((c) => c.eq !== undefined && c.eq === (eq ?? true));
+}
+
+/** The most values a range can have and still be offered as segments in a row. */
+const MAX_SEGMENTS = 3;
+
+/**
+ * The values of a range with so few steps that it is a choice rather than a slider (a headroom of
+ * 0, -6 or -12 dB), in the order they are offered; null for every other control. A range that
+ * only cuts runs from 0 down, so the choice starts at no cut, as vendor apps list it; any other
+ * runs up.
+ */
+export function rangeChoices(control: Control): number[] | null {
+	const range = control.range;
+	if (control.kind !== 'range' || !range || !('step' in range)) return null;
+	const steps = Math.round((range.max - range.min) / range.step);
+	if (steps < 1 || steps >= MAX_SEGMENTS) return null;
+	// Off the grid's float noise (0.1 steps), as the data writes the values.
+	const values = Array.from(
+		{ length: steps + 1 },
+		(_, i) => Math.round((range.min + i * range.step) * 1e10) / 1e10
+	);
+	return range.max <= 0 ? values.reverse() : values;
 }
 
 /**

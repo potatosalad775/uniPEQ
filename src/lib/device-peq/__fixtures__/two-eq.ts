@@ -8,8 +8,14 @@
  * preset (`state.preset`) or on none (null, an edited EQ, which `currentSlot` answers as null): a
  * write naming a preset saves there and plays it, one naming none leaves the EQ on none, and
  * switching the EQ on with a preset loads it, as a Qudelix does. Each EQ's switch is its own.
+ *
+ * Its controls are a Qudelix 5K's (`TWO_EQ_CONTROLS`): a headroom for each EQ and the user EQ's
+ * crossfeed, marked with their EQ, and the device's own DAC filter and output power. As the
+ * bridge's Qudelix handler does, a headroom or crossfeed write is refused (`rejected`) while its
+ * EQ is off, the headphone EQ's headroom reads null in single-EQ mode, and the crossfeed is held
+ * with the user EQ's preset (`state.crossfeeds`), so switching to one that has one changes it.
  */
-import type { Filter, Preset } from '@potatosalad775/eqcaps-core';
+import type { Control, Filter, Preset } from '@potatosalad775/eqcaps-core';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import type { PushRequest } from '../types';
 import { fakeConnection, type FakeEq } from './connection';
@@ -39,6 +45,54 @@ const SPK: FakeEq = {
 	perChannel: true
 };
 
+const headroom = (id: string, name: string, eq: true | string): Control => ({
+	id,
+	name,
+	kind: 'range',
+	role: 'headroom',
+	eq,
+	range: { min: -12, max: 0, step: 6 },
+	unit: 'dB'
+});
+export const TWO_EQ_CONTROLS: Control[] = [
+	headroom('headroom', 'HEADROOM', true),
+	headroom('headroomSpk', 'SPK EQ HEADROOM', 'spk'),
+	{
+		id: 'crossfeed',
+		name: 'QX-FEED',
+		kind: 'range',
+		role: 'crossfeed',
+		eq: true,
+		range: { min: 0, max: 50, step: 1 }
+	},
+	{
+		id: 'dacFilter',
+		name: 'FILTER SELECTION',
+		kind: 'choice',
+		role: 'dac-filter',
+		values: [
+			{ value: 0, name: 'Linear phase fast roll-off' },
+			{ value: 3, name: 'Minimum phase fast roll-off' }
+		]
+	},
+	{
+		id: 'gain',
+		name: 'OUTPUT POWER',
+		kind: 'choice',
+		role: 'output-gain',
+		values: [
+			{ value: 0, name: 'NORMAL' },
+			{ value: 1, name: 'HIGH' }
+		]
+	}
+];
+/** The EQ whose switch a control follows: off, the device refuses to set it. */
+const CONTROL_EQ: Record<string, 'usr' | 'spk'> = {
+	headroom: 'usr',
+	crossfeed: 'usr',
+	headroomSpk: 'spk'
+};
+
 /** A refusal as the bridge throws it, by its code. */
 export function bridgeError(code: string, message = code): Error {
 	return Object.assign(new Error(message), { name: 'BridgeError', code });
@@ -56,7 +110,13 @@ export function twoEqDevice({ single = false, preset = 22 as number | null } = {
 			left: bands(20, (i) => (i < 4 ? 3 : 0)),
 			right: bands(20, (i) => (i < 4 ? -3 : 0)),
 			preamp: -9
-		}
+		},
+		controls: { headroom: -6, headroomSpk: 0, crossfeed: 20, dacFilter: 0, gain: 0 } as Record<
+			string,
+			number
+		>,
+		/** The crossfeed the user EQ's presets hold, by preset id; one without keeps the level. */
+		crossfeeds: { 23: 35 } as Record<number, number>
 	};
 	const calls: { op: string; eq: string | undefined }[] = [];
 	/** The EQ an operation is on, refused as a single-EQ mode refuses the headphone EQ. */
@@ -79,7 +139,8 @@ export function twoEqDevice({ single = false, preset = 22 as number | null } = {
 			readsCurrentSlot: true,
 			writesSlot: true,
 			readsBandCount: true,
-			slots: USR_PRESETS
+			slots: USR_PRESETS,
+			controls: TWO_EQ_CONTROLS
 		},
 		[SPK]
 	);
@@ -107,7 +168,23 @@ export function twoEqDevice({ single = false, preset = 22 as number | null } = {
 		d.setEnabled = async (enabled, slot) => {
 			on('setEnabled', eq);
 			state.enabled[which] = enabled;
-			if (enabled && slot !== undefined) state.preset[which] = slot;
+			if (enabled && slot !== undefined) {
+				state.preset[which] = slot;
+				if (which === 'usr') {
+					state.controls.crossfeed = state.crossfeeds[slot] ?? state.controls.crossfeed;
+				}
+			}
+		};
+		// The controls are the device's: the same from either view.
+		d.readControls = async () => ({
+			...state.controls,
+			headroomSpk: state.single ? null : state.controls.headroomSpk
+		});
+		d.writeControl = async (id, value) => {
+			const of = CONTROL_EQ[id];
+			if (of && !state.enabled[of]) throw bridgeError('rejected', `${id}: its EQ is off`);
+			state.controls[id] = value;
+			return { reconnect: false };
 		};
 		// The bridge reads no band count of an EQ the mode lacks: null, not an error.
 		d.bandCount = async () => {

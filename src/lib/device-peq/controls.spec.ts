@@ -1,6 +1,15 @@
 import type { Control } from '@potatosalad775/eqcaps-core';
 import { describe, expect, it } from 'vitest';
-import { balanceLabel, balanceOf, balanceValue, balanceWrites, controlLabel } from './controls';
+import {
+	balanceLabel,
+	balanceOf,
+	balanceValue,
+	balanceWrites,
+	controlLabel,
+	deviceControls,
+	eqControls,
+	rangeChoices
+} from './controls';
 
 const gain = (id: string, role: Control['role'], extra: Partial<Control> = {}): Control => ({
 	id,
@@ -71,5 +80,98 @@ describe('balance', () => {
 
 	it('names each channel under its role when not merged', () => {
 		expect(controlLabel(LEFT)).toBe('Left channel');
+	});
+});
+
+describe('where a control is shown', () => {
+	const headroom = (id: string, eq: true | string): Control => ({
+		id,
+		name: id,
+		kind: 'range',
+		role: 'headroom',
+		eq,
+		range: { min: -12, max: 0, step: 6 },
+		unit: 'dB'
+	});
+	const OWN = headroom('headroom', true);
+	const SPK = headroom('headroomSpk', 'spk');
+	const CROSSFEED: Control = {
+		id: 'crossfeed',
+		name: 'QX-FEED',
+		kind: 'range',
+		role: 'crossfeed',
+		eq: true,
+		range: { min: 0, max: 50, step: 1 }
+	};
+	const FILTER: Control = {
+		id: 'dacFilter',
+		name: 'FILTER SELECTION',
+		kind: 'choice',
+		role: 'dac-filter',
+		values: [
+			{ value: 0, name: 'Fast' },
+			{ value: 1, name: 'Slow' }
+		]
+	};
+	const ALL = [OWN, SPK, CROSSFEED, FILTER, LEFT];
+
+	it("keeps the device's own settings for the device panel", () => {
+		expect(deviceControls(ALL)).toEqual([FILTER, LEFT]);
+	});
+
+	it("gives the EQ the profile describes the ones marked true, in the profile's order", () => {
+		expect(eqControls(ALL, undefined)).toEqual([OWN, CROSSFEED]);
+	});
+
+	it('gives a listed EQ the ones naming its id, and an EQ without settings none', () => {
+		expect(eqControls(ALL, 'spk')).toEqual([SPK]);
+		expect(eqControls(ALL, 'mic')).toEqual([]);
+		expect(eqControls([FILTER, LEFT], undefined)).toEqual([]);
+	});
+
+	it('shows every control in one place only', () => {
+		const placed = [
+			...deviceControls(ALL),
+			...eqControls(ALL, undefined),
+			...eqControls(ALL, 'spk')
+		];
+		expect(placed).toHaveLength(ALL.length);
+		expect(new Set(placed)).toEqual(new Set(ALL));
+	});
+
+	it('names a headroom by its role', () => {
+		expect(controlLabel(OWN)).toBe('Headroom');
+		expect(controlLabel(SPK)).toBe('Headroom');
+	});
+});
+
+describe('rangeChoices', () => {
+	const range = (r: NonNullable<Control['range']>, extra: Partial<Control> = {}): Control => ({
+		id: 'x',
+		name: 'x',
+		kind: 'range',
+		range: r,
+		...extra
+	});
+
+	it('offers a range of three values as a choice, a cut from none down', () => {
+		expect(rangeChoices(range({ min: -12, max: 0, step: 6 }))).toEqual([0, -6, -12]);
+	});
+
+	it('runs any other range up, on its grid', () => {
+		expect(rangeChoices(range({ min: 0, max: 2, step: 1 }))).toEqual([0, 1, 2]);
+		expect(rangeChoices(range({ min: -1, max: 1, step: 1 }))).toEqual([-1, 0, 1]);
+		expect(rangeChoices(range({ min: 0.1, max: 0.3, step: 0.1 }))).toEqual([0.1, 0.2, 0.3]);
+		expect(rangeChoices(range({ min: 0, max: 1, step: 1 }))).toEqual([0, 1]);
+	});
+
+	it('leaves a longer range, or one without steps, a slider', () => {
+		expect(rangeChoices(range({ min: 0, max: 50, step: 1 }))).toBeNull();
+		expect(rangeChoices(range({ min: 0, max: 3, step: 1 }))).toBeNull();
+		expect(rangeChoices(range({ min: -12, max: 0 }))).toBeNull();
+	});
+
+	it('is only for a range', () => {
+		expect(rangeChoices({ id: 'led', name: 'LED', kind: 'toggle' })).toBeNull();
 	});
 });
