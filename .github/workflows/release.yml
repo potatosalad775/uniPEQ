@@ -99,12 +99,17 @@ jobs:
       # load and route client-side.
       - run: cp dist/index.html dist/404.html
 
+      # The artifact is named after the attempt: a re-run keeps the earlier attempt's artifact, and
+      # deploy-pages refuses to choose between two of the same name.
       - uses: actions/upload-pages-artifact@v5
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: dist
 
       - uses: actions/deploy-pages@v5
         id: deploy
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
   android:
     needs: version
