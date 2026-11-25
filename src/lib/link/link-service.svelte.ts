@@ -8,7 +8,7 @@
  *   local edit is. Nothing applies while the list can't be edited.
  * - What a modernGraphTool before protocol 1.3 can't be told stays as it was for it (`minor`): one
  *   list, the channel on screen. From 1.3 it gets both channels, the device's EQs, its settings
- *   and its presets as they are now.
+ *   and its presets as they are now; 1.4 adds the EQs' names.
  * - Device work runs in the handler of the message that asked for it (`settle`, a command), never
  *   behind a timer: in Doze a message wakes the CPU and a timer doesn't. Each command holds a wake
  *   lock while it runs.
@@ -140,6 +140,9 @@ function linkDevice(): LinkDevice | null {
 	return {
 		// Protocol 1.3: which of `capabilities.eqs` this is. An older modernGraphTool ignores it.
 		eq: devicePeqStore.eq ?? null,
+		// Protocol 1.4: the device's EQs by name, which the viewed EQ's profile drops. Whether each
+		// is there now is `status.absentEqs`.
+		eqs: devicePeqStore.eqs.map(({ id, name }) => ({ id: id ?? null, name: name ?? null })),
 		name: conn.name,
 		kind: conn.profileSource === 'demo' ? 'demo' : conn.connectionType,
 		profile: conn.profile,

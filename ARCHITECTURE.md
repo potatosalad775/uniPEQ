@@ -534,7 +534,9 @@ gets a tag; then both apps bump.
   the screens do: `control` is the settings panel's `setControl`, `preset-create`, `preset-rename`
   and `preset-delete` the presets sheet's, and `eq` switches the EQ the list edits. `eq` is refused
   with `unwritten` when the list holds changes not written (one waiting for auto-write goes out
-  first), because the leave dialog is uniPEQ's to answer, not mGT's.
+  first), because the leave dialog is uniPEQ's to answer, not mGT's. Protocol 1.4 adds the
+  device's EQs by name to `device` (`eqs`, its own first, whichever EQ is viewed), since the viewed
+  EQ's profile drops that list for any EQ but the device's own.
 - **Device work runs in the handler of the message that asked for it** (`settle` writes through
   `devicePeqService.writeNow`, commands through `devicePeqService`), never behind a timer: in Doze
   a message wakes the CPU and a timer doesn't. Each command holds a partial wake lock.

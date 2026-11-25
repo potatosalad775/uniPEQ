@@ -758,6 +758,14 @@ describe('linkService describing the device (1.3)', () => {
 		expect(own).toMatchObject({ eq: null, capabilities: { perChannel: false } });
 	});
 
+	it("lists the device's EQs, its own first and by name, while it is viewed as another (1.4)", async () => {
+		const { joiner } = await apartDevice(3);
+		expect(joiner.options.handlers.device()?.eqs).toEqual([
+			{ id: null, name: 'USR EQ' },
+			{ id: 'spk', name: 'SPK EQ' }
+		]);
+	});
+
 	it("says the channels can't be set apart where uniPEQ wouldn't set them apart", () => {
 		devicePeqService.install();
 		devicePeqStore.setConnected(fakeConnection(PROFILE, { perChannel: true }), null);
