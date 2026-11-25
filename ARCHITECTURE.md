@@ -497,7 +497,7 @@ audio device's HID interface to the system, so the plugin claims with `force = t
 
 ## 10. The modernGraphTool link
 
-modernGraphTool (mGT) and uniPEQ share one band list over a WebRTC DataChannel; a Cloudflare Worker
+modernGraphTool (mGT) and uniPEQ share the band list over a WebRTC DataChannel; a Cloudflare Worker
 at `link.unipeq.com` only introduces them. The protocol and its rules are
 [uniPEQ_link](https://github.com/potatosalad775/uniPEQ_link) (`docs/design.md`), installed as
 `peq-link` (a git dependency on a tag, TypeScript source). A protocol change lands there first and
@@ -512,12 +512,29 @@ gets a tag; then both apps bump.
   mGT's "Open uniPEQ" opens this app with the room in `?link=` (`webLink`); `+layout.svelte`
   joins it through `openAddress` and drops the parameter, so a reload doesn't join again.
 - **Edits** apply through `eqStore`: a band op projected onto its slot as a local edit is, one undo
-  step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited. The
-  protocol has one band list, so with the channels apart mGT sees and edits the channel on screen,
-  and showing the other one reaches mGT as a list change. Likewise it sees the device's EQ on
-  screen: switching EQ reaches mGT as a new device (the view's profile and capabilities) and a
+  step per mGT burst (coalesce key `link:<burst>`), nothing while the list can't be edited. What an
+  mGT before protocol 1.3 gets is unchanged, decided by the session's shared minor (`link.minor`, 3
+  or more for 1.3): one list, so with the channels apart it sees and edits the channel on screen,
+  and showing the other one reaches it as a list change. A 1.3 mGT gets both channels with them
+  apart (`right`; the top-level list is the left's), so which channel is on screen is not a change
+  for it. Its op without a channel sets both channels, apart or not; an op naming one (`ch`) sets
+  that one, on screen or not, and is dropped while one list drives both; a `channels` op sets them
+  apart (only on a device that drives its channels apart) or links them. With two channels in play
+  the ops are worked out whole and loaded as one undo step (`eqStore.load`), since the store edits
+  only the channel on screen, and that one stays on screen. Likewise mGT sees the device's EQ on
+  screen: switching EQ reaches it as a new device (the view's profile and capabilities) and a
   `fresh` list.
   uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
+- **Device, settings and presets (protocol 1.3).** `device` also says which of the device's EQs it
+  is viewed as (`eq`) and carries `controls`, `eqs`, `perChannel`, `listsSlots`, `editsSlots` and
+  `readsBandCount` in its capabilities. `status` carries the live preset list where the device keeps
+  one (`slots`), `unsaved` for a device on no preset (before 1.3 that was unknown), the EQs its mode
+  lacks (`absentEqs`), the control values (`controls`) and `busy` for control and preset work (the
+  client sends an older mGT null for those two). mGT's commands go through `devicePeqService` as
+  the screens do: `control` is the settings panel's `setControl`, `preset-create`, `preset-rename`
+  and `preset-delete` the presets sheet's, and `eq` switches the EQ the list edits. `eq` is refused
+  with `unwritten` when the list holds changes not written (one waiting for auto-write goes out
+  first), because the leave dialog is uniPEQ's to answer, not mGT's.
 - **Device work runs in the handler of the message that asked for it** (`settle` writes through
   `devicePeqService.writeNow`, commands through `devicePeqService`), never behind a timer: in Doze
   a message wakes the CPU and a timer doesn't. Each command holds a partial wake lock.
