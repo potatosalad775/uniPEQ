@@ -42,9 +42,15 @@ import {
 	type PlanChange
 } from 'peq-link/client';
 import type { PushPlan } from '#lib/device-peq/push-plan.js';
-import { assignSlots, editFilter } from '#lib/eq/eq-constraint.js';
+import { assignSlots, editFilter, fitFilters, sameFilters } from '#lib/eq/eq-constraint.js';
 import { preampOf } from '#lib/eq/eq-preamp.js';
-import type { ChannelEq, EqFilter, FilterType } from '#lib/eq/model.js';
+import {
+	eqFiltersEqual,
+	type Channel,
+	type ChannelEq,
+	type EqFilter,
+	type FilterType
+} from '#lib/eq/model.js';
 import * as m from '#lib/paraglide/messages.js';
 import { appState } from '#lib/platform/app-state.svelte.js';
 import {
@@ -84,19 +90,28 @@ function channelOf(channel: ChannelEq): LinkChannel {
 }
 
 /**
- * The shared list. `apart`: modernGraphTool knows two channels (protocol 1.3), so with them apart
- * it gets both. An older one has one list, the channel on screen, which is where its edits land.
+ * The list on screen. Its preamp is the store's own, worked out once per edit: a snapshot is taken
+ * on every frame of a drag.
  */
-function snapshot(apart: boolean): LinkEq {
-	if (apart && !eqStore.linked) {
-		const { left, right } = eqStore.channels;
-		return { ...channelOf(left), right: channelOf(right) };
-	}
+function shown(): LinkChannel {
 	return {
 		filters: eqStore.filters,
 		preamp: eqConstraintStore.preampValue,
 		autoPreamp: eqStore.autoPreamp
 	};
+}
+
+/**
+ * The shared list. `apart`: modernGraphTool knows two channels (protocol 1.3), so with them apart
+ * it gets both. An older one has one list, the channel on screen, which is where its edits land.
+ */
+function snapshot(apart: boolean): LinkEq {
+	if (apart && !eqStore.linked) {
+		const { channels, editing } = eqStore;
+		const of = (side: Channel) => (editing === side ? shown() : channelOf(channels[side]));
+		return { ...of('left'), right: of('right') };
+	}
+	return shown();
 }
 
 function sameChannel(a: LinkChannel, b: LinkChannel): boolean {
@@ -146,7 +161,8 @@ function linkDevice(): LinkDevice | null {
 			// Protocol 1.3. The values and the live lists are in `status`.
 			controls: c.controls,
 			eqs: c.eqs,
-			perChannel: c.perChannel,
+			// Whether the channels may be set apart, as uniPEQ allows it: the profile says so too.
+			perChannel: devicePeqStore.perChannel,
 			listsSlots: c.listsSlots,
 			editsSlots: c.editsSlots,
 			readsBandCount: c.readsBandCount
@@ -161,18 +177,27 @@ function deviceName(): string | null {
 /** A device command: its effects reach mGT as `eq`, `status` and `device`; `re` says if it failed. */
 async function deviceCommand(work: () => Promise<unknown>): Promise<CommandResult> {
 	if (!devicePeqStore.connection) return { ok: false, code: 'no-device' };
-	// One operation at a time: the one under way would refuse this one without a word.
-	if (devicePeqStore.operation !== null) return { ok: false, code: 'busy' };
+	// One at a time: an operation or a reconnect under way would refuse this one without a word.
+	if (devicePeqStore.isBusy) return { ok: false, code: 'busy' };
 	const before = devicePeqStore.failure;
 	await whileAwake(work);
 	const failure = devicePeqStore.failure;
 	return failure && failure !== before ? { ok: false, code: failure.code } : { ok: true };
 }
 
-/** The device's presets can be added to, renamed and deleted from here. */
+/**
+ * The device's presets can be added to, renamed and deleted from here: as in uniPEQ, which
+ * offers them only while the device can be reached.
+ */
 function presetsEditable(): CommandResult | null {
 	if (!devicePeqStore.connection) return { ok: false, code: 'no-device' };
-	return devicePeqStore.canEditPresets ? null : { ok: false, code: 'unsupported' };
+	if (!devicePeqStore.canEditPresets) return { ok: false, code: 'unsupported' };
+	return devicePeqStore.canEdit ? null : { ok: false, code: 'not-editable' };
+}
+
+/** A command's args as mGT sent them: the client passes them on unchecked. */
+function argsOf(args: unknown): Record<string, unknown> {
+	return typeof args === 'object' && args !== null ? (args as Record<string, unknown>) : {};
 }
 
 /** One room joined: from asking for approval to the end. */
@@ -190,6 +215,8 @@ class Session {
 	/** What the effect last saw of the list, and the fresh starts it counted. */
 	#seen: LinkEq | null = null;
 	#epoch = 0;
+	/** mGT's `hello`s: each settles `minor` again, which the effect follows but can't track. */
+	#hellos = $state(0);
 	/** mGT edits without a burst are one undo step each. */
 	#unbursted = 0;
 	/** The review mGT is shown, with the `rev` it was planned at. */
@@ -221,6 +248,12 @@ class Session {
 			events.changed();
 		});
 		this.link.on('state', () => events.changed());
+		// The list's shape follows `minor`: the effect starts over from the new one, rather than
+		// count the shape changing as an edit. The client sends mGT the list itself.
+		this.link.on('hello', () => {
+			this.#seen = null;
+			this.#hellos++;
+		});
 		this.link.on('request', (request) => {
 			this.host = hostOf(request.host.origin);
 			events.request(this, request);
@@ -238,6 +271,7 @@ class Session {
 		this.#dispose.push(
 			$effect.root(() => {
 				$effect(() => {
+					void this.#hellos;
 					const now = this.#snapshot();
 					const step = eqStore.step;
 					const epoch = eqStore.epoch;
@@ -347,6 +381,11 @@ class Session {
 				);
 			case 'fit': {
 				if (!eqConstraintStore.editable) return { ok: false, code: 'not-editable' };
+				// mGT shows both channels apart, and not which one is on screen here: it fits both.
+				if (this.#device && !eqStore.linked) {
+					fitChannels();
+					return { ok: true };
+				}
 				const next = eqConstraintStore.fitted;
 				if (next) eqStore.replace(next);
 				return { ok: true };
@@ -373,14 +412,16 @@ class Session {
 			}
 			case 'eq': {
 				const store = devicePeqStore;
-				const id = (args as CommandArgs['eq']).id ?? undefined;
+				const raw = argsOf(args).id;
+				const id = typeof raw === 'string' ? raw : undefined;
+				if (raw != null && id === undefined) return { ok: false, code: 'invalid-request' };
 				if (!store.connection) return { ok: false, code: 'no-device' };
 				if (id === store.eq) return { ok: true };
 				const target = store.eqs.find((e) => e.id === id);
 				if (!target) return { ok: false, code: 'invalid-request' };
 				if (!target.present) return { ok: false, code: 'unsupported' };
 				if (!store.canEdit) return { ok: false, code: 'not-editable' };
-				if (store.operation !== null) return { ok: false, code: 'busy' };
+				if (store.isBusy) return { ok: false, code: 'busy' };
 				return whileAwake(async (): Promise<CommandResult> => {
 					if (store.autoDueAt !== null) await devicePeqService.writeNow();
 					// uniPEQ asks here what to do with them (write, discard). modernGraphTool can't
@@ -395,10 +436,17 @@ class Session {
 				});
 			}
 			case 'control': {
-				const { id, value } = args as CommandArgs['control'];
+				const { id, value } = argsOf(args);
 				const controls = devicePeqStore.capabilities?.controls ?? [];
 				if (!devicePeqStore.connection) return { ok: false, code: 'no-device' };
-				if (!controls.some((c) => c.id === id)) return { ok: false, code: 'invalid-request' };
+				if (
+					typeof id !== 'string' ||
+					typeof value !== 'number' ||
+					!controls.some((c) => c.id === id)
+				)
+					return { ok: false, code: 'invalid-request' };
+				// As in uniPEQ, which offers the device's settings only while it can be reached.
+				if (!devicePeqStore.canEdit) return { ok: false, code: 'not-editable' };
 				return deviceCommand(() => devicePeqService.setControl(id, value));
 			}
 			case 'preset-create': {
@@ -407,32 +455,34 @@ class Session {
 				const store = devicePeqStore;
 				const room = store.slotRoom;
 				if (room !== null && store.slots.length >= room) return { ok: false, code: 'rejected' };
-				const name = (args as CommandArgs['preset-create'] | undefined)?.name;
+				const { name } = argsOf(args);
+				if (name !== undefined && typeof name !== 'string')
+					return { ok: false, code: 'invalid-request' };
 				const had = new Set(store.slots.map((s) => s.id));
-				return deviceCommand(async () => {
-					await devicePeqService.createPreset();
-					// None yet while the volume warning waits: the name then stays the device's.
-					const made = store.slots.find((s) => !had.has(s.id));
-					if (made && name) await devicePeqService.renamePreset(made.id, name);
-				});
+				const result = await deviceCommand(() => devicePeqService.createPreset(name));
+				// Made, it stands, whatever failed after it (the switch to it, a read): that is in
+				// `status`, and mGT asking again would make another.
+				return store.slots.some((s) => !had.has(s.id)) ? { ok: true } : result;
 			}
 			case 'preset-rename': {
 				const refused = presetsEditable();
 				if (refused) return refused;
-				const { slot, name } = args as CommandArgs['preset-rename'];
-				if (!devicePeqStore.slots.some((s) => s.id === slot))
-					return { ok: false, code: 'invalid-request' };
-				return deviceCommand(() => devicePeqService.renamePreset(slot, name));
+				const { slot, name } = argsOf(args);
+				// A blank name too: uniPEQ's own Rename takes none.
+				if (typeof name !== 'string' || !name.trim()) return { ok: false, code: 'invalid-request' };
+				const known = devicePeqStore.slots.find((s) => s.id === slot);
+				if (!known) return { ok: false, code: 'invalid-request' };
+				return deviceCommand(() => devicePeqService.renamePreset(known.id, name));
 			}
 			case 'preset-delete': {
 				const refused = presetsEditable();
 				if (refused) return refused;
-				const { slot } = args as CommandArgs['preset-delete'];
+				const { slot } = argsOf(args);
 				const slots = devicePeqStore.slots;
+				const known = slots.find((s) => s.id === slot);
 				// The last one stays: a device with a list plays one of them.
-				if (slots.length <= 1 || !slots.some((s) => s.id === slot))
-					return { ok: false, code: 'invalid-request' };
-				return deviceCommand(() => devicePeqService.deletePreset(slot));
+				if (slots.length <= 1 || !known) return { ok: false, code: 'invalid-request' };
+				return deviceCommand(() => devicePeqService.deletePreset(known.id));
 			}
 			default:
 				return { ok: false, code: 'unsupported' };
@@ -528,7 +578,28 @@ function withBand(channel: ChannelEq, i: number, to: Filter): ChannelEq {
 	const profile = eqConstraintStore.profile;
 	const slot = assignSlots(channel.filters, profile)[i] ?? i;
 	const next = { ...current, ...editFilter(current, filter, profile, slot) };
+	// Unchanged, it is no edit and no undo step, as `eqStore.update` has it.
+	if (eqFiltersEqual(current, next)) return channel;
 	return { ...channel, filters: channel.filters.with(i, next) };
+}
+
+/** A channel's preamp as `eqStore.load` takes it. */
+function pregainOf(c: ChannelEq): number | 'auto' {
+	return c.autoPreamp ? 'auto' : c.manualPreamp;
+}
+
+/** Fit for both channels apart, as one undo step: the channel on screen stays on screen. */
+function fitChannels(): void {
+	const { profile } = eqConstraintStore;
+	const { left, right } = eqStore.channels;
+	const fitLeft = fitFilters(left.filters, profile);
+	const fitRight = fitFilters(right.filters, profile);
+	if (sameFilters(fitLeft, left.filters) && sameFilters(fitRight, right.filters)) return;
+	eqStore.load({
+		filters: fitLeft,
+		preamp: pregainOf(left),
+		right: { filters: fitRight, preamp: pregainOf(right) }
+	});
 }
 
 /**
@@ -586,12 +657,11 @@ function applyChannels(ops: EditOp[], key: string): void {
 		}
 	}
 	if (left === was.left && right === was.right && apart === wasApart) return;
-	const preamp = (c: ChannelEq): number | 'auto' => (c.autoPreamp ? 'auto' : c.manualPreamp);
 	eqStore.load(
 		{
 			filters: left.filters,
-			preamp: preamp(left),
-			...(apart ? { right: { filters: right.filters, preamp: preamp(right) } } : {})
+			preamp: pregainOf(left),
+			...(apart ? { right: { filters: right.filters, preamp: pregainOf(right) } } : {})
 		},
 		key
 	);

@@ -1051,22 +1051,25 @@ class DevicePeqService {
 	/**
 	 * Add an empty preset to the device and make it the one Device EQ shows. The list isn't read
 	 * over if it holds changes not written yet: they can then be written to the new preset.
+	 * `name` goes with the create, so a name the device can't store refuses it rather than leave
+	 * a preset under another; blank or left out, the device names it.
 	 */
-	async createPreset(): Promise<void> {
+	async createPreset(name?: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		const room = devicePeqStore.slotRoom;
 		if (!conn?.device.createSlot || !devicePeqStore.canEditPresets || devicePeqStore.isBusy) return;
 		if (room !== null && devicePeqStore.slots.length >= room) return;
 		this.#cancelPending();
 		// The device goes over to the new preset, which is flat: as audible as a write.
-		if (this.#ask(() => this.createPreset())) return;
+		if (this.#ask(() => this.createPreset(name))) return;
 		const create = conn.device.createSlot.bind(conn.device);
+		const named = name?.trim() || undefined;
 		// Kept even when listing again fails: the device has the preset by then.
 		let made = null as Slot | null;
 		await this.#operate(
 			'preset',
 			async () => {
-				made = await create();
+				made = await create(named === undefined ? undefined : { name: named });
 				await this.#relist(conn);
 				logger.info(`created preset ${made.id} "${made.name}"`);
 				devicePeqStore.setStatus(m.device_peq_presets_created({ name: made.name }));

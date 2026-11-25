@@ -517,7 +517,7 @@ gets a tag; then both apps bump.
   or more for 1.3): one list, so with the channels apart it sees and edits the channel on screen,
   and showing the other one reaches it as a list change. A 1.3 mGT gets both channels with them
   apart (`right`; the top-level list is the left's), so which channel is on screen is not a change
-  for it. Its op without a channel sets both channels, apart or not; an op naming one (`ch`) sets
+  for it, and its `fit` fits both. Its op without a channel sets both channels, apart or not; an op naming one (`ch`) sets
   that one, on screen or not, and is dropped while one list drives both; a `channels` op sets them
   apart (only on a device that drives its channels apart) or links them. With two channels in play
   the ops are worked out whole and loaded as one undo step (`eqStore.load`), since the store edits
@@ -526,8 +526,8 @@ gets a tag; then both apps bump.
   `fresh` list.
   uniPEQ's own edits go back as one burst per undo step; an `eqStore.open` goes back `fresh`.
 - **Device, settings and presets (protocol 1.3).** `device` also says which of the device's EQs it
-  is viewed as (`eq`) and carries `controls`, `eqs`, `perChannel`, `listsSlots`, `editsSlots` and
-  `readsBandCount` in its capabilities. `status` carries the live preset list where the device keeps
+  is viewed as (`eq`) and carries `controls`, `eqs`, `perChannel` (`drivesChannelsApart`, as the
+  `channels` op is allowed), `listsSlots`, `editsSlots` and `readsBandCount` in its capabilities. `status` carries the live preset list where the device keeps
   one (`slots`), `unsaved` for a device on no preset (before 1.3 that was unknown), the EQs its mode
   lacks (`absentEqs`), the control values (`controls`) and `busy` for control and preset work (the
   client sends an older mGT null for those two). mGT's commands go through `devicePeqService` as

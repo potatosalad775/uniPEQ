@@ -8,6 +8,7 @@ import { OWN_EQ } from '#lib/device-peq/device-eqs.js';
 import { hardwareProfile } from '#lib/eq/__fixtures__/profiles.js';
 import { devicePeqService } from '#lib/services/device-peq-service.svelte.js';
 import { devicePeqStore } from '#lib/stores/device-peq-store.svelte.js';
+import { eqConstraintStore } from '#lib/stores/eq-constraint-store.svelte.js';
 import { eqStore } from '#lib/stores/eq-store.svelte.js';
 import { settingsStore } from '#lib/stores/settings-store.svelte.js';
 import { CRASH_MARKER_KEY, linkStore, WEB_LINK_PARAM } from './link-store.svelte';
@@ -306,6 +307,18 @@ describe('linkService', () => {
 		expect(pull).not.toHaveBeenCalled();
 	});
 
+	it('refuses a device command as busy while the device is being reconnected', async () => {
+		const conn = connect();
+		const joiner = link();
+		const pull = vi.spyOn(conn.device, 'pull');
+		devicePeqStore.isConnecting = true;
+		expect(await joiner.options.handlers.command('read', undefined)).toEqual({
+			ok: false,
+			code: 'busy'
+		});
+		expect(pull).not.toHaveBeenCalled();
+	});
+
 	it('tells mGT when the device or its status changes', () => {
 		connect();
 		const joiner = link();
@@ -414,8 +427,9 @@ function listDevice(names: string[], room = 4) {
 	d.currentSlot = async () => current;
 	d.setEnabled = async (_on, slot) => void (current = slot ?? current);
 	d.pull = async (r) => ({ filters: held[r?.slot ?? current].filters, preamp: 0 });
-	d.createSlot = async () => {
-		held.push({ name: `Config ${held.length + 1}`, filters: [] });
+	d.createSlot = async ({ name } = {}) => {
+		if (name !== undefined && name.length > 15) throw bridgeError('invalid-request', 'too long');
+		held.push({ name: name ?? `Config ${held.length + 1}`, filters: [] });
 		current = held.length - 1;
 		return listed()[current];
 	};
@@ -669,6 +683,50 @@ describe('linkService with the channels apart', () => {
 		expect(edit(joiner, [{ op: 'channels', apart: false }])).toBe(false);
 	});
 
+	it('takes a band op that changes nothing as no edit and no undo step (1.3)', async () => {
+		const { joiner } = await apartDevice(3);
+		const band = { op: 'band', i: 1, ch: 'left', filter: pk(200, 40) } as const;
+		expect(edit(joiner, [band], { burst: 'a' })).toBe(true);
+		// Past the 12 dB limit again: it lands where the band already is.
+		expect(edit(joiner, [band], { burst: 'b' })).toBe(false);
+		eqStore.undo();
+		expect(eqStore.canUndo).toBe(false);
+	});
+
+	it('fits both channels for an mGT that shows both, as one step (1.3)', async () => {
+		const { joiner } = await apartDevice(3);
+		edit(joiner, [{ op: 'list', ch: 'right', filters: [pk(60, 40)] }]);
+		const { left } = eqStore.channels;
+		// The left, on screen, fits: uniPEQ's own Fit would have nothing to do.
+		expect(eqConstraintStore.fitted).toBeNull();
+		expect(await joiner.options.handlers.command('fit', undefined)).toEqual({ ok: true });
+		const { right } = eqStore.channels;
+		expect(right.filters).toHaveLength(20);
+		expect(Math.max(...gains(right.filters))).toBeLessThanOrEqual(12);
+		expect(eqStore.channels.left.filters).toEqual(left.filters);
+		expect(eqStore.editing).toBe('left');
+		eqStore.undo();
+		expect(eqStore.channels.right.filters).toEqual([pk(60, 40)]);
+	});
+
+	it('follows a hello after approval, without taking its shape for an edit (1.3)', async () => {
+		// Approved before mGT's hello: no minor yet, so one list.
+		const { joiner } = await apartDevice(0);
+		joiner.minor = 3;
+		joiner.emit('hello', { t: 'hello', proto: [1, 3], app: 'mgt', version: '' });
+		flushSync();
+		const sent = joiner.changes.length;
+		eqStore.edit('right');
+		flushSync();
+		eqStore.edit('left');
+		flushSync();
+		expect(joiner.changes).toHaveLength(sent);
+		// Linking them leaves the list on screen as it was, but mGT showed two.
+		eqStore.edit('both');
+		flushSync();
+		expect(joiner.changes).toHaveLength(sent + 1);
+	});
+
 	it('keeps an mGT before 1.3 on the channel on screen: an op without one edits only it', async () => {
 		const { joiner } = await apartDevice(2);
 		expect(edit(joiner, [{ op: 'band', i: 0, filter: pk(100, 5) }])).toBe(true);
@@ -698,6 +756,16 @@ describe('linkService describing the device (1.3)', () => {
 		flushSync();
 		const own = joiner.options.handlers.device();
 		expect(own).toMatchObject({ eq: null, capabilities: { perChannel: false } });
+	});
+
+	it("says the channels can't be set apart where uniPEQ wouldn't set them apart", () => {
+		devicePeqService.install();
+		devicePeqStore.setConnected(fakeConnection(PROFILE, { perChannel: true }), null);
+		const joiner = link(3);
+		expect(devicePeqStore.perChannel).toBe(false);
+		expect(joiner.options.handlers.device()).toMatchObject({
+			capabilities: { perChannel: false }
+		});
 	});
 
 	it('says which presets are the device to list and edit, where it keeps a list', () => {
@@ -775,11 +843,13 @@ describe('linkService commands (1.3)', () => {
 
 		it('says busy while something else is under way', async () => {
 			const { joiner } = userEqDevice();
+			const { command } = joiner.options.handlers;
 			devicePeqStore.operation = 'read';
-			expect(await joiner.options.handlers.command('eq', { id: 'spk' })).toEqual({
-				ok: false,
-				code: 'busy'
-			});
+			expect(await command('eq', { id: 'spk' })).toEqual({ ok: false, code: 'busy' });
+			devicePeqStore.operation = null;
+			devicePeqStore.isConnecting = true;
+			expect(await command('eq', { id: 'spk' })).toEqual({ ok: false, code: 'busy' });
+			expect(devicePeqStore.eq).toBeUndefined();
 		});
 
 		it('says unwritten, and opens no dialog, while the list holds changes the device lacks', async () => {
@@ -844,6 +914,32 @@ describe('linkService commands (1.3)', () => {
 				await joiner.options.handlers.command('control', { id: 'crossfeed', value: 10 })
 			).toEqual({ ok: false, code: 'rejected' });
 		});
+
+		it('refuses while the device must be reconnected, and says busy while it is', async () => {
+			const { joiner, device } = userEqDevice();
+			const { command } = joiner.options.handlers;
+			devicePeqStore.needsReconnect = true;
+			expect(await command('control', { id: 'gain', value: 1 })).toEqual({
+				ok: false,
+				code: 'not-editable'
+			});
+			devicePeqStore.needsReconnect = false;
+			devicePeqStore.isConnecting = true;
+			expect(await command('control', { id: 'gain', value: 1 })).toEqual({
+				ok: false,
+				code: 'busy'
+			});
+			expect(device.state.controls.gain).toBe(0);
+		});
+
+		it('refuses args it cannot read rather than fail', async () => {
+			const { joiner } = userEqDevice();
+			const { command } = joiner.options.handlers;
+			const refused = { ok: false, code: 'invalid-request' };
+			expect(await command('control', undefined as never)).toEqual(refused);
+			expect(await command('control', { id: 'gain', value: '1' } as never)).toEqual(refused);
+			expect(await command('eq', { id: 5 } as never)).toEqual(refused);
+		});
 	});
 
 	describe('presets', () => {
@@ -879,6 +975,69 @@ describe('linkService commands (1.3)', () => {
 				'Bass',
 				'Config 2'
 			]);
+		});
+
+		it("refuses a name the device can't store, and makes no preset", async () => {
+			const { joiner } = listDevice(['Bass']);
+			const { command, status } = joiner.options.handlers;
+			expect(await command('preset-create', { name: 'a name far too long' })).toEqual({
+				ok: false,
+				code: 'invalid-request'
+			});
+			expect(status().slots?.map((s) => s.name)).toEqual(['Bass']);
+		});
+
+		it('says a preset was made, though what follows it fails', async () => {
+			const { joiner, conn } = listDevice(['Bass']);
+			vi.spyOn(conn.device, 'pull').mockRejectedValue(bridgeError('timeout', 'gone'));
+			const { command, status } = joiner.options.handlers;
+			expect(await command('preset-create', { name: 'Vocal' })).toEqual({ ok: true });
+			expect(status().slots?.map((s) => s.name)).toEqual(['Bass', 'Vocal']);
+			expect(status().failure).toMatchObject({ code: 'timeout' });
+		});
+
+		it("keeps mGT's name for the preset while the volume warning waits", async () => {
+			const { joiner } = listDevice(['Bass']);
+			devicePeqStore.writeConsent = false;
+			const { command, status } = joiner.options.handlers;
+			expect(await command('preset-create', { name: 'Vocal' })).toEqual({ ok: true });
+			expect(status().consent).toBe(true);
+			expect(status().slots).toHaveLength(1);
+			expect(await command('consent', { accept: true })).toEqual({ ok: true });
+			expect(status().slots?.map((s) => s.name)).toEqual(['Bass', 'Vocal']);
+		});
+
+		it('refuses a blank name and args it cannot read, as uniPEQ would', async () => {
+			const { joiner, conn } = listDevice(['Bass', 'Airy']);
+			const rename = vi.spyOn(conn.device, 'renameSlot');
+			const { command, status } = joiner.options.handlers;
+			const refused = { ok: false, code: 'invalid-request' };
+			expect(await command('preset-rename', { slot: 1, name: '   ' })).toEqual(refused);
+			expect(await command('preset-rename', undefined as never)).toEqual(refused);
+			expect(await command('preset-delete', undefined as never)).toEqual(refused);
+			expect(await command('preset-create', { name: 5 } as never)).toEqual(refused);
+			expect(rename).not.toHaveBeenCalled();
+			expect(status().slots?.map((s) => s.name)).toEqual(['Bass', 'Airy']);
+			// A blank name for a new one leaves it to the device.
+			expect(await command('preset-create', { name: '  ' })).toEqual({ ok: true });
+			expect(status().slots?.map((s) => s.name)).toEqual(['Bass', 'Airy', 'Config 3']);
+		});
+
+		it('refuses while the device must be reconnected, and says busy while it is', async () => {
+			const { joiner, held } = listDevice(['Bass', 'Airy']);
+			const { command } = joiner.options.handlers;
+			const refused = { ok: false, code: 'not-editable' };
+			devicePeqStore.needsReconnect = true;
+			expect(await command('preset-create', {})).toEqual(refused);
+			expect(await command('preset-rename', { slot: 1, name: 'Warm' })).toEqual(refused);
+			expect(await command('preset-delete', { slot: 1 })).toEqual(refused);
+			devicePeqStore.needsReconnect = false;
+			devicePeqStore.isConnecting = true;
+			expect(await command('preset-rename', { slot: 1, name: 'Warm' })).toEqual({
+				ok: false,
+				code: 'busy'
+			});
+			expect(held.map((h) => h.name)).toEqual(['Bass', 'Airy']);
 		});
 
 		it('renames a preset, and says why when the device refuses the name', async () => {
