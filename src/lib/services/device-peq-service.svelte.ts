@@ -581,6 +581,8 @@ class DevicePeqService {
 		// A device without a USB serial number loses its browser grant when it re-enumerates (the
 		// DS3 on every USB mode switch), and only the chooser finds it again: in the browser it
 		// opens soon, on the click that confirmed the change. Android asks for permission itself.
+		// Without that click (a change made over the link) no chooser can open, so the device gets
+		// the whole wait to come back by itself.
 		const browser = !isNative && conn.connectionType === 'hid';
 		await this.#awaitRestart(
 			conn,
@@ -591,7 +593,7 @@ class DevicePeqService {
 					? m.device_control_restart_choose({ control: name })
 					: m.device_control_restart_reconnect({ control: name })
 			},
-			browser ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
+			browser && canChoose() ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
 		);
 	}
 
