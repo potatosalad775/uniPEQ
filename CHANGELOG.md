@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v1.4.2 [2026-11-26]
+- Linked modernGraphTool can now edit left and right channels separately, switch the device's EQ, change device settings, and create, rename and delete presets.
+- Added support for new FiiO and Walkplay devices.
+- Fixed bugs and improved stability.
+
 ## v1.4.1 [2026-11-22]
 - Added headroom, crossfeed, DAC filter and gain options for Qudelix devices.
 - Fixed bugs and improved stability.
