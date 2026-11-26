@@ -581,6 +581,8 @@ class DevicePeqService {
 		// A device without a USB serial number loses its browser grant when it re-enumerates (the
 		// DS3 on every USB mode switch), and only the chooser finds it again: in the browser it
 		// opens soon, on the click that confirmed the change. Android asks for permission itself.
+		// Without that click (a change made over the link) no chooser can open, so the device gets
+		// the whole wait to come back by itself.
 		const browser = !isNative && conn.connectionType === 'hid';
 		await this.#awaitRestart(
 			conn,
@@ -591,7 +593,7 @@ class DevicePeqService {
 					? m.device_control_restart_choose({ control: name })
 					: m.device_control_restart_reconnect({ control: name })
 			},
-			browser ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
+			browser && canChoose() ? { timeoutMs: CHOOSER_AFTER_MS, choose: true } : {}
 		);
 	}
 
@@ -1049,22 +1051,25 @@ class DevicePeqService {
 	/**
 	 * Add an empty preset to the device and make it the one Device EQ shows. The list isn't read
 	 * over if it holds changes not written yet: they can then be written to the new preset.
+	 * `name` goes with the create, so a name the device can't store refuses it rather than leave
+	 * a preset under another; blank or left out, the device names it.
 	 */
-	async createPreset(): Promise<void> {
+	async createPreset(name?: string): Promise<void> {
 		const conn = devicePeqStore.connection;
 		const room = devicePeqStore.slotRoom;
 		if (!conn?.device.createSlot || !devicePeqStore.canEditPresets || devicePeqStore.isBusy) return;
 		if (room !== null && devicePeqStore.slots.length >= room) return;
 		this.#cancelPending();
 		// The device goes over to the new preset, which is flat: as audible as a write.
-		if (this.#ask(() => this.createPreset())) return;
+		if (this.#ask(() => this.createPreset(name))) return;
 		const create = conn.device.createSlot.bind(conn.device);
+		const named = name?.trim() || undefined;
 		// Kept even when listing again fails: the device has the preset by then.
 		let made = null as Slot | null;
 		await this.#operate(
 			'preset',
 			async () => {
-				made = await create();
+				made = await create(named === undefined ? undefined : { name: named });
 				await this.#relist(conn);
 				logger.info(`created preset ${made.id} "${made.name}"`);
 				devicePeqStore.setStatus(m.device_peq_presets_created({ name: made.name }));

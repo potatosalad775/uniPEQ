@@ -865,6 +865,13 @@ describe('devicePeqService device controls', () => {
 			expect(devicePeqStore.connection).toBe(again);
 		});
 
+		it('gives the device the whole wait for a change without a click, as over the link', async () => {
+			vi.stubGlobal('navigator', { userActivation: { isActive: false } });
+			const reopen = await switchUsbMode();
+			expect(reopen).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 5000 }));
+			expect(connect.connectHid).not.toHaveBeenCalled();
+		});
+
 		it('never opens the chooser without a click', async () => {
 			vi.stubGlobal('navigator', { userActivation: { isActive: false } });
 			await switchUsbMode();
